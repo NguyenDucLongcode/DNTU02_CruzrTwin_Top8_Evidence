@@ -1,0 +1,137 @@
+name: dntu02-cruzrtwin
+
+services:
+  # ============================================================
+  # MONGODB - Database cho Orion và IoT Agent
+  # ============================================================
+  mongo:
+    image: mongo:4.4
+    container_name: mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - cruzrtwin_mongo_data:/data/db
+    networks:
+      - fiware-net
+
+  # ============================================================
+  # ORION CONTEXT BROKER - Quản lý ngữ cảnh
+  # ============================================================
+  orion:
+    image: fiware/orion:3.10.0
+    container_name: orion
+    restart: always
+    depends_on:
+      - mongo
+    ports:
+      - "1026:1026"
+    command: -dbhost mongo -logLevel DEBUG
+    networks:
+      - fiware-net
+
+  # ============================================================
+  # MQTT BROKER - Mosquitto
+  # ============================================================
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    restart: always
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    networks:
+      - fiware-net
+
+  # ============================================================
+  # FIWARE IoT AGENT JSON - Thay thế cho FIMAT
+  # ============================================================
+  iot-agent:
+    image: fiware/iotagent-json:1.26.0
+    container_name: iot-agent
+    restart: always
+    depends_on:
+      - mongo
+      - orion
+      - mosquitto
+    ports:
+      - "4041:4041" # API đăng ký device (Northbound)
+    environment:
+      # Orion connection
+      - IOTA_CB_HOST=orion
+      - IOTA_CB_PORT=1026
+
+      # Northbound API
+      - IOTA_NORTH_PORT=4041
+
+      # MongoDB configuration
+      - IOTA_MONGO_HOST=mongo
+      - IOTA_MONGO_PORT=27017
+      - IOTA_MONGO_DB=iotagentjson
+
+      # HTTP Southbound
+      - IOTA_HTTP_PORT=7896
+
+      # MQTT configuration
+      - IOTA_MQTT_HOST=mosquitto
+      - IOTA_MQTT_PORT=1883
+
+      # Default configuration
+      - IOTA_DEFAULT_RESOURCE=/iot/json
+      - IOTA_DEFAULT_TRANSPORT=MQTT
+      - IOTA_PROVIDER_URL=http://iot-agent:4041
+
+      # Logging
+      - IOTA_LOG_LEVEL=DEBUG
+    networks:
+      - fiware-net
+
+  # ============================================================
+  # CRATEDB - Time-series database
+  # ============================================================
+  cratedb:
+    image: crate:5.6.5
+    container_name: cratedb
+    restart: always
+    ports:
+      - "4200:4200"
+      - "4300:4300"
+      - "5432:5432"
+    command:
+      - crate
+      - -Ccluster.name=fiware-crate
+      - -Cauth.host_based.enabled=false
+      - -Ccluster.routing.allocation.disk.threshold_enabled=false
+    volumes:
+      - cruzrtwin_crate_data:/data
+    networks:
+      - fiware-net
+
+  # ============================================================
+  # QUANTUMLEAP - Time-series API
+  # ============================================================
+  quantumleap:
+    image: fiware/quantum-leap:latest
+    container_name: quantumleap
+    restart: always
+    depends_on:
+      - orion
+      - cratedb
+    ports:
+      - "8668:8668"
+    environment:
+      - CRATE_HOST=cratedb
+      - USE_GEOCODING=False
+      - LOGLEVEL=INFO
+    networks:
+      - fiware-net
+
+volumes:
+  cruzrtwin_mongo_data:
+  cruzrtwin_crate_data:
+
+networks:
+  fiware-net:
+    driver: bridge

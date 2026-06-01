@@ -21,6 +21,11 @@ from datetime import datetime, timezone
 import paho.mqtt.client as mqtt
 from src.fiware.entities.query import get_room_state, get_all_devices, get_entity_by_type
 
+from src.utils.replay_helpers import (
+    build_scenario_id,
+    get_device_status_from_filename,
+)
+
 # ======================================================
 # CẤU HÌNH MẶC ĐỊNH
 # ======================================================
@@ -32,13 +37,8 @@ DEFAULT_DEMO_RUN_ID = os.getenv("DEMO_RUN_ID", "DNTU02_TOP8_RUN_2026_001")
 DEFAULT_ZONE_ID = os.getenv("ZONE_ID", "DNTU_ROOM_A101")
 
 
-DEMO_TRACE_DIR = "logs"
-SENSOR_READING_LOG = os.path.join(DEMO_TRACE_DIR, "sensor_readings.jsonl")
-AI_DETECTION_LOG = os.path.join(DEMO_TRACE_DIR, "ai_detection.jsonl")
-ROBOT_ACTION_LOG = os.path.join(DEMO_TRACE_DIR, "robot_action.jsonl")
-OPERATOR_ACK_LOG = os.path.join(DEMO_TRACE_DIR, "operator_ack.jsonl")
-ORION_STATE_LOG = os.path.join(DEMO_TRACE_DIR, "orion_state.jsonl")
-
+# Log file paths
+ORION_SYNC_LOG = os.path.join("logs", "orion_sync.jsonl")
 
 # ======================================================
 # MAP DEVICE ID → OBJECT ID
@@ -121,90 +121,6 @@ def _append_jsonl(log_file: str, entry: dict):
     with open(log_file, "a", encoding="utf-8") as f:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
-
-def _build_sensor_reading_entry(device_values: Dict[str, any], scenario_id: str, demo_run_id: str, zone_id: str, device_status: str) -> dict:
-    return {
-        "demo_run_id": demo_run_id,
-        "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
-        "scenario_id": scenario_id,
-        "zone_id": zone_id,
-        "temperature": device_values.get("temp_sensor_a101", 0),
-        "humidity": device_values.get("humid_sensor_a101", 0),
-        "air_quality_or_co2": device_values.get("air_sensor_a101", 0),
-        "smoke_status": device_values.get("smoke_sensor_a101", 0),
-        "energy_consumption": device_values.get("smart_plug_a101", 0),
-        "device_status": device_status,
-    }
-
-
-def _classify_anomaly(device_values: Dict[str, any], expected_label: str) -> dict:
-    temperature = float(device_values.get("temp_sensor_a101", 0) or 0)
-    humidity = float(device_values.get("humid_sensor_a101", 0) or 0)
-    co2 = float(device_values.get("air_sensor_a101", 0) or 0)
-    smoke_status = float(device_values.get("smoke_sensor_a101", 0) or 0)
-    energy = float(device_values.get("smart_plug_a101", 0) or 0)
-
-    score = 0.0
-    reasons = []
-
-    if temperature >= 38:
-        score += 0.32
-        reasons.append("high temperature")
-    elif temperature >= 30:
-        score += 0.16
-        reasons.append("elevated temperature")
-
-    if co2 >= 1100:
-        score += 0.25
-        reasons.append("abnormal air quality / CO2")
-    elif co2 >= 800:
-        score += 0.12
-        reasons.append("rising air quality / CO2")
-
-    if humidity >= 75:
-        score += 0.08
-        reasons.append("high humidity")
-
-    if smoke_status >= 1:
-        score += 0.33
-        reasons.append("smoke detected")
-
-    if energy >= 800:
-        score += 0.14
-        reasons.append("high energy consumption")
-    elif energy >= 500:
-        score += 0.08
-        reasons.append("elevated energy consumption")
-
-    if score >= 0.55:
-        predicted_level = "critical"
-    elif score >= 0.18:
-        predicted_level = "warning"
-    else:
-        predicted_level = "normal"
-
-    rationale = "; ".join(reasons) if reasons else "All monitored metrics are within normal range."
-
-    if predicted_level == "critical":
-        recommended_action = "Send Cruzr to response point and request operator acknowledgement."
-    elif predicted_level == "warning":
-        recommended_action = "Monitor the room and prepare robot guidance if conditions worsen."
-    else:
-        recommended_action = "No action required."
-
-    # Keep the score in a compact range that looks like a model+rule fusion output.
-    anomaly_score = round(0.5 - min(score, 1.0), 2)
-
-    return {
-        "model": "rule_assisted_isolation_forest",
-        "anomaly_score": anomaly_score,
-        "predicted_level": predicted_level,
-        "expected_label": expected_label,
-        "rationale": rationale,
-        "recommended_action": recommended_action,
-    }
-
-
 # ======================================================
 # HÀM GỬI DỮ LIỆU
 # ======================================================
@@ -278,7 +194,7 @@ def publish_scenario(
     scenario_name: str,
     apikey: str = DEFAULT_APIKEY,
     broker: str = DEFAULT_MQTT_BROKER,
-    scenario_id_param: str = None,
+    scenario_id: str = None,
     port: int = DEFAULT_MQTT_PORT,
     delay: float = 0.5
 ) -> bool:
@@ -296,7 +212,7 @@ def publish_scenario(
             device_values=device_values,
             scenario_name=scenario_name,
             apikey=apikey,
-            scenario_id_param=scenario_id_param,
+            scenario_id=scenario_id,
             delay=delay,
         )
     finally:
@@ -309,7 +225,7 @@ def publish_scenario_with_client(
     device_values: Dict[str, any],
     scenario_name: str,
     apikey: str = DEFAULT_APIKEY,
-    scenario_id_param: str = None,
+    scenario_id: str = None,
     delay: float = 0.05,
 ) -> bool:
 
@@ -320,87 +236,52 @@ def publish_scenario_with_client(
         delay,
         verbose=True,
     )
-
+ 
+     # Nếu tất cả device đều gửi thành công, thì lưu log trace scenario này vào orion_sync.jsonl
     if success_count == len(device_values):
-
-        scenario_id = (
-            scenario_id_param
-            or device_values.get("scenario_id")
-            or scenario_name.replace(" ", "_").upper()
-        )
-
         save_scenario_logs(
             device_values=device_values,
             scenario_name=scenario_name,
             scenario_id=scenario_id,
-        )
+            demo_run_id=DEFAULT_DEMO_RUN_ID,
+            zone_id=DEFAULT_ZONE_ID,
+     )
 
     return success_count == len(device_values)
 
-# ======================================================
-# HÀM TIỆN ÍCH CHO CÁC SCENARIO
-# ======================================================
-
-def get_success_emoji(success: bool) -> str:
-    """Trả về emoji dựa trên kết quả"""
-    return "✅" if success else "❌"
-
-
-def print_summary(success_count: int, total: int, scenario: str):
-    """In tóm tắt kết quả"""
-    print("-" * 60)
-    if success_count == total:
-        print(f"✅ {scenario} SCENARIO COMPLETED SUCCESSFULLY!")
-    else:
-        print(f"⚠️ PARTIAL SUCCESS: {success_count}/{total}")
-    print("=" * 60)
 
 def save_scenario_logs(
     device_values,
     scenario_name,
     scenario_id,
+    demo_run_id: str, 
+    zone_id: str
 ):
-    if "CRITICAL" in scenario_name.upper():
-        device_status = "CRITICAL"
-    elif "WARNING" in scenario_name.upper():
-        device_status = "WARNING"
-    else:
-        device_status = "NORMAL"
+    
+    # Tạo scenario_id động nếu chưa có, và trích xuất device_status từ scenario_name
+    scenario_id = build_scenario_id(scenario_id)
+    scenario_name = f"REPLAY {scenario_name}"
+    device_status = get_device_status_from_filename(scenario_name)
 
-    sensor_entry = _build_sensor_reading_entry(
-        device_values=device_values,
-        scenario_id=scenario_id,
-        demo_run_id=DEFAULT_DEMO_RUN_ID,
-        zone_id=DEFAULT_ZONE_ID,
-        device_status=device_status,
-    )
+    # Lưu log vào orion_sync.jsonl để phục vụ cho trace và replay sau này
+    sensor_entry =  {
+        "demo_run_id": demo_run_id,
+        "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+        "scenario_id": scenario_id,
+        "zone_id": zone_id,
+        "temperature": device_values.get("temp_sensor_a101", 0),
+        "humidity": device_values.get("humid_sensor_a101", 0),
+        "air_quality_or_co2": device_values.get("air_sensor_a101", 0),
+        "smoke_status": device_values.get("smoke_sensor_a101", 0),
+        "energy_consumption": device_values.get("smart_plug_a101", 0),
+        "device_status": device_status,
+    }
+ 
 
-    _append_jsonl(SENSOR_READING_LOG, sensor_entry)
+    _append_jsonl(ORION_SYNC_LOG, sensor_entry)
 
-    print(f"   SensorReading log saved: {SENSOR_READING_LOG}")
+    print(f"   SensorReading log saved: {ORION_SYNC_LOG}")
 
-    try:
-        time.sleep(0.1)
-
-        orion_entry = {
-            "demo_run_id": DEFAULT_DEMO_RUN_ID,
-            "timestamp": datetime.now(timezone.utc)
-            .isoformat(timespec="seconds")
-            .replace("+00:00", "Z"),
-            "scenario_id": scenario_id,
-            "zone_id": DEFAULT_ZONE_ID,
-            "room": get_room_state(DEFAULT_ZONE_ID) or {},
-            "devices": get_all_devices() or [],
-            "alerts": get_entity_by_type("AlertEvent") or [],
-            "robot_actions": get_entity_by_type("RobotAction") or [],
-        }
-
-        _append_jsonl(ORION_STATE_LOG, orion_entry)
-
-        print(f"   Orion state snapshot saved: {ORION_STATE_LOG}")
-
-    except Exception as e:
-        print(f"   Failed Orion snapshot: {e}")
 
 # ======================================================
 # TEST

@@ -89,49 +89,35 @@ services:
       - fiware-net
 
   # ============================================================
-  # CRATEDB - Time-series database
+  # FIWARE DEVICE SIMULATOR
   # ============================================================
-  cratedb:
-    image: crate:5.6.5
-    container_name: cratedb
-    restart: always
-    ports:
-      - "4200:4200"
-      - "4300:4300"
-      - "5432:5432"
-    command:
-      - crate
-      - -Ccluster.name=fiware-crate
-      - -Cauth.host_based.enabled=false
-      - -Ccluster.routing.allocation.disk.threshold_enabled=false
-    volumes:
-      - cruzrtwin_crate_data:/data
-    networks:
-      - fiware-net
-
-  # ============================================================
-  # QUANTUMLEAP - Time-series API
-  # ============================================================
-  quantumleap:
-    image: fiware/quantum-leap:latest
-    container_name: quantumleap
-    restart: always
+  device-simulator:
+    image: fiware/device-simulator:latest
+    container_name: device-simulator
+    restart: "no" # Chạy 1 lần, không tự restart
     depends_on:
+      - mosquitto
+      - iot-agent
       - orion
-      - cratedb
-    ports:
-      - "8668:8668"
+    volumes:
+      - ./simulator/config:/app/config # Mount thư mục cấu hình
+    working_dir: /app
     environment:
-      - CRATE_HOST=cratedb
-      - USE_GEOCODING=False
-      - LOGLEVEL=INFO
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=1883
+      - ORION_HOST=orion
+      - ORION_PORT=1026
+    command: >
+      sh -c "mkdir -p /app/config && 
+             while [ ! -f /app/config/simulation.json ]; do 
+               echo 'Waiting for config file...'; 
+               sleep 2; 
+             done && 
+             /opt/fiware-device-simulator/bin/fiwareDeviceSimulatorCLI -c /app/config/simulation.json"
     networks:
       - fiware-net
-
 volumes:
   cruzrtwin_mongo_data:
-  cruzrtwin_crate_data:
-
 networks:
   fiware-net:
     driver: bridge

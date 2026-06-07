@@ -1,0 +1,36 @@
+{
+  "demo_run_id": "DNTU02_TOP8_RUN_2026_001",
+  "tested_at": "2026-06-07T03:47:48Z",
+  "metric_validity": "valid_replay_ground_truth",
+  "scenarios": {
+    "normal": {
+      "ai": "normal",
+      "alert_created": false,
+      "robot_action_created": false,
+      "robot_status": "N/A",
+      "adapter": "N/A",
+      "pass": true
+    },
+    "warning": {
+      "ai": "warning",
+      "alert_created": true,
+      "robot_action_created": false,
+      "robot_status": "N/A",
+      "adapter": "N/A",
+      "pass": true
+    },
+    "critical": {
+      "ai": "critical",
+      "alert_created": true,
+      "robot_action_created": true,
+      "robot_status": "GUIDANCE_DELIVERED",
+      "adapter": "MockCruzrAdapter",
+      "pass": true
+    }
+  },
+  "overall_pass": true,
+  "limitations": [
+    "MVP uses explainable rule-assisted anomaly layer.",
+    "MockCruzrAdapter is used as Real SDK is not configured."
+  ]
+}

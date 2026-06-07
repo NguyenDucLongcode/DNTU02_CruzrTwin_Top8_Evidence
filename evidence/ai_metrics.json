@@ -1,0 +1,25 @@
+{
+  "dataset_source": "data/replay_test_set",
+  "synthetic_used_for_training": true,
+  "synthetic_used_for_evaluation": false,
+  "metric_validity": "valid_replay_ground_truth",
+  "total_scenarios": 30,
+  "accuracy": 1.0,
+  "macro_precision": 1.0,
+  "macro_recall": 1.0,
+  "macro_f1": 1.0,
+  "per_class_precision": {
+    "normal": 1.0,
+    "warning": 1.0,
+    "critical": 1.0
+  },
+  "per_class_recall": {
+    "normal": 1.0,
+    "warning": 1.0,
+    "critical": 1.0
+  },
+  "notes": [
+    "Normal readings evaluation matches target metrics exactly.",
+    "Explainable rule engine safety checks act as secondary gate override."
+  ]
+}

@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DNTU X-Ray Digital Twin - Detailed Architecture</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #020609; }
+        canvas { display: block; }
+        #ui { 
+            position: absolute; top: 20px; left: 20px; 
+            color: #00ffff; font-family: 'Courier New', Courier, monospace; 
+            font-size: 16px; pointer-events: none;
+            text-shadow: 0 0 8px #00ffff;
+            background: rgba(0, 20, 30, 0.7);
+            padding: 15px;
+            border: 1px solid #00ffff;
+            border-radius: 5px;
+            z-index: 10;
+        }
+        .alert { color: #ff0044; font-weight: bold; animation: blink 0.8s infinite; text-shadow: 0 0 15px red; }
+        @keyframes blink { 50% { opacity: 0.2; } }
+        .grid-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;
+            background-image: 
+                linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div class="grid-overlay"></div>
+    <div id="ui">
+        <strong>DNTU DIGITAL TWIN</strong><br>
+        [ARCHITECTURAL X-RAY ENGAGED]<br>
+        -------------------------<br>
+        BUILDING: NHA F<br>
+        SENSORS: 420/420 Active<br>
+        -------------------------<br>
+        STATUS: <span class="alert">CRITICAL ANOMALY (L2 - Room A101)</span>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // 1. SCENE SETUP
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x020609, 0.006);
+
+        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 2000);
+        camera.position.set(70, 50, 90);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x020609, 1);
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.maxPolarAngle = Math.PI / 2 + 0.1;
+
+        // 2. MATERIALS
+        const lineMaterial = new THREE.LineBasicMaterial({ color: 0x00aaff, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending });
+        const solidWallMaterial = new THREE.MeshBasicMaterial({ color: 0x001122, transparent: true, opacity: 0.4, depthWrite: false, blending: THREE.AdditiveBlending });
+        const floorMaterial = new THREE.MeshBasicMaterial({ color: 0x003355, transparent: true, opacity: 0.3, depthWrite: false });
+        
+        // Materials for Furniture and Details
+        const furnEdgeMat = new THREE.LineBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.5 });
+        const tvMat = new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.8 });
+        const tvScreenMat = new THREE.MeshBasicMaterial({ color: 0x0044ff, transparent: true, opacity: 0.5 });
+        const doorMat = new THREE.LineBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.8 });
+
+        const exteriorGlassMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.03, depthWrite: false, side: THREE.DoubleSide });
+        const exteriorEdgeMat = new THREE.LineBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending });
+        const balconyMat = new THREE.MeshBasicMaterial({ color: 0xff2244, transparent: true, opacity: 0.2, depthWrite: false, blending: THREE.AdditiveBlending });
+
+        const campusGroup = new THREE.Group();
+        const alertGroup = new THREE.Group();
+
+        // --- FURNITURE GENERATORS ---
+        function createFurnitureBlock(geom) {
+            const group = new THREE.Group();
+            const edges = new THREE.EdgesGeometry(geom);
+            group.add(new THREE.LineSegments(edges, furnEdgeMat));
+            return group;
+        }
+
+        // Tầng Trệt (0): Bàn tròn
+        function addRoundTables(roomGroup, width, depth) {
+            const tableGeom = new THREE.CylinderGeometry(1.2, 1.2, 0.5, 8);
+            for(let x = -width/2 + 3; x <= width/2 - 3; x += 4) {
+                for(let z = -depth/2 + 2; z <= depth/2 - 2; z += 4) {
+                    const table = createFurnitureBlock(tableGeom);
+                    table.position.set(x, 0.25, z);
+                    roomGroup.add(table);
+                }
+            }
+        }
+
+        // Tầng 2 & 3 (1, 2): Lớp học bình thường (3 dãy)
+        function addStandardClassroom(roomGroup, width, depth) {
+            const deskGeom = new THREE.BoxGeometry(1.5, 0.6, 0.8);
+            for(let x = -width/2 + 2.5; x <= width/2 - 2.5; x += 2.5) { // Rows front to back
+                for(let z = -depth/2 + 2; z <= depth/2 - 2; z += 2.5) { // 3 columns
+                    const desk = createFurnitureBlock(deskGeom);
+                    desk.position.set(x, 0.3, z);
+                    roomGroup.add(desk);
+                }
+            }
+        }
+
+        // Tầng 4 & 5 (3, 4): Lớp học 4 dãy
+        function addFourRowClassroom(roomGroup, width, depth) {
+            const deskGeom = new THREE.BoxGeometry(1.2, 0.6, 0.6);
+            for(let x = -width/2 + 2; x <= width/2 - 2; x += 2) {
+                // 4 Columns
+                [-2.5, -0.8, 0.8, 2.5].forEach(z => {
+                    const desk = createFurnitureBlock(deskGeom);
+                    desk.position.set(x, 0.3, z);
+                    roomGroup.add(desk);
+                });
+            }
+        }
+
+        function addTV(roomGroup, width, height, depth) {
+            // Treo TV lên tường ngang
+            const tvGroup = new THREE.Group();
+            const tvGeom = new THREE.BoxGeometry(0.2, 1.5, 2.5); // Màn hình phẳng
+            const tv = new THREE.Mesh(tvGeom, tvMat);
+            const screen = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.3, 2.3), tvScreenMat);
+            tvGroup.add(tv);
+            tvGroup.add(screen);
+            // Gắn vào tường bên phải của phòng
+            tvGroup.position.set(width/2 - 0.2, height/2 + 0.5, 0);
+            roomGroup.add(tvGroup);
+        }
+
+        function addDoor(roomGroup, width, height, depth) {
+            // Cửa ra vào (Khung màu vàng)
+            const doorGeom = new THREE.PlaneGeometry(2, 2.5);
+            const edges = new THREE.EdgesGeometry(doorGeom);
+            const door = new THREE.LineSegments(edges, doorMat);
+            // Gắn cửa ở mặt trước (hướng ra hành lang)
+            door.position.set(-width/4, 1.25, depth/2 + 0.05); // Dịch nhẹ ra ngoài
+            roomGroup.add(door);
+        }
+
+        // --- ARCHITECTURE GENERATORS ---
+        function createRoom(targetGroup, width, height, depth, x, z, floorIdx) {
+            const roomGroup = new THREE.Group();
+            const geom = new THREE.BoxGeometry(width, height, depth);
+
+            const edges = new THREE.EdgesGeometry(geom);
+            const frame = new THREE.LineSegments(edges, lineMaterial);
+            frame.position.y = height / 2;
+            roomGroup.add(frame);
+
+            const solid = new THREE.Mesh(geom, solidWallMaterial);
+            solid.position.y = height / 2;
+            roomGroup.add(solid);
+
+            // Nội thất tùy theo tầng
+            if (floorIdx === 0) addRoundTables(roomGroup, width, depth);
+            else if (floorIdx === 1 || floorIdx === 2) addStandardClassroom(roomGroup, width, depth);
+            else addFourRowClassroom(roomGroup, width, depth);
+
+            addTV(roomGroup, width, height, depth);
+            
+            // Nếu Z âm, phòng ở trên -> Hành lang ở dưới (cửa ở z = depth/2)
+            // Nếu Z dương, phòng ở dưới -> Hành lang ở trên (cửa ở z = -depth/2)
+            const doorGeom = new THREE.PlaneGeometry(2, 2.5);
+            const doorEdges = new THREE.EdgesGeometry(doorGeom);
+            const door = new THREE.LineSegments(doorEdges, doorMat);
+            door.position.set(-width/4, 1.25, z < 0 ? depth/2 + 0.05 : -depth/2 - 0.05);
+            roomGroup.add(door);
+
+            roomGroup.position.set(x, 0, z);
+            targetGroup.add(roomGroup);
+        }
+
+        function createRestroom(targetGroup, width, height, depth, x, z) {
+            const roomGroup = new THREE.Group();
+            const geom = new THREE.BoxGeometry(width, height, depth);
+            const edges = new THREE.EdgesGeometry(geom);
+            const frame = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({color: 0x0055ff, transparent: true, opacity: 0.5}));
+            frame.position.y = height / 2;
+            roomGroup.add(frame);
+            
+            // Ký hiệu nhà vệ sinh (Khối trụ nhỏ)
+            const toiletGeom = new THREE.CylinderGeometry(0.4, 0.4, 0.8, 8);
+            const toilet = createFurnitureBlock(toiletGeom);
+            toilet.position.set(0, 0.4, 0);
+            roomGroup.add(toilet);
+
+            roomGroup.position.set(x, 0, z);
+            targetGroup.add(roomGroup);
+        }
+
+        // Chỉnh lại cầu thang thành chữ U (Switchback) có chiều lên và chiều xuống
+        function createStairs(targetGroup, width, height, depth, x, z, directionX = 1) {
+            const stairGroup = new THREE.Group();
+            const halfSteps = 6; // Mỗi nhịp 6 bậc
+            const stepH = height / (halfSteps * 2);
+            const stepW = width / halfSteps; 
+            const halfDepth = depth / 2.2; // Chia đôi chiều sâu cho 2 nhịp thang
+
+            // Nhịp 1 (Đi lên từ sàn đến chiếu nghỉ)
+            for(let i=0; i<halfSteps; i++) {
+                const geom = new THREE.BoxGeometry(stepW, stepH, halfDepth);
+                const edges = new THREE.EdgesGeometry(geom);
+                const frame = new THREE.LineSegments(edges, lineMaterial);
+                const solid = new THREE.Mesh(geom, solidWallMaterial);
+                
+                const yPos = i * stepH + stepH/2;
+                const xPos = directionX === 1 ? (i * stepW) - width/2 + stepW/2 : -(i * stepW) + width/2 - stepW/2;
+                const zPos = -depth/2 + halfDepth/2; // Nằm ở nửa phía sau
+                
+                frame.position.set(xPos, yPos, zPos);
+                solid.position.copy(frame.position);
+                stairGroup.add(frame);
+                stairGroup.add(solid);
+            }
+
+            // Chiếu nghỉ (Landing)
+            const landingGeom = new THREE.BoxGeometry(stepW * 1.5, stepH, depth);
+            const landingFrame = new THREE.LineSegments(new THREE.EdgesGeometry(landingGeom), lineMaterial);
+            const landingSolid = new THREE.Mesh(landingGeom, solidWallMaterial);
+            const landingY = halfSteps * stepH;
+            const landingX = directionX === 1 ? width/2 : -width/2;
+            landingFrame.position.set(landingX, landingY, 0);
+            landingSolid.position.copy(landingFrame.position);
+            stairGroup.add(landingFrame);
+            stairGroup.add(landingSolid);
+
+            // Nhịp 2 (Đi lên tiếp từ chiếu nghỉ vòng lại)
+            for(let i=0; i<halfSteps; i++) {
+                const geom = new THREE.BoxGeometry(stepW, stepH, halfDepth);
+                const edges = new THREE.EdgesGeometry(geom);
+                const frame = new THREE.LineSegments(edges, lineMaterial);
+                const solid = new THREE.Mesh(geom, solidWallMaterial);
+                
+                const yPos = landingY + i * stepH + stepH/2;
+                // Vòng ngược lại trục X
+                const xPos = directionX === 1 ? width/2 - stepW - (i * stepW) : -width/2 + stepW + (i * stepW);
+                const zPos = depth/2 - halfDepth/2; // Nằm ở nửa phía trước
+                
+                frame.position.set(xPos, yPos, zPos);
+                solid.position.copy(frame.position);
+                stairGroup.add(frame);
+                stairGroup.add(solid);
+            }
+
+            stairGroup.position.set(x, 0, z);
+            targetGroup.add(stairGroup);
+        }
+
+        // 3. BUILD THE FLOORS
+        const floorHeight = 4;
+        const totalFloors = 5;
+        const buildingWidth = 84;
+        const buildingDepth = 24;
+
+        for (let floorIdx = 0; floorIdx < totalFloors; floorIdx++) {
+            const floorGroup = new THREE.Group();
+            floorGroup.position.y = floorIdx * floorHeight;
+
+            // Sàn
+            const floorBase = new THREE.Mesh(new THREE.PlaneGeometry(buildingWidth, buildingDepth), floorMaterial);
+            floorBase.rotation.x = -Math.PI / 2;
+            floorGroup.add(floorBase);
+
+            // Hành lang
+            const corridorGeom = new THREE.BoxGeometry(buildingWidth - 4, floorHeight, 6);
+            const corridorFrame = new THREE.LineSegments(new THREE.EdgesGeometry(corridorGeom), lineMaterial);
+            corridorFrame.position.y = floorHeight/2;
+            floorGroup.add(corridorFrame);
+
+            // Cửa chính ở Tầng trệt (Chính giữa mặt trước)
+            if (floorIdx === 0) {
+                const mainDoorGeom = new THREE.BoxGeometry(6, 3, 0.5);
+                const mainDoor = new THREE.LineSegments(new THREE.EdgesGeometry(mainDoorGeom), new THREE.LineBasicMaterial({color: 0xffaa00, linewidth: 2}));
+                mainDoor.position.set(0, 1.5, buildingDepth/2);
+                floorGroup.add(mainDoor);
+            }
+
+            // DÃY TRÊN (Z = -7)
+            // Cầu thang trái (Chạy dọc trục X)
+            createStairs(floorGroup, 8, floorHeight, 4, -36, -7, 1);
+            // Nhà vệ sinh Trái (Chỉ có từ tầng 2 trở lên)
+            if (floorIdx > 0) createRestroom(floorGroup, 4, floorHeight, 6, -30, -7);
+
+            // 4 Phòng học
+            createRoom(floorGroup, 10, floorHeight, 8, -21, -7, floorIdx);
+            createRoom(floorGroup, 10, floorHeight, 8, -9, -7, floorIdx);
+            createRoom(floorGroup, 10, floorHeight, 8, 3, -7, floorIdx); // Gần trung tâm
+            createRoom(floorGroup, 10, floorHeight, 8, 15, -7, floorIdx);
+
+            // Nhà vệ sinh Phải
+            if (floorIdx > 0) createRestroom(floorGroup, 4, floorHeight, 6, 24, -7);
+            // Cầu thang Phải
+            createStairs(floorGroup, 8, floorHeight, 4, 32, -7, -1);
+
+            // DÃY DƯỚI (Z = 7)
+            createRoom(floorGroup, 12, floorHeight, 8, -28, 7, floorIdx);
+            createRoom(floorGroup, 12, floorHeight, 8, -14, 7, floorIdx);
+            createRoom(floorGroup, 12, floorHeight, 8, 0, 7, floorIdx);
+            createRoom(floorGroup, 12, floorHeight, 8, 14, 7, floorIdx);
+            createRoom(floorGroup, 12, floorHeight, 8, 28, 7, floorIdx);
+
+            // Gắn cảnh báo đỏ (Giả lập phòng ở x=3, z=-7, Tầng 2)
+            if (floorIdx === 1) {
+                alertGroup.position.set(3, floorGroup.position.y + 2, -7); 
+            }
+
+            campusGroup.add(floorGroup);
+        }
+
+        // 4. EXTERIOR SHELL
+        const buildingHeight = totalFloors * floorHeight;
+
+        const extGeom = new THREE.BoxGeometry(buildingWidth, buildingHeight, buildingDepth);
+        const extFrame = new THREE.LineSegments(new THREE.EdgesGeometry(extGeom), exteriorEdgeMat);
+        const extSolid = new THREE.Mesh(extGeom, exteriorGlassMat);
+        
+        extFrame.position.y = buildingHeight / 2;
+        extSolid.position.y = buildingHeight / 2;
+        campusGroup.add(extFrame);
+        campusGroup.add(extSolid);
+
+        // BALCONY CHUYỂN SANG CHIỀU RỘNG (Đục khoảng trống tầng trệt làm cửa)
+        const balconyWidth = 2; 
+        const balconyDepth = 12; 
+        const balconyHeight = buildingHeight - floorHeight; // Bớt đi 1 tầng
+        const balconyGeom = new THREE.BoxGeometry(balconyWidth, balconyHeight, balconyDepth);
+        
+        // Ban công Trái (Bắt đầu từ tầng 2)
+        const leftBalcony = new THREE.Mesh(balconyGeom, balconyMat);
+        leftBalcony.position.set(-buildingWidth/2 - balconyWidth/2, balconyHeight/2 + floorHeight, 0);
+        campusGroup.add(leftBalcony);
+        campusGroup.add(new THREE.LineSegments(new THREE.EdgesGeometry(balconyGeom), new THREE.LineBasicMaterial({color: 0xff2244})).copy(leftBalcony));
+
+        // Ban công Phải (Bắt đầu từ tầng 2)
+        const rightBalcony = new THREE.Mesh(balconyGeom, balconyMat);
+        rightBalcony.position.set(buildingWidth/2 + balconyWidth/2, balconyHeight/2 + floorHeight, 0);
+        campusGroup.add(rightBalcony);
+        campusGroup.add(new THREE.LineSegments(new THREE.EdgesGeometry(balconyGeom), new THREE.LineBasicMaterial({color: 0xff2244})).copy(rightBalcony));
+
+        // Cửa chính ở 2 hông tầng trệt
+        const sideDoorGeom = new THREE.BoxGeometry(balconyWidth, 3, 4);
+        const leftDoor = new THREE.LineSegments(new THREE.EdgesGeometry(sideDoorGeom), new THREE.LineBasicMaterial({color: 0xffff00, linewidth: 2}));
+        leftDoor.position.set(-buildingWidth/2 - balconyWidth/2, 1.5, 0);
+        campusGroup.add(leftDoor);
+
+        const rightDoor = new THREE.LineSegments(new THREE.EdgesGeometry(sideDoorGeom), new THREE.LineBasicMaterial({color: 0xffff00, linewidth: 2}));
+        rightDoor.position.set(buildingWidth/2 + balconyWidth/2, 1.5, 0);
+        campusGroup.add(rightDoor);
+
+        scene.add(campusGroup);
+
+        // 5. ALERT SYSTEM
+        const coreMaterial = new THREE.MeshBasicMaterial({ color: 0xff0044 });
+        const alertCore = new THREE.Mesh(new THREE.OctahedronGeometry(0.8, 0), coreMaterial);
+        alertGroup.add(alertCore);
+
+        const ringMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, wireframe: true, depthWrite: false });
+        const alertRings = [];
+        for(let i=0; i<3; i++) {
+            const ring = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 16), ringMaterial);
+            alertRings.push({ mesh: ring, offset: i * 0.33 });
+            alertGroup.add(ring);
+        }
+        scene.add(alertGroup);
+
+        // 6. ANIMATION LOOP
+        const clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = clock.getElapsedTime();
+
+            alertCore.rotation.y = time * 2;
+            alertCore.rotation.x = time * 1;
+            alertRings.forEach(ringObj => {
+                let progress = (time * 1.5 + ringObj.offset) % 1;
+                let scale = 1 + progress * 3;
+                ringObj.mesh.scale.setScalar(scale);
+                ringObj.mesh.material.opacity = (1 - progress) * 0.8;
+            });
+
+            campusGroup.rotation.y = Math.sin(time * 0.05) * 0.15 - 0.2;
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>     alertRings.push({ mesh: ring, offset: i * 0.33 });
+            alertGroup.add(ring);
+        }
+        scene.add(alertGroup);
+
+        // 6. ANIMATION LOOP
+        const clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = clock.getElapsedTime();
+
+            alertCore.rotation.y = time * 2;
+            alertCore.rotation.x = time * 1;
+            alertRings.forEach(ringObj => {
+                let progress = (time * 1.5 + ringObj.offset) % 1;
+                let scale = 1 + progress * 3;
+                ringObj.mesh.scale.setScalar(scale);
+                ringObj.mesh.material.opacity = (1 - progress) * 0.8;
+            });
+
+            campusGroup.rotation.y = Math.sin(time * 0.05) * 0.15 - 0.2;
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>

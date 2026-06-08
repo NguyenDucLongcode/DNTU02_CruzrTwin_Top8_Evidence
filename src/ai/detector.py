@@ -1,88 +1,106 @@
-import numpy as np
-from src.ai.schemas import validate_ai_input
-from src.ai.feature_extractor import extract_features
-from src.ai.rule_engine import evaluate_rules
-from src.ai.model_loader import load_isolation_forest_model
+import os
+import joblib
+import pandas as pd
+from datetime import datetime, timezone
+
+from src.ai.feature_extractor import extract_one
+from src.ai.rule_engine import classify_alert_level
+from src.common import config
+from src.common.errors import InferenceError
 from src.common.time_utils import now_iso
 
-def detect_anomaly(reading: dict) -> dict:
+_model_cache = None
+
+def load_detector_model(model_path: str):
     """
-    Validates input schema, extracts features, queries the rule engine,
-    and runs the Isolation Forest model if available.
-    Returns:
-        dict: Complete anomaly detection payload.
+    Load the IsolationForest model from disk.
+    Caches the model to avoid reading it on every call.
     """
-    # 1. Schema Validation
-    validate_ai_input(reading)
-    
-    # 2. Extract Features
-    features = extract_features(reading)
-    
-    # 3. Rule Evaluation
-    rules_out = evaluate_rules(features)
-    rule_level = rules_out["rule_level"]
-    rule_hits = rules_out["rule_hits"]
-    rule_confidence = rules_out["rule_confidence"]
-    rationale = rules_out["rationale"]
-    risk_score = rules_out["risk_score"]
-    
-    # 4. ML Model Evaluation
-    model_obj = load_isolation_forest_model()
-    if model_obj is not None:
-        model_name = "rule_assisted_isolation_forest"
-        # Input features for model
-        X = [[
-            features["temperature"],
-            features["humidity"],
-            features["air_quality_or_co2"],
-            features["smoke_status"],
-            features["energy_consumption"]
-        ]]
-        try:
-            # decision_function returns negative values for outliers
-            score = float(model_obj.decision_function(X)[0])
-            anomaly_score = round(score, 4)
-        except Exception:
-            # Fallback score mapping based on risk_score
-            anomaly_score = round(-0.05 - (risk_score * 0.26), 2)
-    else:
-        model_name = "explainable_rule_assisted_anomaly_layer"
-        # Fallback score mapping
-        if rule_level == "critical":
-            anomaly_score = -0.31
-        elif rule_level == "warning":
-            anomaly_score = -0.18
-        else:
-            anomaly_score = -0.05
-            
-    # Predicted level prioritizes the safety rule engine
-    predicted_level = rule_level
-    
-    # Recommended Action mapping
-    if predicted_level == "critical":
-        recommended_action = "CREATE_CRITICAL_ALERT_AND_DISPATCH_CRUZR"
-    elif predicted_level == "warning":
-        recommended_action = "CREATE_WARNING_ALERT"
-    else:
-        recommended_action = "NO_ACTION"
+    global _model_cache
+    if _model_cache is not None:
+        return _model_cache
         
-    return {
-        "demo_run_id": reading["demo_run_id"],
-        "scenario_id": reading["scenario_id"],
-        "scenario_source": reading["scenario_source"],
-        "zone_id": reading["zone_id"],
-        "timestamp": reading.get("timestamp") or now_iso(),
-        "source_entity_id": reading["source_entity_id"],
-        "model": model_name,
-        "features": features,
-        "anomaly_score": anomaly_score,
-        "risk_score": risk_score,
-        "rule_level": rule_level,
-        "rule_hits": rule_hits,
-        "rule_confidence": rule_confidence,
-        "predicted_level": predicted_level,
-        "expected_label": reading.get("expected_label"),
-        "rationale": rationale,
-        "recommended_action": recommended_action,
-        "status": "AI_DETECTED"
+    if not os.path.exists(model_path):
+        raise InferenceError(f"Model file not found at {model_path}. Train the model first.")
+        
+    try:
+        _model_cache = joblib.load(model_path)
+        return _model_cache
+    except Exception as e:
+        raise InferenceError(f"Failed to load IsolationForest model: {e}")
+
+def detect_anomaly(sensor: dict) -> dict:
+    """
+    Run AI anomaly detection and severity rule checking on sensor input.
+    """
+    cfg = config.get_config()
+    model_path = cfg["model_path"]
+    
+    # 1. Load model
+    model = load_detector_model(model_path)
+    
+    # 2. Extract features
+    X = extract_one(sensor)
+    
+    # 3. Predict & Score
+    try:
+        pred = model.predict(X)[0]
+        score = float(model.decision_function(X)[0])
+    except Exception as e:
+        raise InferenceError(f"Model prediction failed: {e}")
+        
+    # 4. Map IsolationForest outputs (1 = normal, -1 = anomaly)
+    # prediction == 1 -> predicted_anomaly = 0
+    # prediction == -1 -> predicted_anomaly = 1
+    predicted_anomaly = 0 if pred == 1 else 1
+    in_boundary = (predicted_anomaly == 0)
+    
+    # 5. Extract timestamp or create one
+    ts = sensor.get("timestamp")
+    if not ts:
+        ts = now_iso()
+        
+    features_dict = {
+        "temperature": float(sensor.get("temperature", 0.0)),
+        "humidity": float(sensor.get("humidity", 0.0)),
+        "smoke": float(sensor.get("smoke", 0.0)),
+        "co2": float(sensor.get("co2", 0.0)),
+        "power": float(sensor.get("power", 0.0))
     }
+    
+    # 6. Format output
+    if predicted_anomaly == 0:
+        return {
+            "timestamp": ts,
+            "features": features_dict,
+            "model": "IsolationForest",
+            "training_logic": "normal_only_boundary_learning",
+            "anomaly_score": score,
+            "predicted_anomaly": 0,
+            "in_boundary": True,
+            "predicted_level": "normal",
+            "rule_hits": [],
+            "rationale": "The sensor data is inside the normal boundary.",
+            "recommended_action": "NO_ACTION",
+            "status": "AI_DETECTED"
+        }
+    else:
+        # Check rule layer
+        rule_result = classify_alert_level(sensor)
+        lvl = rule_result["level"]
+        rec_action = "CREATE_WARNING_ALERT" if lvl == "warning" else "CREATE_CRITICAL_ALERT"
+        
+        return {
+            "timestamp": ts,
+            "features": features_dict,
+            "model": "IsolationForest",
+            "training_logic": "normal_only_boundary_learning",
+            "anomaly_score": score,
+            "predicted_anomaly": 1,
+            "in_boundary": False,
+            "predicted_level": lvl,
+            "rule_hits": rule_result["rule_hits"],
+            "rationale": rule_result["rationale"],
+            "recommended_action": rec_action,
+            "status": "AI_DETECTED"
+        }

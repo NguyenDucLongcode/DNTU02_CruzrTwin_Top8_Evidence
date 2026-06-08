@@ -1,101 +1,119 @@
 import os
-import sys
 import pytest
-
-# Add project root to path
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, ROOT_DIR)
+import pandas as pd
+import numpy as np
+from sklearn.ensemble import IsolationForest
+import joblib
 
 from src.ai.detector import detect_anomaly
-from src.common.errors import ValidationError
+from src.ai.model_trainer import train_normal_boundary_model
+from src.common.config import get_config
 
-def test_detector_schema_and_fields():
-    reading = {
-        "demo_run_id": "DNTU02_TOP8_RUN_2026_001",
-        "scenario_id": "SCN_CRITICAL_001",
-        "scenario_source": "payload",
-        "zone_id": "DNTU_ROOM_A101",
-        "timestamp": "2026-05-17T09:00:16Z",
-        "source_entity_id": "Room:DNTU_ROOM_A101",
-        "temperature": 39.8,
-        "humidity": 78.0,
-        "air_quality_or_co2": 1250,
-        "smoke_status": 1,
-        "energy_consumption": 920,
-        "device_status": "ON",
-        "expected_label": "critical"
-    }
+@pytest.fixture(scope="module", autouse=True)
+def setup_test_model(tmp_path_factory):
+    # Set up temporary directory for model and evidence
+    tmp_dir = tmp_path_factory.mktemp("detector_test")
+    data_path = tmp_dir / "sensor_data.csv"
+    model_path = tmp_dir / "anomaly_model.pkl"
+    schema_path = tmp_dir / "feature_schema.json"
+    evidence_dir = tmp_dir / "evidence"
+    evidence_dir.mkdir()
     
-    res = detect_anomaly(reading)
+    # Generate proper normal and anomaly distributions with variance
+    np.random.seed(42)
     
-    # Verify complete schema
-    expected_fields = [
-        "demo_run_id", "scenario_id", "scenario_source", "zone_id", "timestamp",
-        "source_entity_id", "model", "features", "anomaly_score", "risk_score",
-        "rule_level", "rule_hits", "rule_confidence", "predicted_level",
-        "expected_label", "rationale", "recommended_action", "status"
-    ]
-    for field in expected_fields:
-        assert field in res
+    # Normal data (100 rows)
+    normal_temp = np.random.uniform(22, 30, 100)
+    normal_hum = np.random.uniform(45, 70, 100)
+    normal_smoke = np.random.uniform(20, 80, 100)
+    normal_co2 = np.random.uniform(350, 500, 100)
+    normal_power = np.random.uniform(30, 80, 100)
+    normal_labels = np.zeros(100, dtype=int)
+    
+    # Anomaly data (10 rows)
+    anom_temp = np.random.uniform(38, 50, 10)
+    anom_hum = np.random.uniform(10, 25, 10)
+    anom_smoke = np.random.uniform(300, 500, 10)
+    anom_co2 = np.random.uniform(900, 1200, 10)
+    anom_power = np.random.uniform(5, 15, 10)
+    anom_labels = np.ones(10, dtype=int)
+    
+    df = pd.DataFrame({
+        "timestamp": ["2026-06-08T12:00:00Z"] * 110,
+        "temperature": np.concatenate([normal_temp, anom_temp]),
+        "humidity": np.concatenate([normal_hum, anom_hum]),
+        "smoke": np.concatenate([normal_smoke, anom_smoke]),
+        "co2": np.concatenate([normal_co2, anom_co2]),
+        "power": np.concatenate([normal_power, anom_power]),
+        "label": np.concatenate([normal_labels, anom_labels])
+    })
+    df.to_csv(data_path, index=False)
+    
+    # Patch config first so that train_normal_boundary_model writes to temp evidence dir
+    import src.common.config
+    original_get_config = src.common.config.get_config
+    
+    def mock_get_config():
+        cfg = original_get_config()
+        cfg["model_path"] = str(model_path)
+        cfg["feature_schema_path"] = str(schema_path)
+        cfg["evidence_dir"] = str(evidence_dir)
+        return cfg
         
+    src.common.config.get_config = mock_get_config
+    
+    # Train model
+    train_normal_boundary_model(
+        data_path=str(data_path),
+        model_path=str(model_path),
+        feature_schema_path=str(schema_path)
+    )
+    
+    yield
+    
+    # Restore original config
+    src.common.config.get_config = original_get_config
+
+def test_detector_normal():
+    sensor = {
+        "temperature": 25.0,
+        "humidity": 50.0,
+        "smoke": 40.0,
+        "co2": 400.0,
+        "power": 50.0
+    }
+    res = detect_anomaly(sensor)
+    assert res["predicted_anomaly"] == 0
+    assert res["predicted_level"] == "normal"
+    assert res["in_boundary"] is True
+    assert res["recommended_action"] == "NO_ACTION"
+
+def test_detector_warning():
+    # Outside normal boundaries -> predicted_anomaly = 1, rule says warning
+    sensor = {
+        "temperature": 34.0,
+        "humidity": 65.0,
+        "smoke": 180.0,
+        "co2": 750.0,
+        "power": 90.0
+    }
+    res = detect_anomaly(sensor)
+    assert res["predicted_anomaly"] == 1
+    assert res["predicted_level"] == "warning"
+    assert res["in_boundary"] is False
+    assert res["recommended_action"] == "CREATE_WARNING_ALERT"
+
+def test_detector_critical():
+    # Outside normal boundaries -> predicted_anomaly = 1, rule says critical
+    sensor = {
+        "temperature": 45.0,
+        "humidity": 15.0,
+        "smoke": 400.0,
+        "co2": 1000.0,
+        "power": 8.0
+    }
+    res = detect_anomaly(sensor)
+    assert res["predicted_anomaly"] == 1
     assert res["predicted_level"] == "critical"
-    assert res["expected_label"] == "critical"
-    assert res["recommended_action"] == "CREATE_CRITICAL_ALERT_AND_DISPATCH_CRUZR"
-
-def test_detector_missing_fields():
-    reading = {
-        "demo_run_id": "DNTU02_TOP8_RUN_2026_001",
-        # Missing scenario_id
-        "scenario_source": "payload",
-        "zone_id": "DNTU_ROOM_A101",
-        "timestamp": "2026-05-17T09:00:16Z",
-        "source_entity_id": "Room:DNTU_ROOM_A101",
-        "temperature": 39.8,
-        "humidity": 78.0,
-        "air_quality_or_co2": 1250,
-        "smoke_status": 1,
-        "energy_consumption": 920,
-        "device_status": "ON"
-    }
-    
-    with pytest.raises(ValidationError):
-        detect_anomaly(reading)
-
-def test_detector_invalid_types():
-    reading = {
-        "demo_run_id": "DNTU02_TOP8_RUN_2026_001",
-        "scenario_id": "SCN_CRITICAL_001",
-        "scenario_source": "payload",
-        "zone_id": "DNTU_ROOM_A101",
-        "timestamp": "2026-05-17T09:00:16Z",
-        "source_entity_id": "Room:DNTU_ROOM_A101",
-        "temperature": "very hot", # invalid type
-        "humidity": 78.0,
-        "air_quality_or_co2": 1250,
-        "smoke_status": 1,
-        "energy_consumption": 920,
-        "device_status": "ON"
-    }
-    
-    with pytest.raises(ValidationError):
-        detect_anomaly(reading)
-
-def test_no_overclaim_model_name():
-    # If the model does not exist, it should fallback to explainable rule assisted mode
-    reading = {
-        "demo_run_id": "DNTU02_TOP8_RUN_2026_001",
-        "scenario_id": "SCN_NORMAL_001",
-        "scenario_source": "payload",
-        "zone_id": "DNTU_ROOM_A101",
-        "timestamp": "2026-05-17T09:00:16Z",
-        "source_entity_id": "Room:DNTU_ROOM_A101",
-        "temperature": 24.5,
-        "humidity": 52.0,
-        "air_quality_or_co2": 410,
-        "smoke_status": 0,
-        "energy_consumption": 340,
-        "device_status": "ON"
-    }
-    res = detect_anomaly(reading)
-    # Since we didn't mock file check here, if models/isolation_forest.joblib does not exist it must say explainable_rule_assisted_anomaly_layer
-    assert res["model"] in ["explainable_rule_assisted_anomaly_layer", "rule_assisted_isolation_forest"]
+    assert res["in_boundary"] is False
+    assert res["recommended_action"] == "CREATE_CRITICAL_ALERT"

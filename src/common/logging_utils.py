@@ -1,37 +1,29 @@
 import os
 import json
-from datetime import datetime, timezone
-from .config import LOG_DIR
-from .time_utils import now_iso
+from src.common.json_utils import clean_for_json
 
-def ensure_log_dir():
-    """Ensures the log directory exists."""
-    os.makedirs(LOG_DIR, exist_ok=True)
-
-def validate_json_serializable(record: dict):
-    """Checks if a dictionary can be serialized to JSON, raising TypeError if not."""
-    json.dumps(record)
-
-def append_jsonl(path: str, record: dict):
+def ensure_dir(path: str) -> None:
     """
-    Appends a record to a JSONL log file.
-    Ensures that parent directories are created.
+    Ensure the directory for the given file path exists.
     """
-    validate_json_serializable(record)
-    dir_name = os.path.dirname(path)
-    if dir_name:
-        os.makedirs(dir_name, exist_ok=True)
+    directory = os.path.dirname(path)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+
+def append_jsonl(path: str, record: dict) -> None:
+    """
+    Append a dictionary as a JSON line to the specified file.
+    Creates parent directories if they do not exist.
+    """
+    ensure_dir(path)
+    cleaned_record = clean_for_json(record)
     with open(path, "a", encoding="utf-8") as f:
-        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        f.write(json.dumps(cleaned_record, ensure_ascii=False) + "\n")
 
-def build_base_log_context(demo_run_id: str, scenario_id: str, scenario_source: str, zone_id: str) -> dict:
+def reset_file(path: str) -> None:
     """
-    Builds the default dict header structure for logs.
+    Reset a file by creating or clearing it, ensuring the parent directory exists.
     """
-    return {
-        "demo_run_id": demo_run_id,
-        "scenario_id": scenario_id,
-        "scenario_source": scenario_source,
-        "zone_id": zone_id,
-        "timestamp": now_iso()
-    }
+    ensure_dir(path)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("")

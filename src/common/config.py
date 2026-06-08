@@ -1,33 +1,22 @@
 import os
 from dotenv import load_dotenv
 
-# Load environment variables from .env if present
+# Load .env file if it exists
 load_dotenv()
 
-DEMO_RUN_ID = os.getenv("DEMO_RUN_ID", "DNTU02_TOP8_RUN_2026_001")
-DEFAULT_ZONE_ID = os.getenv("DEFAULT_ZONE_ID", "DNTU_ROOM_A101")
-DEFAULT_ROBOT_ID = os.getenv("DEFAULT_ROBOT_ID", "CRUZR_01")
-ROBOT_ADAPTER = os.getenv("ROBOT_ADAPTER", "mock").lower()
-
-ORION_URL = os.getenv("ORION_URL", "http://localhost:1026")
-FIWARE_SERVICE = os.getenv("FIWARE_SERVICE", "openiot")
-FIWARE_SERVICE_PATH = os.getenv("FIWARE_SERVICE_PATH", "/")
-
-LOCAL_BRIDGE_URL = os.getenv("LOCAL_BRIDGE_URL", "http://localhost:8088/robot-action")
-LOG_DIR = os.getenv("LOG_DIR", "logs")
-MODEL_PATH = os.getenv("MODEL_PATH", "models/isolation_forest.joblib")
-FEATURE_SCHEMA_PATH = os.getenv("FEATURE_SCHEMA_PATH", "models/feature_schema.json")
-
-try:
-    ORION_TIMEOUT = int(os.getenv("ORION_TIMEOUT_SECONDS", "5"))
-except ValueError:
-    ORION_TIMEOUT = 5
-
-try:
-    LOCAL_BRIDGE_TIMEOUT = int(os.getenv("LOCAL_BRIDGE_TIMEOUT_SECONDS", "5"))
-except ValueError:
-    LOCAL_BRIDGE_TIMEOUT = 5
-
-# Validate critical configs
-if not ORION_URL.startswith("http"):
-    raise ValueError(f"Invalid ORION_URL configuration: {ORION_URL}")
+def get_config() -> dict:
+    """
+    Get configuration dictionary from environment variables or defaults.
+    No absolute paths are used.
+    """
+    return {
+        "demo_run_id": os.getenv("DEMO_RUN_ID", "DNTU02_TOP8_RUN_2026_001"),
+        "default_zone_id": os.getenv("DEFAULT_ZONE_ID", "DNTU_ROOM_A101"),
+        "data_path": os.getenv("DATA_PATH", "data/sensor_data.csv"),
+        "model_path": os.getenv("MODEL_PATH", "models/anomaly_model.pkl"),
+        "feature_schema_path": os.getenv("FEATURE_SCHEMA_PATH", "models/feature_schema.json"),
+        "log_dir": os.getenv("LOG_DIR", "logs"),
+        "evidence_dir": os.getenv("EVIDENCE_DIR", "evidence"),
+        "orion_enabled": os.getenv("ORION_ENABLED", "false").lower() == "true",
+        "closed_loop_enabled": os.getenv("CLOSED_LOOP_ENABLED", "true").lower() == "true"
+    }

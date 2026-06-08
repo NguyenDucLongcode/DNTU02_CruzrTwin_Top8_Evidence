@@ -1,7 +1,6 @@
 """
 Webhook Receiver - Nhận notification từ Orion
 - Cập nhật Room entity khi có dữ liệu mới
-- Kích hoạt Orchestration Pipeline để chạy closed-loop
 """
 
 import json
@@ -14,22 +13,25 @@ from flask import Flask, request, jsonify
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, ROOT_DIR)
 
-from src.fiware.entities import update_room_sensors, get_room_state
-from src.orchestration.event_pipeline import process_room_state
+from src.fiware.entities import update_room_sensors
 
 app = Flask(__name__)
 
+
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
 
 def _extract_value(value):
     if isinstance(value, dict) and "value" in value:
         return value["value"]
     return value
 
+
 @app.route('/webhook/notify', methods=['POST'])
 def webhook_notify():
-    """Nhận notification từ Orion, cập nhật Room và kích hoạt Orchestration"""
+    """Nhận notification từ Orion, cập nhật Room"""
+
     data = request.get_json(silent=True) or {}
 
     tracked_attrs = [
@@ -50,21 +52,17 @@ def webhook_notify():
         if key in entity:
             changed_sensor_data[key] = _extract_value(entity[key])
 
-    # Cập nhật Room entity và kích hoạt closed-loop pipeline
+    # Cập nhật Room entity
     if changed_sensor_data:
         update_room_sensors(changed_sensor_data)
-        
-        # Lấy Room state từ Orion (chứa tất cả sensors) để chạy AI
-        room_state = get_room_state()
-        if room_state:
-            # Gửi sang pipeline orchestration để xử lý
-            process_room_state(room_state)
 
     return jsonify({"status": "ok"}), 200
+
 
 @app.route('/webhook/health', methods=['GET'])
 def health_check():
     return {"status": "healthy"}, 200
+
 
 if __name__ == "__main__":
     print("\n" + "=" * 50)

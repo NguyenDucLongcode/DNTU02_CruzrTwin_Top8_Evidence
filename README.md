@@ -1,77 +1,45 @@
-# DNTU02 CruzrTwin ASEAN - Tasks 5-7
+# DNTU02 CruzrTwin ASEAN - Task 5 & Task 6
 
-This repository contains the core closed-loop anomaly detection, alerting, and robot action orchestration layers for the building twins demo.
+This repository contains the implementation of Task 5 (AI Anomaly Detection and Rule Layer) and Task 6 (AlertEvent Management).
 
----
+## What it does
 
-## 1. Quick Start
+1. **AI Anomaly Detection**: An Isolation Forest model learns the boundaries of normal sensor readings (using `label=0` data only).
+2. **Rule Layer**: When the AI detects an anomaly, a rule-based engine classifies the severity level into `warning` or `critical`.
+3. **AlertEvent Service**: Automatically creates alert events for warning and critical detections, tracking their lifecycle status as `OPEN`.
 
-### Install Dependencies
-```bash
-pip install -r requirements.txt
-```
+## Quick Start
 
-### Train AI Model
-Train the explainable Isolation Forest model:
-```bash
-python scripts/ai/train_ai.py
-```
+1. Install requirements:
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. Verify environment:
+   ```bash
+   python scripts/setup/check_environment.py
+   ```
+3. Generate dataset:
+   ```bash
+   python scripts/ai/generate_sensor_data.py
+   ```
+4. Train Isolation Forest:
+   ```bash
+   python scripts/ai/train_anomaly_model.py
+   ```
+5. Evaluate model:
+   ```bash
+   python scripts/ai/evaluate_ai.py
+   ```
+6. Run interactive demo:
+   ```bash
+   python scripts/demo/run_task_5_6_demo.py
+   ```
 
-### Evaluate Model
-Evaluate accuracy against ground-truth replay sequences:
-```bash
-python scripts/ai/evaluate_ai.py
-```
+## Evidence Files
 
----
-
-## 2. Run Demo Scenarios
-
-Reset all logs and execute normal, warning, and critical scenarios:
-```bash
-python scripts/tools/reset_demo_logs.py
-python scripts/demo/run_task_5_7_demo.py --all
-```
-
----
-
-## 3. Verify Compliance
-
-### Log Validation
-Validate structure and required fields in generated JSONL logs:
-```bash
-python scripts/tools/validate_jsonl_logs.py
-```
-
-### Show Critical Scenario Closed-Loop Trace
-Display step-by-step trace showing `AI Anomaly Detection -> AlertEvent -> RobotAction`:
-```bash
-python scripts/tools/show_demo_trace.py --demo-run-id DNTU02_TOP8_RUN_2026_001 --scenario-id critical_001
-```
-
-### Run Acceptance Checks
-Assert compliance with acceptance criteria:
-```bash
-python scripts/tools/assert_task_5_7_acceptance.py
-```
-
----
-
-## 4. Run Tests
-
-Run pytest unit and integration tests:
-```bash
-pytest
-```
-
----
-
-## 5. Documentation
-
-Refer to the `docs/` folder for implementation details:
-- `docs/TASK_5_6_7_IMPLEMENTATION.md`: System architecture and components.
-- `docs/AI_RULE_LAYER.md`: AI model details and safety thresholds.
-- `docs/ALERTEVENT_SCHEMA.md`: Orion schema and state machine of alerts.
-- `docs/ROBOTACTION_SCHEMA.md`: Orion schema, bilingual message limits, and state machine of robot actions.
-- `docs/TASK_5_7_RUNBOOK.md`: Commands and operations runbook.
-- `docs/KNOWN_LIMITATIONS_TASK_5_7.md`: Safety, privacy, and system boundaries.
+After running, evidence is generated in the `evidence/` directory:
+- `training_summary.json`: Training configuration and bounds parameters.
+- `ai_metrics.json`: Accuracy, Precision, Recall, and F1 metrics on the test dataset.
+- `binary_confusion_matrix.csv`: Confusion matrix of evaluations.
+- `task_5_6_test_summary.json`: Success status of demo scenarios.
+- `task_5_6_trace_sample.json`: Detailed event flow trace.

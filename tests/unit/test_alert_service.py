@@ -1,149 +1,76 @@
 import os
-import sys
+import json
 import pytest
-from unittest.mock import patch, MagicMock
+from src.alerts.alert_service import create_alert_event
 
-# Add project root to path
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, ROOT_DIR)
-
-from src.alerts.alert_service import create_alert_event, update_alert_status, build_alert_id
-from src.common.errors import ValidationError, AlertServiceError
-
-# Mock Orion Client calls
-@patch("src.alerts.alert_service.get_entity")
-@patch("src.alerts.alert_service.upsert_entity")
-def test_create_alert_normal(mock_upsert, mock_get):
-    ai_result = {"predicted_level": "normal"}
-    res = create_alert_event(ai_result, {})
-    assert res["status"] == "NO_ALERT"
-    mock_upsert.assert_not_called()
-
-@patch("src.alerts.alert_service.get_entity")
-@patch("src.alerts.alert_service.upsert_entity")
-def test_create_alert_warning(mock_upsert, mock_get):
-    mock_get.return_value = None
-    mock_upsert.return_value = {"success": True}
+@pytest.fixture(autouse=True)
+def patch_logs_dir(tmp_path):
+    import src.common.config
+    original_get_config = src.common.config.get_config
     
-    ai_result = {
-        "predicted_level": "warning",
-        "demo_run_id": "RUN_001",
-        "scenario_id": "SCN_01",
-        "scenario_source": "payload",
-        "zone_id": "ROOM_101",
-        "source_entity_id": "Room:101",
-        "recommended_action": "CREATE_WARNING_ALERT",
-        "model": "model_x",
-        "anomaly_score": -0.18,
-        "rationale": "temp warning",
-        "features": {
-            "temperature": 33.0,
-            "humidity": 60.0,
-            "air_quality_or_co2": 400,
-            "smoke_status": 0,
-            "energy_consumption": 300
-        }
-    }
+    # Create temp logs and evidence dirs
+    log_dir = tmp_path / "logs"
+    evidence_dir = tmp_path / "evidence"
+    log_dir.mkdir()
+    evidence_dir.mkdir()
     
-    res = create_alert_event(ai_result, {})
-    assert res["id"] == "AlertEvent:RUN_001:SCN_01"
-    assert res["level"] == "warning"
-    assert res["status"] == "OPEN"
-    assert res["recommended_action"] == "SHOW_DASHBOARD_WARNING"
-    mock_upsert.assert_called_once()
-
-@patch("src.alerts.alert_service.get_entity")
-@patch("src.alerts.alert_service.upsert_entity")
-def test_create_alert_critical(mock_upsert, mock_get):
-    mock_get.return_value = None
-    mock_upsert.return_value = {"success": True}
-    
-    ai_result = {
-        "predicted_level": "critical",
-        "demo_run_id": "RUN_001",
-        "scenario_id": "SCN_02",
-        "scenario_source": "payload",
-        "zone_id": "ROOM_101",
-        "source_entity_id": "Room:101",
-        "recommended_action": "CREATE_CRITICAL_ALERT_AND_DISPATCH_CRUZR",
-        "model": "model_x",
-        "anomaly_score": -0.31,
-        "rationale": "smoke detected",
-        "features": {
-            "temperature": 40.0,
-            "humidity": 60.0,
-            "air_quality_or_co2": 1300,
-            "smoke_status": 1,
-            "energy_consumption": 300
-        }
-    }
-    
-    res = create_alert_event(ai_result, {})
-    assert res["id"] == "AlertEvent:RUN_001:SCN_02"
-    assert res["level"] == "critical"
-    assert res["status"] == "OPEN"
-    assert res["recommended_action"] == "DISPATCH_CRUZR_GUIDANCE"
-    mock_upsert.assert_called_once()
-
-@patch("src.alerts.alert_service.get_entity")
-@patch("src.alerts.alert_service.update_entity_attrs")
-def test_alert_service_idempotency(mock_patch, mock_get):
-    alert_id = "AlertEvent:RUN_001:SCN_02"
-    mock_get.return_value = {
-        "id": alert_id,
-        "type": "AlertEvent",
-        "status": {"value": "OPEN"},
-        "created_at": {"value": "2026-06-07T00:00:00Z"}
-    }
-    mock_patch.return_value = {"success": True}
-    
-    ai_result = {
-        "predicted_level": "critical",
-        "demo_run_id": "RUN_001",
-        "scenario_id": "SCN_02",
-        "scenario_source": "payload",
-        "zone_id": "ROOM_101",
-        "source_entity_id": "Room:101",
-        "recommended_action": "CREATE_CRITICAL_ALERT_AND_DISPATCH_CRUZR",
-        "model": "model_x",
-        "anomaly_score": -0.31,
-        "rationale": "smoke detected updated",
-        "features": {
-            "temperature": 41.0,
-            "humidity": 60.0,
-            "air_quality_or_co2": 1300,
-            "smoke_status": 1,
-            "energy_consumption": 300
-        }
-    }
-    
-    res = create_alert_event(ai_result, {})
-    assert res["id"] == alert_id
-    assert res["status"] == "OPEN"  # status unchanged
-    mock_patch.assert_called_once()
-
-@patch("src.alerts.alert_service.get_entity")
-@patch("src.alerts.alert_service.update_entity_attrs")
-def test_alert_lifecycle_validation(mock_patch, mock_get):
-    alert_id = "AlertEvent:RUN_001:SCN_02"
-    
-    # 1. Valid transition OPEN -> DISPATCHED
-    mock_get.return_value = {
-        "id": alert_id,
-        "status": {"value": "OPEN"}
-    }
-    mock_patch.return_value = {"success": True}
-    res = update_alert_status(alert_id, "DISPATCHED")
-    assert res["status"] == "DISPATCHED"
-    
-    # 2. Invalid transition RESOLVED -> OPEN (without note)
-    mock_get.return_value = {
-        "id": alert_id,
-        "status": {"value": "RESOLVED"}
-    }
-    with pytest.raises(ValidationError):
-        update_alert_status(alert_id, "OPEN")
+    def mock_get_config():
+        cfg = original_get_config()
+        cfg["log_dir"] = str(log_dir)
+        cfg["evidence_dir"] = str(evidence_dir)
+        return cfg
         
-    # 3. Invalid transition RESOLVED -> OPEN with recovery note is allowed
-    res = update_alert_status(alert_id, "OPEN", note="recovery testing")
-    assert res["status"] == "OPEN"
+    src.common.config.get_config = mock_get_config
+    yield
+    src.common.config.get_config = original_get_config
+
+def test_alert_service_normal():
+    # Normal result should not produce alert
+    ai_result = {
+        "timestamp": "2026-06-08T12:00:00Z",
+        "predicted_anomaly": 0,
+        "predicted_level": "normal",
+        "anomaly_score": 0.15
+    }
+    event = create_alert_event(ai_result)
+    assert event is None
+
+def test_alert_service_warning():
+    # Warning result should produce alert
+    ai_result = {
+        "timestamp": "2026-06-08T12:00:10Z",
+        "predicted_anomaly": 1,
+        "predicted_level": "warning",
+        "anomaly_score": -0.18
+    }
+    event = create_alert_event(ai_result)
+    assert event is not None
+    assert event["level"] == "warning"
+    assert event["status"] == "OPEN"
+    assert "Warning" in event["message"]
+    
+    # Check that it log correctly to log_dir
+    import src.common.config
+    log_path = os.path.join(src.common.config.get_config()["log_dir"], "alert_events.jsonl")
+    assert os.path.exists(log_path)
+    with open(log_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+        assert len(lines) == 1
+        log_data = json.loads(lines[0])
+        assert log_data["level"] == "warning"
+        assert log_data["ai_result_ref"]["predicted_anomaly"] == 1
+
+def test_alert_service_critical():
+    # Critical result should produce alert
+    ai_result = {
+        "timestamp": "2026-06-08T12:00:20Z",
+        "predicted_anomaly": 1,
+        "predicted_level": "critical",
+        "anomaly_score": -0.35
+    }
+    event = create_alert_event(ai_result)
+    assert event is not None
+    assert event["level"] == "critical"
+    assert event["status"] == "OPEN"
+    assert "Critical" in event["message"]
+    assert event["recommended_action"] == "DISPATCH_CRUZR_GUIDANCE"

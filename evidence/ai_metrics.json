@@ -1,25 +1,21 @@
 {
-  "dataset_source": "data/replay_test_set",
-  "synthetic_used_for_training": true,
-  "synthetic_used_for_evaluation": false,
-  "metric_validity": "valid_replay_ground_truth",
-  "total_scenarios": 30,
-  "accuracy": 1.0,
-  "macro_precision": 1.0,
-  "macro_recall": 1.0,
-  "macro_f1": 1.0,
-  "per_class_precision": {
-    "normal": 1.0,
-    "warning": 1.0,
-    "critical": 1.0
+  "training_logic": "normal_only_boundary_learning",
+  "label_meaning": {
+    "0": "normal",
+    "1": "anomaly"
   },
-  "per_class_recall": {
-    "normal": 1.0,
-    "warning": 1.0,
-    "critical": 1.0
+  "data_path": "data/sensor_data.csv",
+  "accuracy": 0.9583333333333334,
+  "precision_anomaly": 0.8,
+  "recall_anomaly": 1.0,
+  "f1_anomaly": 0.8888888888888888,
+  "severity_summary": {
+    "normal": 950,
+    "warning": 148,
+    "critical": 102
   },
   "notes": [
-    "Normal readings evaluation matches target metrics exactly.",
-    "Explainable rule engine safety checks act as secondary gate override."
+    "The model is trained only with label=0 normal data.",
+    "Label=1 anomaly data is used only for evaluation."
   ]
 }

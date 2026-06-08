@@ -1,23 +1,19 @@
-class DNTUException(Exception):
-    """Base exception class for DNTU02 system."""
+class BaseAppError(Exception):
+    """Base exception for all custom application errors."""
     pass
 
-class ValidationError(DNTUException):
-    """Raised when validation fails for input schemas."""
+class ConfigError(BaseAppError):
+    """Raised when configuration values are missing or invalid."""
     pass
 
-class DetectionError(DNTUException):
-    """Raised when anomaly detection encounters an error."""
+class ValidationError(BaseAppError):
+    """Raised when data validation fails."""
     pass
 
-class AlertServiceError(DNTUException):
-    """Raised when there is an issue handling AlertEvents."""
+class InferenceError(BaseAppError):
+    """Raised when model inference fails."""
     pass
 
-class RobotActionError(DNTUException):
-    """Raised when robot actions cannot be created or dispatched."""
-    pass
-
-class OrionClientError(DNTUException):
-    """Raised when FIWARE Orion client encounters HTTP issues or is unavailable."""
+class TrainingError(BaseAppError):
+    """Raised when training model fails."""
     pass

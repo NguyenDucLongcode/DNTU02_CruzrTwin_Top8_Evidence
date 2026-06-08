@@ -1,0 +1,151 @@
+{
+  "normal_case_trace": {
+    "ai_result": {
+      "timestamp": "2026-06-08T17:04:15Z",
+      "features": {
+        "temperature": 25.0,
+        "humidity": 60.0,
+        "smoke": 50.0,
+        "co2": 400.0,
+        "power": 50.0
+      },
+      "model": "IsolationForest",
+      "training_logic": "normal_only_boundary_learning",
+      "anomaly_score": 0.10636241843433203,
+      "predicted_anomaly": 0,
+      "in_boundary": true,
+      "predicted_level": "normal",
+      "rule_hits": [],
+      "rationale": "The sensor data is inside the normal boundary.",
+      "recommended_action": "NO_ACTION",
+      "status": "AI_DETECTED"
+    },
+    "alert_event": null
+  },
+  "warning_case_trace": {
+    "ai_result": {
+      "timestamp": "2026-06-08T17:04:15Z",
+      "features": {
+        "temperature": 34.0,
+        "humidity": 65.0,
+        "smoke": 180.0,
+        "co2": 750.0,
+        "power": 90.0
+      },
+      "model": "IsolationForest",
+      "training_logic": "normal_only_boundary_learning",
+      "anomaly_score": -0.06606203790050424,
+      "predicted_anomaly": 1,
+      "in_boundary": false,
+      "predicted_level": "warning",
+      "rule_hits": [
+        "31 <= temperature < 38",
+        "100 <= smoke < 300",
+        "600 <= co2 < 900",
+        "power is a little outside normal range"
+      ],
+      "rationale": "Elevated sensor values show a warning room problem.",
+      "recommended_action": "CREATE_WARNING_ALERT",
+      "status": "AI_DETECTED"
+    },
+    "alert_event": {
+      "alert_id": "AlertEvent:2026-06-08T17:04:15Z",
+      "timestamp": "2026-06-08T17:04:15Z",
+      "level": "warning",
+      "status": "OPEN",
+      "source": "AI_DETECTION",
+      "ai_result": {
+        "timestamp": "2026-06-08T17:04:15Z",
+        "features": {
+          "temperature": 34.0,
+          "humidity": 65.0,
+          "smoke": 180.0,
+          "co2": 750.0,
+          "power": 90.0
+        },
+        "model": "IsolationForest",
+        "training_logic": "normal_only_boundary_learning",
+        "anomaly_score": -0.06606203790050424,
+        "predicted_anomaly": 1,
+        "in_boundary": false,
+        "predicted_level": "warning",
+        "rule_hits": [
+          "31 <= temperature < 38",
+          "100 <= smoke < 300",
+          "600 <= co2 < 900",
+          "power is a little outside normal range"
+        ],
+        "rationale": "Elevated sensor values show a warning room problem.",
+        "recommended_action": "CREATE_WARNING_ALERT",
+        "status": "AI_DETECTED"
+      },
+      "recommended_action": "CHECK_ROOM",
+      "message": "Warning room problem found. Please check the room."
+    }
+  },
+  "critical_case_trace": {
+    "ai_result": {
+      "timestamp": "2026-06-08T17:04:15Z",
+      "features": {
+        "temperature": 45.0,
+        "humidity": 15.0,
+        "smoke": 400.0,
+        "co2": 1000.0,
+        "power": 8.0
+      },
+      "model": "IsolationForest",
+      "training_logic": "normal_only_boundary_learning",
+      "anomaly_score": -0.09848072668711816,
+      "predicted_anomaly": 1,
+      "in_boundary": false,
+      "predicted_level": "critical",
+      "rule_hits": [
+        "temperature >= 38",
+        "smoke >= 300",
+        "co2 >= 900",
+        "smoke high (>=250) + temperature high (>=36)",
+        "smoke high (>=250) + co2 high (>=850)",
+        "two or more strong risk signs (temp >= 36, smoke >= 250, co2 >= 850, power extreme (<10 or >110))"
+      ],
+      "rationale": "High temperature, high smoke, or high CO2 shows a critical room problem.",
+      "recommended_action": "CREATE_CRITICAL_ALERT",
+      "status": "AI_DETECTED"
+    },
+    "alert_event": {
+      "alert_id": "AlertEvent:2026-06-08T17:04:15Z",
+      "timestamp": "2026-06-08T17:04:15Z",
+      "level": "critical",
+      "status": "OPEN",
+      "source": "AI_DETECTION",
+      "ai_result": {
+        "timestamp": "2026-06-08T17:04:15Z",
+        "features": {
+          "temperature": 45.0,
+          "humidity": 15.0,
+          "smoke": 400.0,
+          "co2": 1000.0,
+          "power": 8.0
+        },
+        "model": "IsolationForest",
+        "training_logic": "normal_only_boundary_learning",
+        "anomaly_score": -0.09848072668711816,
+        "predicted_anomaly": 1,
+        "in_boundary": false,
+        "predicted_level": "critical",
+        "rule_hits": [
+          "temperature >= 38",
+          "smoke >= 300",
+          "co2 >= 900",
+          "smoke high (>=250) + temperature high (>=36)",
+          "smoke high (>=250) + co2 high (>=850)",
+          "two or more strong risk signs (temp >= 36, smoke >= 250, co2 >= 850, power extreme (<10 or >110))"
+        ],
+        "rationale": "High temperature, high smoke, or high CO2 shows a critical room problem.",
+        "recommended_action": "CREATE_CRITICAL_ALERT",
+        "status": "AI_DETECTED"
+      },
+      "recommended_action": "DISPATCH_CRUZR_GUIDANCE",
+      "message": "Critical room problem found. Please send Cruzr guidance."
+    }
+  }
+}

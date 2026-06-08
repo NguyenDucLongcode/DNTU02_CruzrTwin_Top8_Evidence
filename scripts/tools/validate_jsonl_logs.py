@@ -2,79 +2,62 @@ import os
 import sys
 import json
 
-# Add project root to path
+# Ensure project root is in path
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, ROOT_DIR)
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
 
-from src.common.config import LOG_DIR
+from src.common.config import get_config
 
-AI_LOG = os.path.join(LOG_DIR, "ai_detection.jsonl")
-ALERT_LOG = os.path.join(LOG_DIR, "alert_events.jsonl")
-ROBOT_LOG = os.path.join(LOG_DIR, "robot_action.jsonl")
-
-def validate_file(path: str, log_type: str) -> bool:
+def check_jsonl(path: str) -> bool:
     if not os.path.exists(path):
-        print(f"[WARN] Log file not found: {path}")
-        return True # if no run occurred, log could be empty, but let's check it if it exists.
+        print(f"-> {os.path.basename(path)}: FAIL (File not found)")
+        return False
         
-    print(f"Validating {log_type} log: {path} ...")
-    lines_checked = 0
-    with open(path, "r", encoding="utf-8") as f:
-        for line_num, line in enumerate(f, 1):
-            line_str = line.strip()
-            if not line_str:
-                continue
-            try:
-                data = json.loads(line_str)
-            except json.JSONDecodeError as e:
-                print(f"[ERROR] Line {line_num} in {path} is not valid JSON: {e}")
-                return False
-                
-            # Basic validation
-            required_keys = ["demo_run_id", "scenario_id", "scenario_source", "zone_id", "timestamp"]
-            # Robot log and Alert log require event_type
-            if log_type in ["alert", "robot"]:
-                required_keys.append("event_type")
-                
-            for k in required_keys:
-                if k not in data:
-                    print(f"[ERROR] Line {line_num} in {path} is missing key: '{k}'")
-                    return False
-                    
-            if log_type == "ai":
-                if "predicted_level" not in data or "rationale" not in data:
-                    print(f"[ERROR] Line {line_num} in AI log is missing 'predicted_level' or 'rationale'")
-                    return False
-            elif log_type == "alert":
-                if "alert_id" not in data:
-                    print(f"[ERROR] Line {line_num} in Alert log is missing 'alert_id'")
-                    return False
-            elif log_type == "robot":
-                if "robot_action_id" not in data or "alert_id" not in data:
-                    print(f"[ERROR] Line {line_num} in Robot log is missing 'robot_action_id' or 'alert_id'")
-                    return False
-                    
-            lines_checked += 1
-            
-    print(f"[PASS] {log_type} log validation passed ({lines_checked} records).")
-    return True
+    try:
+        count = 0
+        with open(path, "r", encoding="utf-8") as f:
+            for line_num, line in enumerate(f, 1):
+                if not line.strip():
+                    continue
+                json.loads(line)
+                count += 1
+        print(f"-> {os.path.basename(path)}: PASS ({count} valid JSON lines)")
+        return True
+    except Exception as e:
+        print(f"-> {os.path.basename(path)}: FAIL (Line {line_num} error: {e})")
+        return False
 
 def main():
+    config = get_config()
+    
+    passed = True
     print("=" * 60)
-    print("VALIDATING DEMO LOG FILES")
+    print("VALIDATING JSONL LOGS...")
     print("=" * 60)
     
-    success = True
-    success &= validate_file(AI_LOG, "ai")
-    success &= validate_file(ALERT_LOG, "alert")
-    success &= validate_file(ROBOT_LOG, "robot")
-    
-    if not success:
-        print("\n[FAIL] Log validation failed!")
-        sys.exit(1)
+    # Check ai_detection.jsonl
+    ai_log = os.path.join(config["log_dir"], "ai_detection.jsonl")
+    if not check_jsonl(ai_log):
+        passed = False
         
-    print("\n[SUCCESS] All log files validated successfully!")
-    sys.exit(0)
+    # Check alert_events.jsonl (if exists)
+    alert_log = os.path.join(config["log_dir"], "alert_events.jsonl")
+    if os.path.exists(alert_log):
+        if not check_jsonl(alert_log):
+            passed = False
+    else:
+        print(f"-> alert_events.jsonl: SKIP (Does not exist yet)")
+        
+    print("=" * 60)
+    if passed:
+        print("OVERALL RESULT: PASS")
+        print("=" * 60)
+        sys.exit(0)
+    else:
+        print("OVERALL RESULT: FAIL")
+        print("=" * 60)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

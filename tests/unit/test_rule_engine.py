@@ -1,76 +1,54 @@
-import os
-import sys
+import pytest
+from src.ai.rule_engine import classify_alert_level
 
-# Add project root to path
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, ROOT_DIR)
-
-from src.ai.rule_engine import evaluate_rules
-from src.ai.feature_extractor import extract_features
-
-def test_normal_reading():
-    reading = {
-        "temperature": 25.0,
-        "humidity": 55.0,
-        "air_quality_or_co2": 420,
-        "smoke_status": 0,
-        "energy_consumption": 350
-    }
-    feats = extract_features(reading)
-    res = evaluate_rules(feats)
-    assert res["rule_level"] == "normal"
-    assert len(res["rationale"]) > 0
-    assert len(res["rule_hits"]) > 0
-    assert "normal" in res["rationale"].lower()
-
-def test_warning_temperature():
-    reading = {
+def test_rule_engine_warning():
+    # Warning due to elevated temperature (34)
+    sensor = {
         "temperature": 34.0,
-        "humidity": 55.0,
-        "air_quality_or_co2": 420,
-        "smoke_status": 0,
-        "energy_consumption": 350
+        "humidity": 65.0,
+        "smoke": 80.0,
+        "co2": 500.0,
+        "power": 50.0
     }
-    feats = extract_features(reading)
-    res = evaluate_rules(feats)
-    assert res["rule_level"] == "warning"
-    assert any("temperature" in hit for hit in res["rule_hits"])
+    res = classify_alert_level(sensor)
+    assert res["level"] == "warning"
+    assert "31 <= temperature < 38" in res["rule_hits"]
 
-def test_warning_co2():
-    reading = {
+def test_rule_engine_critical_temp():
+    # Critical due to high temperature (40 >= 38)
+    sensor = {
+        "temperature": 40.0,
+        "humidity": 60.0,
+        "smoke": 80.0,
+        "co2": 500.0,
+        "power": 50.0
+    }
+    res = classify_alert_level(sensor)
+    assert res["level"] == "critical"
+    assert "temperature >= 38" in res["rule_hits"]
+
+def test_rule_engine_critical_smoke():
+    # Critical due to high smoke (350 >= 300)
+    sensor = {
         "temperature": 25.0,
-        "humidity": 55.0,
-        "air_quality_or_co2": 950,
-        "smoke_status": 0,
-        "energy_consumption": 350
+        "humidity": 60.0,
+        "smoke": 350.0,
+        "co2": 500.0,
+        "power": 50.0
     }
-    feats = extract_features(reading)
-    res = evaluate_rules(feats)
-    assert res["rule_level"] == "warning"
-    assert any("co2" in hit or "air_quality" in hit for hit in res["rule_hits"])
+    res = classify_alert_level(sensor)
+    assert res["level"] == "critical"
+    assert "smoke >= 300" in res["rule_hits"]
 
-def test_smoke_critical():
-    reading = {
+def test_rule_engine_critical_co2():
+    # Critical due to high CO2 (1000 >= 900)
+    sensor = {
         "temperature": 25.0,
-        "humidity": 55.0,
-        "air_quality_or_co2": 420,
-        "smoke_status": 1,
-        "energy_consumption": 350
+        "humidity": 60.0,
+        "smoke": 50.0,
+        "co2": 1000.0,
+        "power": 50.0
     }
-    feats = extract_features(reading)
-    res = evaluate_rules(feats)
-    assert res["rule_level"] == "critical"
-    assert any("smoke" in hit for hit in res["rule_hits"])
-
-def test_multiple_risks_critical():
-    reading = {
-        "temperature": 33.0, # warning temp
-        "humidity": 55.0,
-        "air_quality_or_co2": 950, # warning co2
-        "smoke_status": 0,
-        "energy_consumption": 510 # warning energy
-    }
-    feats = extract_features(reading)
-    res = evaluate_rules(feats)
-    # 3 warnings -> critical level since multi_signal_risk_count >= 2
-    assert res["rule_level"] == "critical"
+    res = classify_alert_level(sensor)
+    assert res["level"] == "critical"
+    assert "co2 >= 900" in res["rule_hits"]

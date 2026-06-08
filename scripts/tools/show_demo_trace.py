@@ -1,103 +1,115 @@
-import os
-import sys
-import json
+"""Show the closed-loop demo trace in one command.
+
+Order:
+SensorReading -> Orion state -> AI detection -> AlertEvent -> RobotAction -> OperatorAck
+"""
+
 import argparse
+import json
+import os
+from pathlib import Path
+from typing import Any, Optional
 
-# Add project root to path
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, ROOT_DIR)
+DEFAULT_DEMO_RUN_ID = os.getenv("DEMO_RUN_ID", "DNTU02_TOP8_RUN_2026_001")
+DEFAULT_SCENARIO_ID = "SCN_CRITICAL_001"
+DEFAULT_ZONE_ID = os.getenv("ZONE_ID", "DNTU_ROOM_A101")
 
-from src.common.config import LOG_DIR
+LOG_DIR = Path("logs")
+SENSOR_LOG = LOG_DIR / "sensor_readings.jsonl"
+AI_LOG = LOG_DIR / "ai_detection.jsonl"
+ORION_LOG = LOG_DIR / "orion_state.jsonl"
+ROBOT_LOG = LOG_DIR / "robot_action.jsonl"
+ACK_LOG = LOG_DIR / "operator_ack.jsonl"
 
-def load_jsonl(path: str) -> list:
-    if not os.path.exists(path):
+
+def load_jsonl_lines(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
         return []
+
     rows = []
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            line_str = line.strip()
-            if line_str:
-                try:
-                    rows.append(json.loads(line_str))
-                except Exception:
-                    continue
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
     return rows
 
-def filter_records(records: list, demo_run_id: str, scenario_id: str) -> list:
-    return [r for r in records if r.get("demo_run_id") == demo_run_id and r.get("scenario_id") == scenario_id]
 
-def show_trace():
-    parser = argparse.ArgumentParser(description="Show scenario closed loop execution trace.")
-    parser.add_argument("--demo-run-id", default="DNTU02_TOP8_RUN_2026_001")
-    parser.add_argument("--scenario-id", default="SCN_CRITICAL_001")
+def matches(entry: dict[str, Any], demo_run_id: str, scenario_id: str, zone_id: str) -> bool:
+    return (
+        entry.get("demo_run_id") == demo_run_id
+        and entry.get("scenario_id") == scenario_id
+        and entry.get("zone_id") == zone_id
+    )
+
+
+def latest_matching(entries: list[dict[str, Any]], demo_run_id: str, scenario_id: str, zone_id: str) -> Optional[dict[str, Any]]:
+    for entry in reversed(entries):
+        if matches(entry, demo_run_id, scenario_id, zone_id):
+            return entry
+    return None
+
+
+def print_section(title: str, entry: Optional[dict[str, Any]], evidence_path: Path):
+    print(f"\n=== {title} ===")
+    print(f"Evidence: {evidence_path}")
+    if entry is None:
+        print("MISSING")
+        return
+    print(json.dumps(entry, ensure_ascii=False, indent=2))
+
+
+def build_alert_from_orion(orion_entry: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
+    if not orion_entry:
+        return None
+
+    alerts = orion_entry.get("alerts") or []
+    for alert in reversed(alerts):
+        if alert.get("type") == "AlertEvent":
+            return alert
+    return None
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Print the closed-loop demo trace from JSONL logs.")
+    parser.add_argument("--demo-run-id", default=DEFAULT_DEMO_RUN_ID)
+    parser.add_argument("--scenario-id", default=DEFAULT_SCENARIO_ID)
+    parser.add_argument("--zone-id", default=DEFAULT_ZONE_ID)
     args = parser.parse_args()
-    
-    demo_run_id = args.demo_run_id
-    scenario_id = args.scenario_id
-    
-    print("=" * 80)
-    print(f"CLOSED-LOOP TRACE FOR RUN: {demo_run_id} | SCENARIO: {scenario_id}")
-    print("=" * 80)
-    
-    # 1. Telemetry logs
-    sync_logs = load_jsonl(os.path.join(LOG_DIR, "orion_sync.jsonl"))
-    sync_matches = filter_records(sync_logs, demo_run_id, scenario_id)
-    print("\n--- 1. TELEMETRY / ORION SYNC SENSOR READINGS ---")
-    if sync_matches:
-        for r in sync_matches:
-            print(f"[{r.get('timestamp')}] Zone: {r.get('zone_id')} | Source: {r.get('device_status')}")
-            print(f"  Temp: {r.get('temperature')}°C | Humidity: {r.get('humidity')}% | CO2: {r.get('air_quality_or_co2')}ppm | Smoke: {r.get('smoke_status')} | Energy: {r.get('energy_consumption')}W")
-    else:
-        print("No matching sensor telemetry records found.")
-        
-    # 2. AI Anomaly Detection
-    ai_logs = load_jsonl(os.path.join(LOG_DIR, "ai_detection.jsonl"))
-    ai_matches = filter_records(ai_logs, demo_run_id, scenario_id)
-    print("\n--- 2. AI ANOMALY DETECTION ENGINE ---")
-    if ai_matches:
-        for r in ai_matches:
-            print(f"[{r.get('timestamp')}] Predicted Level: {r.get('predicted_level').upper()} | Model: {r.get('model')}")
-            print(f"  Score: {r.get('anomaly_score')} | Risk: {r.get('risk_score')} | Confidence: {r.get('rule_confidence')}")
-            print(f"  Rationale: {r.get('rationale')}")
-            print(f"  Action: {r.get('recommended_action')}")
-    else:
-        print("No matching AI detection records found.")
-        
-    # 3. Alert Event Service
-    alert_logs = load_jsonl(os.path.join(LOG_DIR, "alert_events.jsonl"))
-    alert_matches = filter_records(alert_logs, demo_run_id, scenario_id)
-    print("\n--- 3. ALERTEVENT SERVICE LIFECYCLE ---")
-    if alert_matches:
-        for r in alert_matches:
-            print(f"[{r.get('timestamp')}] Event: {r.get('event_type')} | ID: {r.get('alert_id')}")
-            print(f"  Level: {r.get('level').upper()} | Status: {r.get('status')} | Orion: {r.get('orion_upsert_status')}")
-            if r.get("error"):
-                print(f"  Error: {r.get('error')}")
-    else:
-        print("No matching AlertEvent records found.")
-        
-    # 4. Robot Action Service
-    robot_logs = load_jsonl(os.path.join(LOG_DIR, "robot_action.jsonl"))
-    robot_matches = filter_records(robot_logs, demo_run_id, scenario_id)
-    print("\n--- 4. ROBOTACTION LIFECYCLE ---")
-    if robot_matches:
-        for r in robot_matches:
-            print(f"[{r.get('timestamp')}] Event: {r.get('event_type')} | ID: {r.get('robot_action_id')}")
-            print(f"  Robot: {r.get('robot_id')} | Status: {r.get('status')} | Adapter: {r.get('adapter')}")
-            print(f"  Voice message EN: \"{r.get('message_en')}\"")
-            msg_vi = r.get('message_vi', '')
-            try:
-                print(f"  Voice message VI: \"{msg_vi}\"")
-            except UnicodeEncodeError:
-                safe_msg_vi = msg_vi.encode('ascii', errors='replace').decode('ascii')
-                print(f"  Voice message VI (ASCII fallback): \"{safe_msg_vi}\"")
-            print(f"  Orion: {r.get('orion_upsert_status')}")
-            if r.get("error"):
-                print(f"  Error: {r.get('error')}")
-    else:
-        print("No matching RobotAction records found.")
-        
-    print("\n" + "=" * 80)
+
+    sensor_entries = load_jsonl_lines(SENSOR_LOG)
+    ai_entries = load_jsonl_lines(AI_LOG)
+    orion_entries = load_jsonl_lines(ORION_LOG)
+    robot_entries = load_jsonl_lines(ROBOT_LOG)
+    ack_entries = load_jsonl_lines(ACK_LOG)
+
+    sensor = latest_matching(sensor_entries, args.demo_run_id, args.scenario_id, args.zone_id)
+    ai = latest_matching(ai_entries, args.demo_run_id, args.scenario_id, args.zone_id)
+    orion = latest_matching(orion_entries, args.demo_run_id, args.scenario_id, args.zone_id)
+    alert = build_alert_from_orion(orion)
+    robot = latest_matching(robot_entries, args.demo_run_id, args.scenario_id, args.zone_id)
+    ack = latest_matching(ack_entries, args.demo_run_id, args.scenario_id, args.zone_id)
+
+    print("=" * 72)
+    print("DEMO TRACE")
+    print("=" * 72)
+    print(f"demo_run_id: {args.demo_run_id}")
+    print(f"scenario_id: {args.scenario_id}")
+    print(f"zone_id    : {args.zone_id}")
+
+    print_section("1. SensorReading", sensor, SENSOR_LOG)
+    print_section("2. Orion state", orion, ORION_LOG)
+    print_section("3. AI detection", ai, AI_LOG)
+    print_section("4. AlertEvent", alert, ORION_LOG)
+    print_section("5. RobotAction", robot, ROBOT_LOG)
+    print_section("6. OperatorAck", ack, ACK_LOG)
+
+    print("\n" + "=" * 72)
+    return 0 if all([sensor, ai, orion, alert, robot, ack]) else 1
+
 
 if __name__ == "__main__":
-    show_trace()
+    raise SystemExit(main())

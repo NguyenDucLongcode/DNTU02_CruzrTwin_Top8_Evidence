@@ -1,43 +1,24 @@
-import json
-import os
-from typing import Any, List, Optional
+import numpy as np
+import pandas as pd
 
-def load_json(path: str) -> Optional[Any]:
-    """Safely loads a JSON file."""
-    if not os.path.exists(path):
+def clean_for_json(obj):
+    """
+    Recursively convert NumPy and Pandas types to standard JSON-compatible Python types.
+    """
+    if isinstance(obj, dict):
+        return {str(k): clean_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple, set)):
+        return [clean_for_json(item) for item in obj]
+    elif isinstance(obj, (np.integer, np.int64, np.int32, np.int16, np.int8)):
+        return int(obj)
+    elif isinstance(obj, (np.floating, np.float64, np.float32, np.float16)):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return clean_for_json(obj.tolist())
+    elif isinstance(obj, pd.Timestamp):
+        return obj.isoformat()
+    elif isinstance(obj, (pd.Series, pd.Index)):
+        return clean_for_json(obj.tolist())
+    elif pd.isna(obj):
         return None
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return None
-
-def write_json(path: str, data: Any, indent: int = 2) -> bool:
-    """Safely writes data to a JSON file, creating parent directories."""
-    dir_name = os.path.dirname(path)
-    if dir_name:
-        os.makedirs(dir_name, exist_ok=True)
-    try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=indent, ensure_ascii=False)
-        return True
-    except Exception:
-        return False
-
-def load_jsonl(path: str) -> List[dict]:
-    """Safely loads a JSONL file."""
-    if not os.path.exists(path):
-        return []
-    records = []
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            for line in f:
-                line_str = line.strip()
-                if line_str:
-                    try:
-                        records.append(json.loads(line_str))
-                    except json.JSONDecodeError:
-                        continue
-    except Exception:
-        pass
-    return records
+    return obj

@@ -1,0 +1,26 @@
+{
+  "training_logic": "normal_only_boundary_learning",
+  "data_path": "data/sensor_data.csv",
+  "features": [
+    "temperature",
+    "humidity",
+    "smoke",
+    "co2",
+    "power"
+  ],
+  "label_meaning": {
+    "0": "normal",
+    "1": "anomaly"
+  },
+  "training_rows_label_0_normal": 1000,
+  "training_rows_label_1_anomaly": 0,
+  "anomaly_rows_used_for_training": 0,
+  "model": "IsolationForest",
+  "model_path": "models/anomaly_model.pkl",
+  "feature_schema_path": "models/feature_schema.json",
+  "status": "TRAINED",
+  "notes": [
+    "The model is trained only with label=0 normal data.",
+    "Label=1 anomaly data is not used for training."
+  ]
+}

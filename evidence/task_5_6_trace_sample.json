@@ -1,7 +1,7 @@
 {
   "normal_case_trace": {
     "ai_result": {
-      "timestamp": "2026-06-08T10:03:24Z",
+      "timestamp": "2026-06-08T17:04:15Z",
       "features": {
         "temperature": 25.0,
         "humidity": 60.0,
@@ -24,7 +24,7 @@
   },
   "warning_case_trace": {
     "ai_result": {
-      "timestamp": "2026-06-08T10:03:24Z",
+      "timestamp": "2026-06-08T17:04:15Z",
       "features": {
         "temperature": 34.0,
         "humidity": 65.0,
@@ -49,13 +49,13 @@
       "status": "AI_DETECTED"
     },
     "alert_event": {
-      "alert_id": "AlertEvent:2026-06-08T10:03:24Z",
-      "timestamp": "2026-06-08T10:03:24Z",
+      "alert_id": "AlertEvent:2026-06-08T17:04:15Z",
+      "timestamp": "2026-06-08T17:04:15Z",
       "level": "warning",
       "status": "OPEN",
       "source": "AI_DETECTION",
       "ai_result": {
-        "timestamp": "2026-06-08T10:03:24Z",
+        "timestamp": "2026-06-08T17:04:15Z",
         "features": {
           "temperature": 34.0,
           "humidity": 65.0,
@@ -85,7 +85,7 @@
   },
   "critical_case_trace": {
     "ai_result": {
-      "timestamp": "2026-06-08T10:03:24Z",
+      "timestamp": "2026-06-08T17:04:15Z",
       "features": {
         "temperature": 45.0,
         "humidity": 15.0,
@@ -112,13 +112,13 @@
       "status": "AI_DETECTED"
     },
     "alert_event": {
-      "alert_id": "AlertEvent:2026-06-08T10:03:24Z",
-      "timestamp": "2026-06-08T10:03:24Z",
+      "alert_id": "AlertEvent:2026-06-08T17:04:15Z",
+      "timestamp": "2026-06-08T17:04:15Z",
       "level": "critical",
       "status": "OPEN",
       "source": "AI_DETECTION",
       "ai_result": {
-        "timestamp": "2026-06-08T10:03:24Z",
+        "timestamp": "2026-06-08T17:04:15Z",
         "features": {
           "temperature": 45.0,
           "humidity": 15.0,

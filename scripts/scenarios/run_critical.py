@@ -92,11 +92,7 @@ def send_all_readings(file_path: Path, delay: float = 1.0):
 # ======================================================
 
 if __name__ == "__main__":
-    print("\n" + "=" * 60)
-    print("🔥🔥🔥 CRITICAL SCENARIO - FIRE ALERT 🔥🔥🔥")
-    print("=" * 60)
-    
+
     # Gửi tuần tự các readings
     send_all_readings(FILE_PATH, delay=1.0)
     
-    print("\n   🚨 ROBOT DISPATCHED! EVACUATION REQUIRED! 🚨")

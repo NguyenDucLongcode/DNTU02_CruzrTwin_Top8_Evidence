@@ -370,7 +370,100 @@ DEVICES_TO_REGISTER = [
             {"name": "floor", "type": "Number", "value": 1},
             {"name": "installation_area", "type": "Text", "value": "Room A101 Wall Socket"}
         ]
-    }
+    },
+
+    # ==================================================
+    # SMART PLUG THẬT (TUYA) - Device:PLUG_A102
+    # ==================================================
+    {
+        "device_id": "smart_plug_a102",
+        "entity_name": "Device:PLUG_A102",
+        "entity_type": "SmartPlug",
+        
+        "attributes": [
+            {"object_id": "cur_power", "name": "current_power", "type": "Number"},
+            {"object_id": "switch_1", "name": "switch_status", "type": "Boolean"}
+        ],
+
+        "static_attributes": [
+            {"name": "demo_run_id", "type": "Text", "value": DEMO_RUN_ID},
+            {"name": "zone_id", "type": "Text", "value": ZONE_ID},
+            {"name": "room_id", "type": "Text", "value": ZONE_ID},
+            {"name": "unit", "type": "Text", "value": "W"},
+            {"name": "manufacturer", "type": "Text", "value": "Tuya"},
+            {"name": "device_model", "type": "Text", "value": "Smart Plug"},
+            {"name": "status", "type": "Text", "value": "online"},
+            {"name": "connectivity", "type": "Text", "value": "connected"},
+            {"name": "signal_strength", "type": "Number", "value": -60},
+            {"name": "firmware_version", "type": "Text", "value": "1.0.0"},
+            {"name": "battery_level", "type": "Number", "value": 95},
+            {"name": "sampling_rate_seconds", "type": "Number", "value": 5},
+            {"name": "accuracy", "type": "Number", "value": 1.0},
+            {"name": "calibration_status", "type": "Text", "value": "calibrated"},
+            {"name": "self_test_status", "type": "Text", "value": "passed"},
+            {"name": "power_source", "type": "Text", "value": "AC"},
+        ]
+    },
+
+      {
+        "device_id": "smart_plug_a103",
+        "entity_name": "Device:PLUG_A103",
+        "entity_type": "SmartPlug",
+        
+        "attributes": [
+            {"object_id": "cur_power", "name": "current_power", "type": "Number"},
+            {"object_id": "switch_1", "name": "switch_status", "type": "Boolean"}
+        ],
+
+        "static_attributes": [
+            {"name": "demo_run_id", "type": "Text", "value": DEMO_RUN_ID},
+            {"name": "zone_id", "type": "Text", "value": ZONE_ID},
+            {"name": "room_id", "type": "Text", "value": ZONE_ID},
+            {"name": "unit", "type": "Text", "value": "W"},
+            {"name": "manufacturer", "type": "Text", "value": "Tuya"},
+            {"name": "device_model", "type": "Text", "value": "Smart Plug"},
+            {"name": "status", "type": "Text", "value": "online"},
+            {"name": "connectivity", "type": "Text", "value": "connected"},
+            {"name": "signal_strength", "type": "Number", "value": -60},
+            {"name": "firmware_version", "type": "Text", "value": "1.0.0"},
+            {"name": "battery_level", "type": "Number", "value": 95},
+            {"name": "sampling_rate_seconds", "type": "Number", "value": 5},
+            {"name": "accuracy", "type": "Number", "value": 1.0},
+            {"name": "calibration_status", "type": "Text", "value": "calibrated"},
+            {"name": "self_test_status", "type": "Text", "value": "passed"},
+            {"name": "power_source", "type": "Text", "value": "AC"},
+        ]
+    },
+
+    {
+        "device_id": "smart_plug_a104",
+        "entity_name": "Device:PLUG_A104",
+        "entity_type": "SmartPlug",
+        
+        "attributes": [
+            {"object_id": "cur_power", "name": "current_power", "type": "Number"},
+            {"object_id": "switch_1", "name": "switch_status", "type": "Boolean"}
+        ],
+
+        "static_attributes": [
+            {"name": "demo_run_id", "type": "Text", "value": DEMO_RUN_ID},
+            {"name": "zone_id", "type": "Text", "value": ZONE_ID},
+            {"name": "room_id", "type": "Text", "value": ZONE_ID},
+            {"name": "unit", "type": "Text", "value": "W"},
+            {"name": "manufacturer", "type": "Text", "value": "Tuya"},
+            {"name": "device_model", "type": "Text", "value": "Smart Plug"},
+            {"name": "status", "type": "Text", "value": "online"},
+            {"name": "connectivity", "type": "Text", "value": "connected"},
+            {"name": "signal_strength", "type": "Number", "value": -60},
+            {"name": "firmware_version", "type": "Text", "value": "1.0.0"},
+            {"name": "battery_level", "type": "Number", "value": 95},
+            {"name": "sampling_rate_seconds", "type": "Number", "value": 5},
+            {"name": "accuracy", "type": "Number", "value": 1.0},
+            {"name": "calibration_status", "type": "Text", "value": "calibrated"},
+            {"name": "self_test_status", "type": "Text", "value": "passed"},
+            {"name": "power_source", "type": "Text", "value": "AC"},
+        ]
+    },
 ]
 
 

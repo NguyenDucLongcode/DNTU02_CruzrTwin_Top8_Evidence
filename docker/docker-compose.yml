@@ -116,6 +116,25 @@ services:
              /opt/fiware-device-simulator/bin/fiwareDeviceSimulatorCLI -c /app/config/simulation.json"
     networks:
       - fiware-net
+
+  # ============================================================
+  # TUYA BRIDGE - Kết nối ổ cắm thông minh Tuya vào MQTT
+  # ============================================================
+  tuya-bridge:
+    build: ./tuya-bridge
+    image: dntu02/tuya-2-mqtt-sg:latest
+    container_name: tuya-bridge
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+    volumes:
+      - ./tuya2mqtt.yaml:/app/config.yaml:ro
+    env_file:
+      - ../.env
+    environment:
+      - LOG_LEVEL=INFO
+    networks:
+      - fiware-net
 volumes:
   cruzrtwin_mongo_data:
 networks:

@@ -19,6 +19,7 @@ from src.fiware.client import get_entity
 
 DEMO_RUN_ID = os.getenv("DEMO_RUN_ID", "DNTU02_TOP8_RUN_2026_001")
 ZONE_ID = os.getenv("ZONE_ID", "DNTU_ROOM_A101")
+TEMPERATURE_CRITICAL_THRESHOLD = float(os.getenv("TEMPERATURE_CRITICAL_THRESHOLD", "50"))
 
 # File log AI detection
 AI_LOG_FILE = "logs/ai_detection.jsonl"
@@ -58,11 +59,11 @@ def detect_anomaly(sensor_data: dict) -> dict:
     # ==============================================
     # CRITICAL - CHÁY
     # ==============================================
-    if smoke == 1 and temperature >= 38:
+    if temperature >= TEMPERATURE_CRITICAL_THRESHOLD or (smoke == 1 and temperature >= 38):
         return {
             "predicted_level": "critical",
             "anomaly_score": -0.31,
-            "rationale": f"High temperature ({temperature}°C), smoke detected ({smoke}), abnormal CO2 ({co2}ppm), and high energy consumption ({energy}W) indicate a critical indoor-environment anomaly.",
+            "rationale": f"High temperature ({temperature}°C) crossed the critical threshold ({TEMPERATURE_CRITICAL_THRESHOLD}°C). Smoke detected ({smoke}), CO2 ({co2}ppm), and energy consumption ({energy}W) may indicate a critical indoor-environment anomaly.",
             "recommended_action": "Send Cruzr to response point and request operator acknowledgement."
         }
     

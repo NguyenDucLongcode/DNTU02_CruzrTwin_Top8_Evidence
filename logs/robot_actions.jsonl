@@ -1,0 +1,2 @@
+{"timestamp": "2026-06-08T09:29:13Z", "demo_run_id": "DNTU02_TOP8_RUN_2026_001", "zone_id": "DNTU_ROOM_A101", "robot_id": "CRUZR_01", "action_type": "VOICE_DISPLAY_GUIDANCE", "temperature": 60, "smoke": 0, "message": "⚠️ CẢNH BÁO CHÁY! Nhiệt độ 60°C!", "status": "DISPATCHED"}
+{"timestamp": "2026-06-08T09:30:17Z", "demo_run_id": "DNTU02_TOP8_RUN_2026_001", "zone_id": "DNTU_ROOM_A101", "robot_id": "CRUZR_01", "action_type": "VOICE_DISPLAY_GUIDANCE", "temperature": 60, "smoke": 0, "message": "⚠️ CẢNH BÁO CHÁY! Nhiệt độ 60°C!", "status": "DISPATCHED"}

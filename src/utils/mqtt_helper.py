@@ -38,7 +38,7 @@ DEFAULT_ZONE_ID = os.getenv("ZONE_ID", "DNTU_ROOM_A101")
 
 
 # Log file paths
-ORION_SYNC_LOG = os.path.join("logs", "orion_sync.jsonl")
+ORION_SYNC_LOG = os.path.join("logs", "SensorReading.jsonl")
 
 # ======================================================
 # MAP DEVICE ID → OBJECT ID

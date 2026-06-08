@@ -1,387 +1,581 @@
 <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DNTU COMMAND CENTER - DIGITAL TWIN</title>
+    <style>
+        body { margin: 0; padding: 0; background-color: #020609; color: #0ff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; }
+        
+        /* 1. CSS GRID LAYOUT */
+        #dashboard-container {
+            display: grid;
+            grid-template-columns: 22% 58% 20%; 
+            height: 100vh; width: 100vw; gap: 10px; padding: 10px; box-sizing: border-box;
+            transition: grid-template-columns 0.3s ease;
+        }
 
-<html class="dark" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Aegis OS - Smart Building Command Dashboard</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&amp;family=Inter:wght@400&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    "colors": {
-                        "error": "#ffb4ab",
-                        "secondary-container": "#2ff801",
-                        "surface-bright": "#2c3a4c",
-                        "tertiary": "#fff5f1",
-                        "surface-dim": "#051424",
-                        "inverse-on-surface": "#233143",
-                        "on-error": "#690005",
-                        "primary-fixed": "#74f5ff",
-                        "secondary-fixed": "#79ff5b",
-                        "on-primary-fixed": "#002022",
-                        "surface-variant": "#273647",
-                        "surface-container-high": "#1c2b3c",
-                        "on-tertiary-fixed-variant": "#6f3900",
-                        "surface-container-highest": "#273647",
-                        "on-secondary": "#053900",
-                        "on-tertiary-fixed": "#2f1500",
-                        "on-secondary-fixed-variant": "#095300",
-                        "on-secondary-fixed": "#022100",
-                        "surface-container-lowest": "#010f1f",
-                        "outline-variant": "#3a494b",
-                        "primary-container": "#00f2ff",
-                        "on-error-container": "#ffdad6",
-                        "on-surface": "#d4e4fa",
-                        "on-primary": "#00363a",
-                        "surface-container": "#122131",
-                        "on-background": "#d4e4fa",
-                        "surface-container-low": "#0d1c2d",
-                        "on-tertiary": "#4e2600",
-                        "primary": "#e1fdff",
-                        "tertiary-container": "#ffd2b2",
-                        "on-primary-container": "#006a71",
-                        "background": "#051424",
-                        "on-tertiary-container": "#934d00",
-                        "surface-tint": "#00dbe7",
-                        "secondary-fixed-dim": "#2ae500",
-                        "primary-fixed-dim": "#00dbe7",
-                        "tertiary-fixed": "#ffdcc4",
-                        "on-secondary-container": "#0f6d00",
-                        "on-surface-variant": "#b9cacb",
-                        "inverse-surface": "#d4e4fa",
-                        "tertiary-fixed-dim": "#ffb77f",
-                        "error-container": "#93000a",
-                        "inverse-primary": "#00696f",
-                        "outline": "#849495",
-                        "secondary": "#d7ffc5",
-                        "surface": "#051424",
-                        "on-primary-fixed-variant": "#004f54"
-                    },
-                    "borderRadius": {
-                        "DEFAULT": "0.125rem",
-                        "lg": "0.25rem",
-                        "xl": "0.5rem",
-                        "full": "0.75rem"
-                    },
-                    "spacing": {
-                        "container-padding": "24px",
-                        "panel-gap": "12px",
-                        "gutter": "16px",
-                        "unit": "4px"
-                    },
-                    "fontFamily": {
-                        "headline-sm": ["Geist"],
-                        "display-lg": ["Geist"],
-                        "data-mono": ["JetBrains Mono"],
-                        "body-md": ["Inter"],
-                        "headline-md": ["Geist"],
-                        "label-caps": ["JetBrains Mono"],
-                        "body-sm": ["Inter"]
-                    },
-                    "fontSize": {
-                        "headline-sm": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
-                        "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
-                        "data-mono": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "500"}],
-                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
-                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
-                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "700"}],
-                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
-                    }
-                }
+        .panel {
+            background: rgba(0, 15, 25, 0.85); border: 1px solid #0088ff; border-radius: 6px; 
+            padding: 15px; box-shadow: 0 0 10px rgba(0, 150, 255, 0.1);
+            display: flex; flex-direction: column; position: relative; z-index: 10;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .panel.hidden { opacity: 0; pointer-events: none; transform: scale(0.95); }
+
+        h2, h3 { margin: 0 0 15px 0; border-bottom: 2px solid #0088ff; padding-bottom: 10px; color: #fff; text-transform: uppercase; font-size: 15px; letter-spacing: 1px;}
+        .section-title { font-size: 11px; color: #88ccff; text-transform: uppercase; margin: 15px 0 5px 0; font-weight: bold; }
+        
+        button { 
+            width: 100%; padding: 10px; margin-bottom: 8px; background: #002244; color: #0ff; 
+            border: 1px solid #0088ff; cursor: pointer; transition: all 0.2s; font-weight: bold; border-radius: 4px;
+        }
+        button:hover { background: #0088ff; color: #fff; }
+        button.active { background: #00ff88; color: #000; border-color: #00ff88; }
+        select, input[type="range"] { width: 100%; padding: 8px; background: #001122; color: #0ff; border: 1px solid #0088ff; border-radius: 4px; cursor: pointer; box-sizing: border-box;}
+        .slider-group { margin-bottom: 10px; }
+        .slider-group label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; }
+
+        /* Khung 3D */
+        #viewport-container { position: relative; border: 1px solid #0088ff; border-radius: 6px; overflow: hidden; background: #000; display: flex; flex-direction: column;}
+        canvas { display: block; width: 100%; height: 100%; outline: none; }
+
+        /* Nút thu gọn giao diện */
+        #btn-toggle-ui { position: absolute; top: 15px; right: 15px; z-index: 50; width: auto; padding: 5px 15px; background: rgba(0, 136, 255, 0.3); border-color: #0088ff; }
+
+        /* Panel Cột Phải (Logs) - Đã sửa lỗi không cuộn được chuột */
+        #right-panel { overflow: hidden; } /* Chặn overflow panel gốc */
+        #log-container { 
+            flex: 1; overflow-y: auto; font-family: 'Courier New', Courier, monospace; 
+            font-size: 12px; background: #000; padding: 10px; border: 1px solid #004466; scroll-behavior: smooth;
+            pointer-events: auto; /* Cho phép lăn chuột */
+        }
+        
+        /* Ẩn thanh cuộn tàng hình để đẹp hơn */
+        #log-container::-webkit-scrollbar { width: 6px; }
+        #log-container::-webkit-scrollbar-thumb { background: #0088ff; border-radius: 3px; }
+
+        .log-entry { margin-bottom: 6px; border-bottom: 1px dashed #002233; padding-bottom: 4px; line-height: 1.4; word-wrap: break-word;}
+        .log-time { color: #88ccff; }
+        .log-critical { color: #ff0044; font-weight: bold; }
+        .log-info { color: #00ff88; }
+
+        /* HOVER TOOLTIP */
+        #hover-tooltip {
+            position: absolute; display: none; background: rgba(0, 20, 30, 0.95); 
+            border: 1px solid #00ff88; padding: 10px; border-radius: 4px;
+            color: #fff; font-size: 12px; z-index: 2000; pointer-events: none;
+            box-shadow: 0 0 15px rgba(0,255,136,0.3);
+        }
+        #hover-tooltip span { color: #00ff88; font-weight: bold; font-size: 14px;}
+
+        /* BẢNG CẢNH BÁO NHỎ (Gắn với Phòng 3D) */
+        #critical-popup {
+            display: none; position: absolute; top: 0; left: 0; transform: translate(-50%, -100%);
+            width: 280px; background: rgba(30, 0, 0, 0.9); border: 1px solid #ff0044;
+            border-radius: 6px; z-index: 3000; box-shadow: 0 0 20px rgba(255, 0, 68, 0.5);
+            padding: 10px; color: #fff; margin-top: -30px; pointer-events: none;
+            transition: left 0.1s linear, top 0.1s linear; /* Mượt mà di chuyển */
+        }
+        #critical-popup::after {
+            content: ''; position: absolute; top: 100%; left: 50%; margin-left: -8px;
+            border-width: 8px; border-style: solid; border-color: #ff0044 transparent transparent transparent;
+        }
+        #critical-popup h2 { color: #ff0044; text-align: center; border-bottom: 1px solid #ff0044; font-size: 12px; margin: 0 0 8px 0; animation: blink 1s infinite; padding-bottom: 5px;}
+        .popup-logs { font-family: monospace; font-size: 11px; color: #ffaa00; line-height: 1.4;}
+
+        #sync-badge { position: absolute; top: 15px; left: 15px; background: rgba(0, 255, 136, 0.2); border: 1px solid #00ff88; color: #00ff88; padding: 5px 10px; font-size: 11px; font-weight: bold; border-radius: 20px; animation: pulse 2s infinite; z-index: 50; pointer-events: none;}
+
+        @keyframes blink { 50% { opacity: 0.3; } }
+        @keyframes pulse { 50% { box-shadow: 0 0 10px #00ff88; } }
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
             }
         }
     </script>
-<style>
-        .glass-panel {
-            background-color: rgba(21, 25, 33, 0.6);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .glow-cyan {
-            box-shadow: 0 0 12px rgba(0, 219, 231, 0.2);
-        }
-        .glow-orange {
-            box-shadow: 0 0 12px rgba(255, 180, 171, 0.2); /* Using error color roughly */
-        }
-        .glow-green {
-            box-shadow: 0 0 12px rgba(42, 229, 0, 0.2);
-        }
-        .text-glow {
-            text-shadow: 0 0 8px currentColor;
-        }
-        /* Custom scrollbar for terminal */
-        .terminal-scroll::-webkit-scrollbar {
-            width: 6px;
-        }
-        .terminal-scroll::-webkit-scrollbar-track {
-            background: rgba(13, 28, 45, 0.5);
-        }
-        .terminal-scroll::-webkit-scrollbar-thumb {
-            background: rgba(0, 219, 231, 0.3);
-            border-radius: 3px;
-        }
-    </style>
 </head>
-<body class="bg-background text-on-surface h-screen w-screen overflow-hidden flex flex-col font-body-sm selection:bg-primary-fixed-dim selection:text-on-primary-fixed">
-<!-- Top Navigation Bar -->
-<nav class="bg-surface-dim/60 backdrop-blur-xl flex justify-between items-center w-full px-container-padding z-50 fixed top-0 h-16 border-b border-outline-variant/30 shadow-[0_0_15px_rgba(0,219,231,0.15)]">
-<div class="flex items-center gap-4">
-<span class="font-headline-md text-headline-md font-bold tracking-tight text-primary-fixed">Aegis OS</span>
-<div class="h-6 w-px bg-outline-variant/50 mx-2"></div>
-<div class="flex items-center gap-2 px-3 py-1 bg-surface-container-low rounded border border-outline-variant/30">
-<span class="w-2 h-2 rounded-full bg-secondary-fixed-dim animate-pulse glow-green"></span>
-<span class="font-label-caps text-label-caps text-on-surface-variant">SYSTEM HEALTH: OPTIMAL</span>
-</div>
-</div>
-<div class="flex items-center gap-6">
-<!-- Navigation Links (Simulated active state for dashboard context) -->
-<div class="hidden md:flex gap-6 font-label-caps text-label-caps">
-<a class="text-primary-fixed border-b-2 border-primary-fixed pb-1 hover:bg-surface-variant/50 hover:text-primary transition-colors" href="#">DASHBOARD</a>
-<a class="text-on-surface-variant pb-1 hover:bg-surface-variant/50 hover:text-primary transition-colors" href="#">ANALYTICS</a>
-<a class="text-on-surface-variant pb-1 hover:bg-surface-variant/50 hover:text-primary transition-colors" href="#">MAINTENANCE</a>
-</div>
-<div class="flex items-center gap-3">
-<button class="text-on-surface-variant hover:text-primary transition-colors">
-<span class="material-symbols-outlined">search</span>
-</button>
-<button class="text-on-surface-variant hover:text-primary transition-colors">
-<span class="material-symbols-outlined">notifications</span>
-</button>
-<button class="text-on-surface-variant hover:text-primary transition-colors">
-<span class="material-symbols-outlined">settings</span>
-</button>
-<button class="ml-2 px-4 py-2 bg-error/10 border border-error/50 text-error font-label-caps text-label-caps rounded flex items-center gap-2 hover:bg-error/20 transition-colors glow-orange">
-<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">warning</span>
-                    EMERGENCY
-                </button>
-<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant/50 ml-2">
-<img alt="Operator Profile Avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7w_bz5AHAU2Sw_OYNE1xrZCrVgAGaKu5J5araEFEMwAwMKKJHb_Q9ksEZ0UwgXHngLB_BJb_AOZ8Kq8pelt-XHJhZbinqbQvWocq55MUYogVgvDYhjtt_0efHt8W2mO3VrN7KCeOZ2uphewDNyAGMpOqnN_By_0Dt5Mn0SZXZ4CDtg12NxCVLlhwaGSjV9z0-OoHgUn4SopXiNklwIaqib9rl_rcTBtwBucncFykcml2iVG02Fq5rYVlVrnHBBQennpylp3xAkD94"/>
-</div>
-</div>
-</div>
-</nav>
-<!-- Main Layout Workspace -->
-<div class="flex-1 mt-16 flex flex-col md:flex-row p-gutter gap-panel-gap h-[calc(100vh-64px)] overflow-hidden">
-<!-- Left Panel (20%) -->
-<aside class="w-full md:w-1/5 flex flex-col gap-panel-gap h-full overflow-y-auto pr-2 pb-4 terminal-scroll">
-<!-- AI Safety Status -->
-<div class="glass-panel rounded-lg p-4 flex flex-col gap-3 relative overflow-hidden">
-<div class="absolute top-0 left-0 w-1 h-full bg-primary-fixed-dim"></div>
-<h3 class="font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant/30 pb-2">AI SAFETY STATUS</h3>
-<div class="flex items-center justify-between">
-<div class="relative w-20 h-20">
-<svg class="w-full h-full" viewbox="0 0 36 36">
-<path class="text-surface-variant" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"></path>
-<path class="text-primary-fixed-dim" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="95, 100" stroke-width="3"></path>
-<path class="text-error" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="5, 100" stroke-dashoffset="-95" stroke-width="3"></path>
-</svg>
-<div class="absolute inset-0 flex items-center justify-center font-data-mono text-data-mono text-primary-fixed-dim">
-                            95%
-                        </div>
-</div>
-<div class="flex flex-col gap-2 flex-1 ml-4">
-<div class="flex items-center gap-2">
-<span class="w-2 h-2 rounded bg-primary-fixed-dim"></span>
-<span class="font-data-mono text-data-mono text-on-surface text-xs">Safe</span>
-</div>
-<div class="flex items-center gap-2">
-<span class="w-2 h-2 rounded bg-error"></span>
-<span class="font-data-mono text-data-mono text-on-surface text-xs">Warning (5%)</span>
-</div>
-</div>
-</div>
-</div>
-<!-- Device Tracking -->
-<div class="glass-panel rounded-lg p-4 flex flex-col gap-3">
-<h3 class="font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant/30 pb-2">DEVICE TRACKING</h3>
-<div class="grid grid-cols-2 gap-2">
-<div class="bg-surface-container-low p-2 rounded border border-outline-variant/20 flex flex-col items-center">
-<span class="font-headline-sm text-headline-sm text-secondary-fixed-dim">1,240</span>
-<span class="font-label-caps text-label-caps text-[10px] text-on-surface-variant">ONLINE</span>
-</div>
-<div class="bg-surface-container-low p-2 rounded border border-error/30 flex flex-col items-center glow-orange">
-<span class="font-headline-sm text-headline-sm text-error">12</span>
-<span class="font-label-caps text-label-caps text-[10px] text-on-surface-variant">OFFLINE</span>
-</div>
-</div>
-</div>
-<!-- Environment -->
-<div class="glass-panel rounded-lg p-4 flex flex-col gap-4">
-<h3 class="font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant/30 pb-2">ENVIRONMENT TRENDS</h3>
-<!-- Temp -->
-<div class="flex flex-col gap-1">
-<div class="flex justify-between items-center">
-<span class="font-data-mono text-data-mono text-xs text-on-surface">Avg Temp</span>
-<span class="font-data-mono text-data-mono text-primary-fixed-dim">24°C</span>
-</div>
-<div class="h-8 w-full bg-surface-container-lowest rounded relative overflow-hidden flex items-end">
-<svg class="w-full h-full stroke-primary-fixed-dim fill-none" preserveaspectratio="none" viewbox="0 0 100 20">
-<path d="M0 15 Q 10 10 20 12 T 40 8 T 60 14 T 80 5 T 100 10" stroke-width="1.5"></path>
-</svg>
-</div>
-</div>
-<!-- Power -->
-<div class="flex flex-col gap-1">
-<div class="flex justify-between items-center">
-<span class="font-data-mono text-data-mono text-xs text-on-surface">Power</span>
-<span class="font-data-mono text-data-mono text-on-surface-variant">1.2 MW</span>
-</div>
-<div class="h-8 w-full bg-surface-container-lowest rounded relative overflow-hidden flex items-end">
-<svg class="w-full h-full stroke-outline-variant fill-none" preserveaspectratio="none" viewbox="0 0 100 20">
-<path d="M0 10 Q 15 15 30 10 T 60 12 T 80 8 T 100 11" stroke-width="1.5"></path>
-</svg>
-</div>
-</div>
-<!-- Humidity -->
-<div class="flex flex-col gap-1">
-<div class="flex justify-between items-center">
-<span class="font-data-mono text-data-mono text-xs text-on-surface">Humidity</span>
-<span class="font-data-mono text-data-mono text-on-surface-variant">45%</span>
-</div>
-<div class="h-8 w-full bg-surface-container-lowest rounded relative overflow-hidden flex items-end">
-<svg class="w-full h-full stroke-outline-variant fill-none" preserveaspectratio="none" viewbox="0 0 100 20">
-<path d="M0 12 Q 20 5 40 15 T 70 8 T 100 12" stroke-width="1.5"></path>
-</svg>
-</div>
-</div>
-</div>
-<!-- Robot Status -->
-<div class="glass-panel rounded-lg p-4 flex flex-col gap-3 relative">
-<div class="absolute top-0 left-0 w-1 h-full bg-secondary-fixed-dim"></div>
-<h3 class="font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant/30 pb-2">CRUZR ASSET</h3>
-<div class="flex items-center gap-4">
-<div class="w-12 h-12 bg-surface-container-high rounded border border-outline-variant/50 flex items-center justify-center">
-<span class="material-symbols-outlined text-primary-fixed-dim text-2xl">precision_manufacturing</span>
-</div>
-<div class="flex flex-col">
-<span class="font-label-caps text-label-caps text-secondary-fixed-dim">PATROLLING</span>
-<span class="font-data-mono text-data-mono text-xs text-on-surface mt-1">BAT: 85%</span>
-<span class="font-data-mono text-data-mono text-[10px] text-on-surface-variant">LOC: L2 Corridor</span>
-</div>
-</div>
-</div>
-</aside>
-<!-- Center Viewport (60%) -->
-<main class="w-full md:w-3/5 flex flex-col gap-panel-gap h-full">
-<!-- Center Controls -->
-<div class="glass-panel rounded-lg p-2 flex justify-between items-center">
-<div class="flex bg-surface-container-lowest rounded p-1 border border-outline-variant/20">
-<button class="px-4 py-1.5 rounded font-label-caps text-label-caps bg-primary-fixed-dim/20 text-primary-fixed-dim border border-primary-fixed-dim/50 shadow-[0_0_10px_rgba(0,219,231,0.1)]">3D DIGITAL TWIN</button>
-<button class="px-4 py-1.5 rounded font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-colors">2D FLOOR PLAN</button>
-</div>
-<button class="px-3 py-1.5 border border-error/50 bg-error/10 text-error font-label-caps text-label-caps rounded flex items-center gap-2 hover:bg-error/20 transition-colors glow-orange">
-<span class="material-symbols-outlined text-[16px]">my_location</span>
-                    FOCUS ON ALERT
-                </button>
-</div>
-<!-- 3D Viewport Placeholder -->
-<div class="flex-1 relative glass-panel rounded-lg overflow-hidden border border-primary-fixed-dim/20 flex flex-col">
-<!-- Overlay UI Top -->
-<div class="absolute top-4 left-4 flex flex-col gap-2 z-10 pointer-events-none">
-<div class="bg-surface-dim/80 backdrop-blur px-2 py-1 rounded border border-outline-variant/30 flex items-center gap-2">
-<span class="w-1.5 h-1.5 rounded-full bg-primary-fixed-dim"></span>
-<span class="font-data-mono text-data-mono text-[10px] text-primary-fixed-dim">X-RAY MODE: ON</span>
-</div>
-<div class="bg-surface-dim/80 backdrop-blur px-2 py-1 rounded border border-outline-variant/30 flex items-center gap-2">
-<span class="w-1.5 h-1.5 rounded-full bg-outline-variant"></span>
-<span class="font-data-mono text-data-mono text-[10px] text-on-surface-variant">FPS VIEW: STANDBY</span>
-</div>
-</div>
-<!-- Simulation visual (Background image acting as 3D model) -->
-<div class="absolute inset-0 bg-surface-container-lowest flex items-center justify-center opacity-80 mix-blend-screen" style="background-image: linear-gradient(rgba(0, 219, 231, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 219, 231, 0.05) 1px, transparent 1px); background-size: 40px 40px;">
-<!-- Abstract representation of a 3D floor plan focus area -->
-<div class="w-64 h-64 border border-error/40 rounded-full flex items-center justify-center animate-pulse relative">
-<div class="absolute w-full h-px bg-error/30 top-1/2 left-0"></div>
-<div class="absolute h-full w-px bg-error/30 left-1/2 top-0"></div>
-<div class="w-4 h-4 bg-error rounded-full glow-orange"></div>
-<div class="absolute -bottom-8 font-data-mono text-data-mono text-error">TARGET: L2-A101</div>
-</div>
-</div>
-<!-- Bottom Terminal Panel inside Main Area (20% height conceptually mapped here or below) -->
-<div class="absolute bottom-0 w-full h-1/4 bg-surface-container-lowest/90 backdrop-blur-md border-t border-primary-fixed-dim/30 p-3 overflow-y-auto terminal-scroll font-data-mono text-data-mono text-xs flex flex-col gap-1">
-<div class="text-on-surface-variant"><span class="text-secondary-fixed-dim">[10:04:50]</span> SYSTEM: Humidity sensors calibration complete.</div>
-<div class="text-error"><span class="text-error">[10:04:58]</span> CRITICAL: AI Isolation Forest anomaly detected at L2-A101 (Conf: 98%).</div>
-<div class="text-on-surface"><span class="text-secondary-fixed-dim">[10:05:01]</span> INFO: Robot Cruzr receiving mission L2-A101...</div>
-<div class="text-on-surface-variant animate-pulse flex gap-2"><span>&gt;</span><span class="w-2 h-4 bg-primary-fixed-dim inline-block"></span></div>
-</div>
-</div>
-</main>
-<!-- Right Panel (20%) -->
-<aside class="w-full md:w-1/5 flex flex-col gap-panel-gap h-full overflow-y-auto pl-2 pb-4 terminal-scroll">
-<!-- Room Details -->
-<div class="glass-panel rounded-lg p-4 flex flex-col gap-4 relative border-error/30 glow-orange">
-<div class="absolute top-0 left-0 w-1 h-full bg-error"></div>
-<div class="flex justify-between items-start border-b border-outline-variant/30 pb-2">
-<h3 class="font-label-caps text-label-caps text-error text-glow">ROOM A101 - Level 2</h3>
-<span class="material-symbols-outlined text-error text-[18px]">warning</span>
-</div>
-<div class="flex flex-col gap-3">
-<div class="flex justify-between items-center bg-surface-container/50 px-2 py-1 rounded">
-<span class="font-data-mono text-data-mono text-xs text-on-surface-variant">Temp</span>
-<span class="font-data-mono text-data-mono text-error font-bold">26°C</span>
-</div>
-<div class="flex justify-between items-center bg-surface-container/50 px-2 py-1 rounded">
-<span class="font-data-mono text-data-mono text-xs text-on-surface-variant">CO2 Level</span>
-<span class="font-data-mono text-data-mono text-error font-bold">HIGH</span>
-</div>
-<div class="flex justify-between items-center bg-error/20 border border-error/50 px-2 py-1 rounded animate-pulse">
-<span class="font-data-mono text-data-mono text-xs text-error">Smoke</span>
-<span class="font-data-mono text-data-mono text-error font-bold">DETECTING</span>
-</div>
-</div>
-</div>
-<!-- Functions / Tactical Buttons -->
-<div class="glass-panel rounded-lg p-4 flex flex-col gap-3">
-<h3 class="font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant/30 pb-2">TACTICAL RESPONSE</h3>
-<button class="w-full py-3 px-4 bg-primary-fixed-dim/10 border border-primary-fixed-dim text-primary-fixed-dim font-label-caps text-label-caps rounded flex items-center justify-between hover:bg-primary-fixed-dim/20 transition-colors relative overflow-hidden group">
-<div class="absolute top-0 left-0 w-full h-px bg-white/20"></div>
-<span class="text-left">ACTIVATE SPRINKLERS</span>
-<span class="material-symbols-outlined text-[18px]">water_drop</span>
-</button>
-<button class="w-full py-3 px-4 bg-[#ffb77f]/10 border border-[#ffb77f] text-[#ffb77f] font-label-caps text-label-caps rounded flex items-center justify-between hover:bg-[#ffb77f]/20 transition-colors relative overflow-hidden group">
-<div class="absolute top-0 left-0 w-full h-px bg-white/20"></div>
-<span class="text-left">CUT POWER L2</span>
-<span class="material-symbols-outlined text-[18px]">power_off</span>
-</button>
-<button class="w-full py-3 px-4 bg-primary-fixed text-on-primary-fixed font-label-caps text-label-caps rounded flex items-center justify-between hover:bg-primary transition-colors relative overflow-hidden glow-cyan font-bold">
-<div class="absolute top-0 left-0 w-full h-px bg-white/40"></div>
-<span class="text-left">DEPLOY ROBOT TO A101</span>
-<span class="material-symbols-outlined text-[18px]">smart_toy</span>
-</button>
-</div>
-<!-- Simulation Mode -->
-<div class="glass-panel rounded-lg p-4 flex flex-col gap-4 mt-auto">
-<div class="flex justify-between items-center border-b border-outline-variant/30 pb-2">
-<h3 class="font-label-caps text-label-caps text-on-surface-variant">SIMULATION MODE</h3>
-<!-- Toggle switch -->
-<label class="relative inline-flex items-center cursor-pointer">
-<input class="sr-only peer" type="checkbox" value=""/>
-<div class="w-9 h-5 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface-variant after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary-fixed-dim peer-checked:after:bg-on-primary-fixed border border-outline-variant/50"></div>
-</label>
-</div>
-<div class="flex flex-col gap-3 opacity-50 pointer-events-none">
-<div class="flex flex-col gap-1">
-<div class="flex justify-between font-data-mono text-[10px] text-on-surface-variant">
-<span>Fire Spread Rate</span>
-<span>1.0x</span>
-</div>
-<input class="w-full h-1 bg-surface-container-highest rounded-lg appearance-none cursor-pointer" max="100" min="0" type="range" value="50"/>
-</div>
-<div class="flex flex-col gap-1">
-<div class="flex justify-between font-data-mono text-[10px] text-on-surface-variant">
-<span>Evacuation Flow</span>
-<span>Norm</span>
-</div>
-<input class="w-full h-1 bg-surface-container-highest rounded-lg appearance-none cursor-pointer" max="100" min="0" type="range" value="50"/>
-</div>
-</div>
-</div>
-</aside>
-</div>
-</body></html>
+<body>
+    
+    <!-- Hover Tooltip -->
+    <div id="hover-tooltip">
+        ID: <b id="tt-id" style="color:#0ff">--</b><br>
+        Room: <b id="tt-room">--</b><br>
+        Data: <span id="tt-val">--</span>
+    </div>
+
+    <!-- Bảng Cảnh Báo Bám Vị Trí -->
+    <div id="critical-popup">
+        <h2>⚠️ ALARM: ROOM <span id="alert-room-id"></span></h2>
+        <div id="popup-iot-logs" class="popup-logs"></div>
+    </div>
+
+    <div id="dashboard-container">
+        
+        <!-- CỘT TRÁI -->
+        <div class="panel" id="left-panel">
+            <h2>⚙️ COMMAND CENTER</h2>
+            <div style="display: flex; gap: 5px;">
+                <button id="btn-3d" class="active" style="flex:1">🌐 3D Overview</button>
+                <button id="btn-2d" style="flex:1">📐 2D Top-Down</button>
+            </div>
+            
+            <div class="section-title">Isolate Room</div>
+            <select id="isolateSelect"><option value="ALL">Show Full Campus</option></select>
+            
+            <h2 style="margin-top:20px;">📡 IOT CONTROLS</h2>
+            <p style="font-size:11px; color:#aaa; margin:0 0 10px 0;">Push simulated data to Docker Orion.</p>
+            <div class="slider-group"><label>Temperature: <span id="val-temp" style="color:#00ff88">25 °C</span></label><input type="range" id="sl-temp" min="16" max="60" value="25"></div>
+            <div class="slider-group"><label>Smoke Density: <span id="val-smoke" style="color:#00ff88">0 %</span></label><input type="range" id="sl-smoke" min="0" max="100" value="0"></div>
+            <div class="slider-group"><label>CO2 Level: <span id="val-co2" style="color:#00ff88">400 ppm</span></label><input type="range" id="sl-co2" min="300" max="2000" value="400"></div>
+            <div id="be-status" style="font-size:11px; color:#00ff88; margin-top:10px; text-align:center;">[Backend Link: READY]</div>
+        </div>
+
+        <!-- CỘT GIỮA -->
+        <div id="viewport-container">
+            <div id="sync-badge">🔴 DOCKER SYNC ACTIVE</div>
+            <button id="btn-toggle-ui">👁️ Hide Panels</button>
+            <canvas id="main-canvas"></canvas>
+        </div>
+
+        <!-- CỘT PHẢI (LOGS) -->
+        <div class="panel" id="right-panel">
+            <h2>📋 LIVE IoT TELEMETRY</h2>
+            <p style="font-size:11px; color:#aaa; margin:0 0 10px 0;">Auto-scrolling sensor data stream.</p>
+            <div id="log-container"></div>
+        </div>
+
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // ==========================================
+        // 1. ENGINE & CẤU HÌNH CAMERA
+        // ==========================================
+        const container = document.getElementById('viewport-container');
+        const canvas = document.getElementById('main-canvas');
+        const dashboardGrid = document.getElementById('dashboard-container');
+        
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x020609, 0.005);
+
+        const aspect = container.clientWidth / container.clientHeight;
+        const perspectiveCamera = new THREE.PerspectiveCamera(50, aspect, 0.1, 3000);
+        perspectiveCamera.position.set(120, 100, 160);
+
+        const viewSize = 140; 
+        const orthoCamera = new THREE.OrthographicCamera( -viewSize * aspect / 2, viewSize * aspect / 2, viewSize / 2, -viewSize / 2, 0.1, 2000 );
+        orthoCamera.position.set(0, 200, 0); 
+        orthoCamera.lookAt(0, 0, 0);
+
+        let activeCamera = perspectiveCamera;
+
+        // Bật depth Buffer để render mượt hơn, giảm Z-fighting
+        const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, logarithmicDepthBuffer: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setClearColor(0x020609, 1);
+
+        const orbitControls = new OrbitControls(perspectiveCamera, renderer.domElement);
+        orbitControls.enableDamping = true;
+        orbitControls.target.set(0, 10, 0);
+        
+        let is2DMode = false;
+        let activeAlertRoom = null; 
+        let uiHidden = false;
+
+        const btn3D = document.getElementById('btn-3d');
+        const btn2D = document.getElementById('btn-2d');
+        const isolateSelect = document.getElementById('isolateSelect');
+
+        document.getElementById('btn-toggle-ui').addEventListener('click', () => {
+            uiHidden = !uiHidden;
+            document.getElementById('left-panel').classList.toggle('hidden', uiHidden);
+            document.getElementById('right-panel').classList.toggle('hidden', uiHidden);
+            
+            if(uiHidden) {
+                dashboardGrid.style.gridTemplateColumns = '0% 100% 0%';
+                document.getElementById('btn-toggle-ui').innerText = "👁️ Show Panels";
+            } else {
+                dashboardGrid.style.gridTemplateColumns = '22% 58% 20%';
+                document.getElementById('btn-toggle-ui').innerText = "👁️ Hide Panels";
+            }
+            setTimeout(() => window.dispatchEvent(new Event('resize')), 350); // Cập nhật lại canvas
+        });
+
+        // ==========================================
+        // 2. DỰNG MÔ HÌNH CHUẨN XÁC (FIX Z-FIGHTING)
+        // ==========================================
+        const campusGroup = new THREE.Group();
+        scene.add(campusGroup);
+        const roomObjects = {}; 
+        const floorGroups = []; 
+        const sensors = [];
+        const roomRegistry = {};
+
+        const floorHeight = 4;
+        const totalFloors = 5;
+        const bWidth = 104; 
+        const bDepth = 24;
+
+        // Xóa depthWrite:false để sửa lỗi tàng hình/nhấp nháy ở 2D mode
+        const matWall = new THREE.MeshBasicMaterial({ color: 0x002233, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending });
+        const matEdge = new THREE.LineBasicMaterial({ color: 0x00aaff, transparent: true, opacity: 0.8 });
+        const matFloor = new THREE.MeshBasicMaterial({ color: 0x001122 });
+        const furnEdgeMat = new THREE.LineBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.5 });
+        const doorMat = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
+
+        function createSolidWall(w, d, x, z, parentGroup) {
+            const geom = new THREE.BoxGeometry(w, floorHeight, d);
+            const wall = new THREE.Mesh(geom, matWall);
+            const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geom), matEdge);
+            wall.position.set(x, floorHeight/2, z);
+            edges.position.copy(wall.position);
+            parentGroup.add(wall); parentGroup.add(edges);
+        }
+
+        // Bỏ qua nội thất siêu chi tiết cho màn hình tổng quan để mượt, thay bằng khối hộp tượng trưng
+        function addStandardClassroom(roomGroup, width, depth) {
+            const deskGroup = new THREE.Group();
+            [-1.5, 1.5].forEach(z => {
+                for(let i = 0; i < 4; i++) {
+                    const x = -3 + i * 2; 
+                    const desk = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.4, 0.8), new THREE.MeshBasicMaterial({color: 0x004455}));
+                    desk.position.set(x, 0.2, z);
+                    deskGroup.add(desk);
+                }
+            });
+            roomGroup.add(deskGroup);
+        }
+
+        function createDoor(w, h, x, z, isTopRow, roomTargetGroup) {
+            const geom = new THREE.BoxGeometry(w, h, 0.2);
+            const mesh = new THREE.Mesh(geom, doorMat);
+            mesh.position.set(x, h/2, z); 
+            roomTargetGroup.add(mesh); 
+        }
+
+        function createStairs(targetGroup, width, height, depth, x, z, directionZ = 1) {
+            const stairGroup = new THREE.Group();
+            for(let i=0; i<6; i++) {
+                const wall = new THREE.Mesh(new THREE.BoxGeometry(3, 4/12, 8/6), matWall);
+                wall.position.set(x - 1.5, i*(4/12) + (4/12)/2, z + (directionZ === 1 ? (i*8/6 - 4) : (-i*8/6 + 4)));
+                stairGroup.add(wall);
+            }
+            targetGroup.add(stairGroup);
+        }
+
+        function addIoTDevice(type, x, z, roomId, parent) {
+            let geom, color, unit, fiwareId;
+            if(type === 'TEMP') { geom = new THREE.SphereGeometry(0.3, 8, 8); color = 0x00ff88; unit = '°C'; fiwareId = `Device:TEMP_${roomId}`; }
+            if(type === 'SMOKE') { geom = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 8); color = 0x00ff88; unit = 'Status'; fiwareId = `Device:SMOKE_${roomId}`; }
+            if(type === 'CO2') { geom = new THREE.BoxGeometry(0.4, 0.1, 0.4); color = 0x00ff88; unit = 'ppm'; fiwareId = `Device:AIR_${roomId}`; }
+
+            const mat = new THREE.MeshBasicMaterial({color: color});
+            const mesh = new THREE.Mesh(geom, mat);
+            mesh.position.set(x, floorHeight - 0.2, z);
+            mesh.userData = { isSensor: true, id: fiwareId, type: type, room: roomId, value: 0, unit: unit, baseMat: mat };
+            parent.add(mesh);
+            sensors.push(mesh);
+        }
+
+        function buildRoom(roomId, x, z, w, d, isTopRow, parentGroup, fIdx) {
+            const roomGroup = new THREE.Group();
+            
+            createSolidWall(1, d, x + w/2, z, roomGroup);
+            const wallZ = isTopRow ? z + d/2 : z - d/2;
+            createSolidWall(w - 2, 1, x - 1, wallZ, roomGroup);
+            createDoor(2, 3, x + w/2 - 1, wallZ, isTopRow, roomGroup);
+
+            addStandardClassroom(roomGroup, w, d);
+
+            addIoTDevice('TEMP', x - 2, z, roomId, roomGroup);
+            addIoTDevice('SMOKE', x, z, roomId, roomGroup);
+            addIoTDevice('CO2', x + 2, z, roomId, roomGroup);
+
+            parentGroup.add(roomGroup);
+            roomObjects[roomId] = roomGroup;
+            roomRegistry[roomId] = { floor: fIdx, group: roomGroup, x: x, z: z, baseMat: matWall.clone() };
+            roomGroup.children[0].material = roomRegistry[roomId].baseMat;
+
+            const opt = document.createElement('option');
+            opt.value = roomId; opt.textContent = `L${fIdx+1} - ${roomId}`;
+            isolateSelect.appendChild(opt);
+        }
+
+        // Xây dựng 5 Tầng
+        for (let f = 0; f < totalFloors; f++) {
+            const fGroup = new THREE.Group();
+            fGroup.position.y = f * floorHeight;
+
+            const fMesh = new THREE.Mesh(new THREE.PlaneGeometry(bWidth, bDepth), matFloor);
+            fMesh.rotation.x = -Math.PI / 2;
+            fGroup.add(fMesh);
+            
+            if (f === 0) {
+                createSolidWall(bWidth/2 - 3, 1, -bWidth/4 - 1.5, 11.5, fGroup); 
+                createSolidWall(bWidth/2 - 3, 1, bWidth/4 + 1.5, 11.5, fGroup);
+                createDoor(3, 3, -3, 11.5, false, fGroup); createDoor(3, 3, 3, 11.5, false, fGroup); 
+            } else {
+                createSolidWall(bWidth, 1, 0, 11.5, fGroup); 
+            }
+            
+            createStairs(fGroup, 6, floorHeight, 8, -47, -7, 1);
+            [-35, -25, -15, -5, 5, 15, 25, 35].forEach((x, i) => buildRoom(`A10${i+1}`, x, -7, 10, 8, true, fGroup, f));
+            createStairs(fGroup, 6, floorHeight, 8, 47, -7, -1);
+
+            [-45, -35, -25, -15, -5, 5, 15, 25, 35, 45].forEach((x, i) => buildRoom(`B10${i+1}`, x, 7, 10, 8, false, fGroup, f));
+
+            campusGroup.add(fGroup);
+            floorGroups.push(fGroup);
+        }
+
+
+        // ==========================================
+        // 3. UI CONTROLS & CAMERA MODES
+        // ==========================================
+        btn3D.addEventListener('click', () => {
+            is2DMode = false;
+            btn3D.className = 'active'; btn2D.className = '';
+            floorGroups.forEach(g => g.visible = true);
+            activeCamera = perspectiveCamera; orbitControls.object = perspectiveCamera; orbitControls.enableRotate = true;
+        });
+
+        btn2D.addEventListener('click', () => {
+            is2DMode = true;
+            btn2D.className = 'active'; btn3D.className = '';
+            floorGroups.forEach((g, idx) => { g.visible = (idx === totalFloors - 1); });
+            activeCamera = orthoCamera; orbitControls.object = orthoCamera;
+            orbitControls.enableRotate = false; orbitControls.target.set(0, totalFloors * floorHeight, 0);
+        });
+
+        isolateSelect.addEventListener('change', (e) => {
+            const selected = e.target.value;
+            if (selected === "ALL") { btn3D.click(); return; }
+            floorGroups.forEach(g => g.visible = false);
+            Object.values(roomObjects).forEach(g => g.visible = false);
+            
+            const roomInfo = roomRegistry[selected];
+            floorGroups[roomInfo.floor].visible = true;
+            roomObjects[selected].visible = true;
+            
+            activeCamera = perspectiveCamera; orbitControls.object = perspectiveCamera; orbitControls.enableRotate = true;
+            activeCamera.position.set(roomInfo.x, roomInfo.floor * floorHeight + 10, roomInfo.z + 15);
+            orbitControls.target.set(roomInfo.x, roomInfo.floor * floorHeight, roomInfo.z);
+        });
+
+        // ==========================================
+        // 4. RAYCASTER (HOVER TOOLTIP)
+        // ==========================================
+        const raycaster = new THREE.Raycaster();
+        const tooltip = document.getElementById('hover-tooltip');
+
+        document.getElementById('viewport-container').addEventListener('mousemove', (e) => {
+            const rect = container.getBoundingClientRect();
+            const mouse = new THREE.Vector2( ((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1 );
+            raycaster.setFromCamera(mouse, activeCamera);
+
+            const sensorIntersects = raycaster.intersectObjects(sensors, false);
+            if (sensorIntersects.length > 0 && sensorIntersects[0].distance < 300) {
+                const data = sensorIntersects[0].object.userData;
+                tooltip.style.display = 'block';
+                tooltip.style.left = (e.clientX + 15) + 'px';
+                tooltip.style.top = (e.clientY + 15) + 'px';
+                tooltip.innerHTML = `ID: <span>${data.id}</span><br>Room: <b>${data.room}</b><br>Value: <b style="color:#fff">${data.value} ${data.unit}</b>`;
+            } else {
+                tooltip.style.display = 'none';
+            }
+        });
+
+        // ==========================================
+        // 5. IOT SIMULATOR & DOCKER FIWARE SYNC
+        // ==========================================
+        const slTemp = document.getElementById('sl-temp');
+        const slSmoke = document.getElementById('sl-smoke');
+        const slCo2 = document.getElementById('sl-co2');
+        const valTemp = document.getElementById('val-temp');
+        const valSmoke = document.getElementById('val-smoke');
+        const valCo2 = document.getElementById('val-co2');
+        const beStatus = document.getElementById('be-status');
+        
+        const logContainer = document.getElementById('log-container');
+        function addIoTLog(roomId, msg, isCrit) {
+            const time = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.className = 'log-entry';
+            div.innerHTML = `<span class="log-time">[${time}]</span> <span class="${isCrit?'log-critical':'log-info'}">[FIWARE] ${roomId}: ${msg}</span>`;
+            logContainer.appendChild(div);
+            // Sửa lỗi cuộn chuột
+            setTimeout(() => { logContainer.scrollTop = logContainer.scrollHeight; }, 50);
+        }
+
+        const alertPopup = document.getElementById('critical-popup');
+        const popupLogs = document.getElementById('popup-iot-logs');
+        
+        function updateRoomColor(roomId, t, s, c) {
+            const rData = roomRegistry[roomId];
+            if(!rData) return;
+
+            const tSens = sensors.find(sen => sen.userData.room === roomId && sen.userData.type === 'TEMP');
+            const sSens = sensors.find(sen => sen.userData.room === roomId && sen.userData.type === 'SMOKE');
+            const cSens = sensors.find(sen => sen.userData.room === roomId && sen.userData.type === 'CO2');
+            
+            if(tSens) { tSens.userData.value = t; tSens.userData.baseMat.color.setHex(t > 35 ? 0xff0000 : 0x00ff88); }
+            if(sSens) { sSens.userData.value = s == 1 ? 'DETECTED' : 'CLEAR'; sSens.userData.baseMat.color.setHex(s == 1 ? 0xff0000 : 0x00ff88); }
+            if(cSens) { cSens.userData.value = c; cSens.userData.baseMat.color.setHex(c > 800 ? 0xff0000 : 0x00ff88); }
+
+            let isCrit = (t > 45 || s == 1 || c > 1000);
+            rData.baseMat.color.setHex(isCrit ? 0xff0000 : 0x002233);
+            rData.baseMat.opacity = isCrit ? 0.9 : 0.6; // Tăng opacity tường để nổi rõ hơn
+
+            // Chỉ popup phòng đang được chọn bị cháy (để tránh popup loạn xạ)
+            if(isCrit && (isolateSelect.value === 'ALL' || isolateSelect.value === roomId)) {
+                triggerAlertPopup(roomId, t, s, c);
+            } else if (activeAlertRoom === roomId && !isCrit) { 
+                activeAlertRoom = null; alertPopup.style.display = 'none'; 
+            }
+        }
+
+        function triggerAlertPopup(roomId, t, s, c) {
+            activeAlertRoom = roomId; 
+            document.getElementById('alert-room-id').innerText = roomId;
+            popupLogs.innerHTML = `TEMP: ${t}°C | CO2: ${c} | SMOKE: ${s==1?'YES':'NO'}<br>> AI Engine Anomaly Score: -1<br>> Action: Routing Robot to ${roomId}`;
+            alertPopup.style.display = 'block';
+            addIoTLog(roomId, `CRITICAL LIMIT EXCEEDED`, true);
+        }
+
+        // --- ĐÂY LÀ HÀM KẾT NỐI VỚI DOCKER ĐÍCH THỰC (CỔNG 1026) ---
+        async function fetchLiveDockerData() {
+            try {
+                // Đọc trực tiếp từ FIWARE (Yêu cầu Docker đã mở port 1026)
+                const res = await fetch(`http://localhost:1026/v2/entities?options=keyValues`);
+                if (!res.ok) return;
+                const entities = await res.json();
+                
+                beStatus.innerText = "[Docker Polling: SUCCESS]";
+                beStatus.style.color = "#00ff88";
+
+                // Map dữ liệu Docker lên Web
+                entities.forEach(entity => {
+                    // Cắt chuỗi lấy Room ID (Ví dụ: "Device:TEMP_A101" -> "A101")
+                    const parts = entity.id.split('_');
+                    if (parts.length < 2) return;
+                    const roomId = parts[1];
+                    const rData = roomRegistry[roomId];
+                    if (!rData) return;
+
+                    // Giữ lại các giá trị cũ
+                    let t = rData.temp || 25, s = rData.smoke || 0, c = rData.co2 || 400;
+
+                    if (entity.type === 'TemperatureSensor' && entity.temperature) t = entity.temperature;
+                    if (entity.type === 'SmokeDetector' && entity.smoke_status !== undefined) s = entity.smoke_status;
+                    if (entity.type === 'AirQualitySensor' && entity.co2) c = entity.co2;
+
+                    // Lưu vào ram
+                    rData.temp = t; rData.smoke = s; rData.co2 = c;
+                    
+                    updateRoomColor(roomId, t, s, c);
+                    addIoTLog(roomId, `Received Temp:${t}, CO2:${c}`, false);
+                });
+            } catch(e) {
+                // Nếu Docker đang tắt, Dashboard sẽ âm thầm chờ mà không crash
+                beStatus.innerText = "[Docker Polling: WAITING FOR DOCKER...]";
+                beStatus.style.color = "#ffaa00";
+            }
+        }
+        // Gọi polling 2 giây 1 lần
+        setInterval(fetchLiveDockerData, 2000);
+
+        async function pushDataToDocker(roomId, temp, smoke, co2) {
+            try {
+                // Đẩy thông số từ Slider ngược lại cho FIWARE
+                await fetch(`http://localhost:1026/v2/entities/Room:${roomId}/attrs`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        "temperature": { "value": temp, "type": "Number" },
+                        "smoke_status": { "value": smoke, "type": "Number" },
+                        "co2": { "value": co2, "type": "Number" }
+                    })
+                });
+                addIoTLog(roomId, `Pushed to Docker: Temp=${temp}, CO2=${co2}`, false);
+            } catch(e) {
+                addIoTLog("SYSTEM", "Docker is offline. Simulated data mapped locally.", false);
+            }
+        }
+
+        function onSliderChange() {
+            const room = isolateSelect.value === 'ALL' ? 'A101' : isolateSelect.value;
+            const t = parseFloat(slTemp.value);
+            const s = parseInt(slSmoke.value);
+            const c = parseInt(slCo2.value);
+
+            valTemp.innerText = `${t} °C`; valTemp.style.color = t > 35 ? '#ff0000' : '#00ff88';
+            valSmoke.innerText = `${s} %`; valSmoke.style.color = s > 50 ? '#ff0000' : '#00ff88';
+            valCo2.innerText = `${c} ppm`; valCo2.style.color = c > 800 ? '#ff0000' : '#00ff88';
+
+            let smokeStatus = s > 60 ? 1 : 0;
+            updateRoomColor(room, t, smokeStatus, c);
+            pushDataToDocker(room, t, smokeStatus, c); 
+        }
+
+        slTemp.addEventListener('change', onSliderChange);
+        slSmoke.addEventListener('change', onSliderChange);
+        slCo2.addEventListener('change', onSliderChange);
+
+
+        // ==========================================
+        // 7. RENDER LOOP & TRACKING MATH (SỬA LỖI ĐỘ LỆCH POPUP)
+        // ==========================================
+        const tmpVector = new THREE.Vector3();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (!is2DMode) {
+                campusGroup.rotation.y = Math.sin(Date.now() * 0.0001) * 0.1;
+                orbitControls.update();
+            } else {
+                campusGroup.rotation.y = 0; 
+                orbitControls.update();
+            }
+
+            // --- TRACKING POPUP CHUẨN XÁC BẰNG getWorldPosition ---
+            if (activeAlertRoom && alertPopup.style.display === 'block') {
+                const rGroup = roomRegistry[activeAlertRoom].group;
+                
+                // 1. Lấy vị trí World thực sự của tâm phòng (Bỏ qua mọi phép xoay phức tạp)
+                rGroup.getWorldPosition(tmpVector);
+                // 2. Cộng thêm độ cao y của tòa nhà và nâng lên trên trần nhà
+                tmpVector.y += floorHeight + 2; 
+                
+                // 3. Project ra 2D Screen
+                tmpVector.project(activeCamera);
+
+                const rect = container.getBoundingClientRect();
+                const x = (tmpVector.x *  .5 + .5) * rect.width;
+                const y = (tmpVector.y * -.5 + .5) * rect.height;
+
+                alertPopup.style.left = (rect.left + x) + 'px';
+                alertPopup.style.top = (rect.top + y) + 'px';
+            }
+
+            renderer.render(scene, activeCamera);
+        }
+
+        window.addEventListener('resize', () => {
+            const aspect = container.clientWidth / container.clientHeight;
+            perspectiveCamera.aspect = aspect; perspectiveCamera.updateProjectionMatrix();
+            orthoCamera.left = -viewSize * aspect / 2; orthoCamera.right = viewSize * aspect / 2;
+            orthoCamera.top = viewSize / 2; orthoCamera.bottom = -viewSize / 2; orthoCamera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        addIoTLog("SYSTEM", "Initialized. Connecting to Docker...", false);
+        animate();
+    </script>
+</body>
+</html>

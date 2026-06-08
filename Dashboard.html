@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Aegis OS - Smart Building Command Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&amp;family=Inter:wght@400&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error": "#ffb4ab",
+                        "secondary-container": "#2ff801",
+                        "surface-bright": "#2c3a4c",
+                        "tertiary": "#fff5f1",
+                        "surface-dim": "#051424",
+                        "inverse-on-surface": "#233143",
+                        "on-error": "#690005",
+                        "primary-fixed": "#74f5ff",
+                        "secondary-fixed": "#79ff5b",
+                        "on-primary-fixed": "#002022",
+                        "surface-variant": "#273647",
+                        "surface-container-high": "#1c2b3c",
+                        "on-tertiary-fixed-variant": "#6f3900",
+                        "surface-container-highest": "#273647",
+                        "on-secondary": "#053900",
+                        "on-tertiary-fixed": "#2f1500",
+                        "on-secondary-fixed-variant": "#095300",
+                        "on-secondary-fixed": "#022100",
+                        "surface-container-lowest": "#010f1f",
+                        "outline-variant": "#3a494b",
+                        "primary-container": "#00f2ff",
+                        "on-error-container": "#ffdad6",
+                        "on-surface": "#d4e4fa",
+                        "on-primary": "#00363a",
+                        "surface-container": "#122131",
+                        "on-background": "#d4e4fa",
+                        "surface-container-low": "#0d1c2d",
+                        "on-tertiary": "#4e2600",
+                        "primary": "#e1fdff",
+                        "tertiary-container": "#ffd2b2",
+                        "on-primary-container": "#006a71",
+                        "background": "#051424",
+                        "on-tertiary-container": "#934d00",
+                        "surface-tint": "#00dbe7",
+                        "secondary-fixed-dim": "#2ae500",
+                        "primary-fixed-dim": "#00dbe7",
+                        "tertiary-fixed": "#ffdcc4",
+                        "on-secondary-container": "#0f6d00",
+                        "on-surface-variant": "#b9cacb",
+                        "inverse-surface": "#d4e4fa",
+                        "tertiary-fixed-dim": "#ffb77f",
+                        "error-container": "#93000a",
+                        "inverse-primary": "#00696f",
+                        "outline": "#849495",
+                        "secondary": "#d7ffc5",
+                        "surface": "#051424",
+                        "on-primary-fixed-variant": "#004f54"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "container-padding": "24px",
+                        "panel-gap": "12px",
+                        "gutter": "16px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Geist"],
+                        "display-lg": ["Geist"],
+                        "data-mono": ["JetBrains Mono"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Geist"],
+                        "label-caps": ["JetBrains Mono"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "data-mono": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-panel {
+            background-color: rgba(21, 25, 33, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glow-cyan {
+            box-shadow: 0 0 12px rgba(0, 219, 231, 0.2);
+        }
+        .glow-orange {
+            box-shadow: 0 0 12px rgba(255, 180, 171, 0.2); /* Using error color roughly */
+        }
+        .glow-green {
+            box-shadow: 0 0 12px rgba(42, 229, 0, 0.2);
+        }
+        .text-glow {
+            text-shadow: 0 0 8px currentColor;
+        }
+        /* Custom scrollbar for terminal */
+        .terminal-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .terminal-scroll::-webkit-scrollbar-track {
+            background: rgba(13, 28, 45, 0.5);
+        }
+        .terminal-scroll::-webkit-scrollbar-thumb {
+            background: rgba(0, 219, 231, 0.3);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface h-screen w-screen overflow-hidden flex flex-col font-body-sm selection:bg-primary-fixed-dim selection:text-on-primary-fixed">
+<!-- Top Navigation Bar -->
+<nav class="bg-surface-dim/60 backdrop-blur-xl flex justify-between items-center w-full px-container-padding z-50 fixed top-0 h-16 border-b border-outline-variant/30 shadow-[0_0_15px_rgba(0,219,231,0.15)]">
+<div class="flex items-center gap-4">
+<span class="font-headline-md text-headline-md font-bold tracking-tight text-primary-fixed">Aegis OS</span>
+<div class="h-6 w-px bg-outline-variant/50 mx-2"></div>
+<div class="flex items-center gap-2 px-3 py-1 bg-surface-container-low rounded border border-outline-variant/30">
+<span class="w-2 h-2 rounded-full bg-secondary-fixed-dim animate-pulse glow-green"></span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">SYSTEM HEALTH: OPTIMAL</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<!-- Navigation Links (Simulated active state for dashboard context) -->
+<div class="hidden md:flex gap-6 font-label-caps text-label-caps">
+<a class="text-primary-fixed border-b-2 border-primary-fixed pb-1 hover:bg-surface-variant/50 hover:text-primary transition-colors" href="#">DASHBOARD</a>
+<a class="text-on-surface-variant pb-1 hover:bg-surface-variant/50 hover:text-primary transition-colors" href="#">ANALYTICS</a>
+<a class="text-on-surface-variant pb-1 hover:bg-surface-variant/50 hover:text-primary transition-colors" href="#">MAINTENANCE</a>
+</div>
+<div class="flex items-center gap-3">
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">search</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button class="ml-2 px-4 py-2 bg-error/10 border border-error/50 text-error font-label-caps text-label-caps rounded flex items-center gap-2 hover:bg-error/20 transition-colors glow-orange">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">warning</span>
+                    EMERGENCY
+                </button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant/50 ml-2">
+<img alt="Operator Profile Avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7w_bz5AHAU2Sw_OYNE1xrZCrVgAGaKu5J5araEFEMwAwMKKJHb_Q9ksEZ0UwgXHngLB_BJb_AOZ8Kq8pelt-XHJhZbinqbQvWocq55MUYogVgvDYhjtt_0efHt8W2mO3VrN7KCeOZ2uphewDNyAGMpOqnN_By_0Dt5Mn0SZXZ4CDtg12NxCVLlhwaGSjV9z0-OoHgUn4SopXiNklwIaqib9rl_rcTBtwBucncFykcml2iVG02Fq5rYVlVrnHBBQennpylp3xAkD94"/>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Layout Workspace -->
+<div class="flex-1 mt-16 flex flex-col md:flex-row p-gutter gap-panel-gap h-[calc(100vh-64px)] overflow-hidden">
+<!-- Left Panel (20%) -->
+<aside class="w-full md:w-1/5 flex flex-col gap-panel-gap h-full overflow-y-auto pr-2 pb-4 terminal-scroll">
+<!-- AI Safety Status -->
+<div class="glass-panel rounded-lg p-4 flex flex-col gap-3 relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-primary-fixed-dim"></div>
+<h3 class="font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant/30 pb-2">AI SAFETY STATUS</h3>
+<div class="flex items-center justify-between">
+<div class="relative w-20 h-20">
+<svg class="w-full h-full" viewbox="0 0 36 36">
+<path class="text-surface-variant" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"></path>
+<path class="text-primary-fixed-dim" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="95, 100" stroke-width="3"></path>
+<path class="text-error" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="5, 100" stroke-dashoffset="-95" stroke-width="3"></path>
+</svg>
+<div class="absolute inset-0 flex items-center justify-center font-data-mono text-data-mono text-primary-fixed-dim">
+                            95%
+                        </div>
+</div>
+<div class="flex flex-col gap-2 flex-1 ml-4">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded bg-primary-fixed-dim"></span>
+<span class="font-data-mono text-data-mono text-on-surface text-xs">Safe</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded bg-error"></span>
+<span class="font-data-mono text-data-mono text-on-surface text-xs">Warning (5%)</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Device Tracking -->
+<div class="glass-panel rounded-lg p-4 flex flex-col gap-3">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant/30 pb-2">DEVICE TRACKING</h3>
+<div class="grid grid-cols-2 gap-2">
+<div class="bg-surface-container-low p-2 rounded border border-outline-variant/20 flex flex-col items-center">
+<span class="font-headline-sm text-headline-sm text-secondary-fixed-dim">1,240</span>
+<span class="font-label-caps text-label-caps text-[10px] text-on-surface-variant">ONLINE</span>
+</div>
+<div class="bg-surface-container-low p-2 rounded border border-error/30 flex flex-col items-center glow-orange">
+<span class="font-headline-sm text-headline-sm text-error">12</span>
+<span class="font-label-caps text-label-caps text-[10px] text-on-surface-variant">OFFLINE</span>
+</div>
+</div>
+</div>
+<!-- Environment -->
+<div class="glass-panel rounded-lg p-4 flex flex-col gap-4">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant/30 pb-2">ENVIRONMENT TRENDS</h3>
+<!-- Temp -->
+<div class="flex flex-col gap-1">
+<div class="flex justify-between items-center">
+<span class="font-data-mono text-data-mono text-xs text-on-surface">Avg Temp</span>
+<span class="font-data-mono text-data-mono text-primary-fixed-dim">24°C</span>
+</div>
+<div class="h-8 w-full bg-surface-container-lowest rounded relative overflow-hidden flex items-end">
+<svg class="w-full h-full stroke-primary-fixed-dim fill-none" preserveaspectratio="none" viewbox="0 0 100 20">
+<path d="M0 15 Q 10 10 20 12 T 40 8 T 60 14 T 80 5 T 100 10" stroke-width="1.5"></path>
+</svg>
+</div>
+</div>
+<!-- Power -->
+<div class="flex flex-col gap-1">
+<div class="flex justify-between items-center">
+<span class="font-data-mono text-data-mono text-xs text-on-surface">Power</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant">1.2 MW</span>
+</div>
+<div class="h-8 w-full bg-surface-container-lowest rounded relative overflow-hidden flex items-end">
+<svg class="w-full h-full stroke-outline-variant fill-none" preserveaspectratio="none" viewbox="0 0 100 20">
+<path d="M0 10 Q 15 15 30 10 T 60 12 T 80 8 T 100 11" stroke-width="1.5"></path>
+</svg>
+</div>
+</div>
+<!-- Humidity -->
+<div class="flex flex-col gap-1">
+<div class="flex justify-between items-center">
+<span class="font-data-mono text-data-mono text-xs text-on-surface">Humidity</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant">45%</span>
+</div>
+<div class="h-8 w-full bg-surface-container-lowest rounded relative overflow-hidden flex items-end">
+<svg class="w-full h-full stroke-outline-variant fill-none" preserveaspectratio="none" viewbox="0 0 100 20">
+<path d="M0 12 Q 20 5 40 15 T 70 8 T 100 12" stroke-width="1.5"></path>
+</svg>
+</div>
+</div>
+</div>
+<!-- Robot Status -->
+<div class="glass-panel rounded-lg p-4 flex flex-col gap-3 relative">
+<div class="absolute top-0 left-0 w-1 h-full bg-secondary-fixed-dim"></div>
+<h3 class="font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant/30 pb-2">CRUZR ASSET</h3>
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 bg-surface-container-high rounded border border-outline-variant/50 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary-fixed-dim text-2xl">precision_manufacturing</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-secondary-fixed-dim">PATROLLING</span>
+<span class="font-data-mono text-data-mono text-xs text-on-surface mt-1">BAT: 85%</span>
+<span class="font-data-mono text-data-mono text-[10px] text-on-surface-variant">LOC: L2 Corridor</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Center Viewport (60%) -->
+<main class="w-full md:w-3/5 flex flex-col gap-panel-gap h-full">
+<!-- Center Controls -->
+<div class="glass-panel rounded-lg p-2 flex justify-between items-center">
+<div class="flex bg-surface-container-lowest rounded p-1 border border-outline-variant/20">
+<button class="px-4 py-1.5 rounded font-label-caps text-label-caps bg-primary-fixed-dim/20 text-primary-fixed-dim border border-primary-fixed-dim/50 shadow-[0_0_10px_rgba(0,219,231,0.1)]">3D DIGITAL TWIN</button>
+<button class="px-4 py-1.5 rounded font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-colors">2D FLOOR PLAN</button>
+</div>
+<button class="px-3 py-1.5 border border-error/50 bg-error/10 text-error font-label-caps text-label-caps rounded flex items-center gap-2 hover:bg-error/20 transition-colors glow-orange">
+<span class="material-symbols-outlined text-[16px]">my_location</span>
+                    FOCUS ON ALERT
+                </button>
+</div>
+<!-- 3D Viewport Placeholder -->
+<div class="flex-1 relative glass-panel rounded-lg overflow-hidden border border-primary-fixed-dim/20 flex flex-col">
+<!-- Overlay UI Top -->
+<div class="absolute top-4 left-4 flex flex-col gap-2 z-10 pointer-events-none">
+<div class="bg-surface-dim/80 backdrop-blur px-2 py-1 rounded border border-outline-variant/30 flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-fixed-dim"></span>
+<span class="font-data-mono text-data-mono text-[10px] text-primary-fixed-dim">X-RAY MODE: ON</span>
+</div>
+<div class="bg-surface-dim/80 backdrop-blur px-2 py-1 rounded border border-outline-variant/30 flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-outline-variant"></span>
+<span class="font-data-mono text-data-mono text-[10px] text-on-surface-variant">FPS VIEW: STANDBY</span>
+</div>
+</div>
+<!-- Simulation visual (Background image acting as 3D model) -->
+<div class="absolute inset-0 bg-surface-container-lowest flex items-center justify-center opacity-80 mix-blend-screen" style="background-image: linear-gradient(rgba(0, 219, 231, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 219, 231, 0.05) 1px, transparent 1px); background-size: 40px 40px;">
+<!-- Abstract representation of a 3D floor plan focus area -->
+<div class="w-64 h-64 border border-error/40 rounded-full flex items-center justify-center animate-pulse relative">
+<div class="absolute w-full h-px bg-error/30 top-1/2 left-0"></div>
+<div class="absolute h-full w-px bg-error/30 left-1/2 top-0"></div>
+<div class="w-4 h-4 bg-error rounded-full glow-orange"></div>
+<div class="absolute -bottom-8 font-data-mono text-data-mono text-error">TARGET: L2-A101</div>
+</div>
+</div>
+<!-- Bottom Terminal Panel inside Main Area (20% height conceptually mapped here or below) -->
+<div class="absolute bottom-0 w-full h-1/4 bg-surface-container-lowest/90 backdrop-blur-md border-t border-primary-fixed-dim/30 p-3 overflow-y-auto terminal-scroll font-data-mono text-data-mono text-xs flex flex-col gap-1">
+<div class="text-on-surface-variant"><span class="text-secondary-fixed-dim">[10:04:50]</span> SYSTEM: Humidity sensors calibration complete.</div>
+<div class="text-error"><span class="text-error">[10:04:58]</span> CRITICAL: AI Isolation Forest anomaly detected at L2-A101 (Conf: 98%).</div>
+<div class="text-on-surface"><span class="text-secondary-fixed-dim">[10:05:01]</span> INFO: Robot Cruzr receiving mission L2-A101...</div>
+<div class="text-on-surface-variant animate-pulse flex gap-2"><span>&gt;</span><span class="w-2 h-4 bg-primary-fixed-dim inline-block"></span></div>
+</div>
+</div>
+</main>
+<!-- Right Panel (20%) -->
+<aside class="w-full md:w-1/5 flex flex-col gap-panel-gap h-full overflow-y-auto pl-2 pb-4 terminal-scroll">
+<!-- Room Details -->
+<div class="glass-panel rounded-lg p-4 flex flex-col gap-4 relative border-error/30 glow-orange">
+<div class="absolute top-0 left-0 w-1 h-full bg-error"></div>
+<div class="flex justify-between items-start border-b border-outline-variant/30 pb-2">
+<h3 class="font-label-caps text-label-caps text-error text-glow">ROOM A101 - Level 2</h3>
+<span class="material-symbols-outlined text-error text-[18px]">warning</span>
+</div>
+<div class="flex flex-col gap-3">
+<div class="flex justify-between items-center bg-surface-container/50 px-2 py-1 rounded">
+<span class="font-data-mono text-data-mono text-xs text-on-surface-variant">Temp</span>
+<span class="font-data-mono text-data-mono text-error font-bold">26°C</span>
+</div>
+<div class="flex justify-between items-center bg-surface-container/50 px-2 py-1 rounded">
+<span class="font-data-mono text-data-mono text-xs text-on-surface-variant">CO2 Level</span>
+<span class="font-data-mono text-data-mono text-error font-bold">HIGH</span>
+</div>
+<div class="flex justify-between items-center bg-error/20 border border-error/50 px-2 py-1 rounded animate-pulse">
+<span class="font-data-mono text-data-mono text-xs text-error">Smoke</span>
+<span class="font-data-mono text-data-mono text-error font-bold">DETECTING</span>
+</div>
+</div>
+</div>
+<!-- Functions / Tactical Buttons -->
+<div class="glass-panel rounded-lg p-4 flex flex-col gap-3">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant/30 pb-2">TACTICAL RESPONSE</h3>
+<button class="w-full py-3 px-4 bg-primary-fixed-dim/10 border border-primary-fixed-dim text-primary-fixed-dim font-label-caps text-label-caps rounded flex items-center justify-between hover:bg-primary-fixed-dim/20 transition-colors relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-full h-px bg-white/20"></div>
+<span class="text-left">ACTIVATE SPRINKLERS</span>
+<span class="material-symbols-outlined text-[18px]">water_drop</span>
+</button>
+<button class="w-full py-3 px-4 bg-[#ffb77f]/10 border border-[#ffb77f] text-[#ffb77f] font-label-caps text-label-caps rounded flex items-center justify-between hover:bg-[#ffb77f]/20 transition-colors relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-full h-px bg-white/20"></div>
+<span class="text-left">CUT POWER L2</span>
+<span class="material-symbols-outlined text-[18px]">power_off</span>
+</button>
+<button class="w-full py-3 px-4 bg-primary-fixed text-on-primary-fixed font-label-caps text-label-caps rounded flex items-center justify-between hover:bg-primary transition-colors relative overflow-hidden glow-cyan font-bold">
+<div class="absolute top-0 left-0 w-full h-px bg-white/40"></div>
+<span class="text-left">DEPLOY ROBOT TO A101</span>
+<span class="material-symbols-outlined text-[18px]">smart_toy</span>
+</button>
+</div>
+<!-- Simulation Mode -->
+<div class="glass-panel rounded-lg p-4 flex flex-col gap-4 mt-auto">
+<div class="flex justify-between items-center border-b border-outline-variant/30 pb-2">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant">SIMULATION MODE</h3>
+<!-- Toggle switch -->
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-9 h-5 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface-variant after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary-fixed-dim peer-checked:after:bg-on-primary-fixed border border-outline-variant/50"></div>
+</label>
+</div>
+<div class="flex flex-col gap-3 opacity-50 pointer-events-none">
+<div class="flex flex-col gap-1">
+<div class="flex justify-between font-data-mono text-[10px] text-on-surface-variant">
+<span>Fire Spread Rate</span>
+<span>1.0x</span>
+</div>
+<input class="w-full h-1 bg-surface-container-highest rounded-lg appearance-none cursor-pointer" max="100" min="0" type="range" value="50"/>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex justify-between font-data-mono text-[10px] text-on-surface-variant">
+<span>Evacuation Flow</span>
+<span>Norm</span>
+</div>
+<input class="w-full h-1 bg-surface-container-highest rounded-lg appearance-none cursor-pointer" max="100" min="0" type="range" value="50"/>
+</div>
+</div>
+</div>
+</aside>
+</div>
+</body></html>

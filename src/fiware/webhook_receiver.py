@@ -9,6 +9,8 @@ import os
 import sys
 from datetime import datetime, timezone
 from flask import Flask, request, jsonify
+import time 
+
 
 # Thêm đường dẫn để import
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -17,6 +19,7 @@ sys.path.insert(0, ROOT_DIR)
 from src.fiware.entities import update_room_sensors
 from src.robot.cruzr_client import CruzrRobotClient
 from src.fiware import get_room_state, get_all_devices, get_alert_events, get_robot_actions
+from src.tuya.commands import control_fire_emergency_plugs
 
 app = Flask(__name__)
 
@@ -40,6 +43,44 @@ def _extract_value(value):
     if isinstance(value, dict) and "value" in value:
         return value["value"]
     return value
+
+def write_robot_action_log(alert_id: str, zone_id: str, message: str, status: str = "ACK"):
+    """
+    Ghi log RobotAction theo đúng format file Word 4.4
+    
+    Format yêu cầu:
+    {
+        "demo_run_id": "DNTU02_TOP8_RUN_2026_001",
+        "timestamp": "2026-05-17T09:00:25Z",
+        "robot_id": "CRUZR_01",
+        "alert_id": "AlertEvent:SCN_CRITICAL_001",
+        "zone_id": "DNTU_ROOM_A101",
+        "action_type": "VOICE_DISPLAY_GUIDANCE",
+        "navigation_mode": "PREDEFINED_RESPONSE_POINT",
+        "message": "...",
+        "status": "ACK"
+    }
+    """
+    log_file = "logs/robot_actions.jsonl"
+    os.makedirs("logs", exist_ok=True)
+    
+    log_entry = {
+        "demo_run_id": os.getenv("DEMO_RUN_ID", "DNTU02_TOP8_RUN_2026_001"),
+        "timestamp": _utc_now(),
+        "robot_id": "CRUZR_01",
+        "alert_id": alert_id,
+        "zone_id": zone_id,
+        "action_type": "VOICE_DISPLAY_GUIDANCE",
+        "navigation_mode": "PREDEFINED_RESPONSE_POINT",
+        "message": message,
+        "status": status
+    }
+    
+    with open(log_file, "a", encoding="utf-8") as f:
+        f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
+    
+    print(f"   📝 RobotAction log saved: {log_file}")
+    return log_entry
 
 def write_orion_state_log():
     """
@@ -80,10 +121,27 @@ def write_orion_state_log():
     
     print(f"   📝 Orion state logged: {log_file}")
 
+def control_smart_plugs():
+    """Điều khiển ổ cắm khi cháy: tắt a102/a103, bật a104 (1 kết nối, song song)."""
+    print("\n🔌 Controlling smart plugs...")
+
+    results = control_fire_emergency_plugs()
+    for name, outcome in results.items():
+        action = "ON" if name.endswith("a104") else "OFF"
+        if outcome["success"]:
+            print(f"   ✅ {name} turned {action}")
+        else:
+            err = outcome.get("error") or "unknown error"
+            print(f"   ❌ {name} failed ({action}): {err}")
+
+    print("\n🔌 Smart plugs control completed!")
+
 
 def send_robot_emergency(temperature: float, smoke: int):
     """Gửi lệnh khẩn cấp đến robot (giữ kết nối)"""
     robot_client = get_robot()
+
+  
     
     # Kết nối nếu chưa kết nối
     if not robot_client.is_connected():
@@ -92,14 +150,51 @@ def send_robot_emergency(temperature: float, smoke: int):
             return False
     
     try:
-        # Phát cảnh báo cháy
+
+        zone_id = os.getenv("ZONE_ID", "DNTU_ROOM_A101")
+        alert_id = "AlertEvent:SCN_CRITICAL_001"
         message = f"⚠️ CẢNH BÁO CHÁY! Nhiệt độ {temperature} độ C! Vui lòng sơ tán khẩn cấp! ⚠️"
-        result = robot_client.speak(message)
-        print(f"   🔊 Speak result: {result}")
+        
+        # 1. GHI LOG ROBOTACTION (TRƯỚC KHI GỬI LỆNH)
+        write_robot_action_log(
+            alert_id=alert_id,
+            zone_id=zone_id,
+            message=message,
+            status="DISPATCHED"
+        )
+
+
+          # 2. Di chuyển robot lên trước (ước lượng 2 mét)
+        # Theo tài liệu: stream_move_input với direction="forward", speed=0.5
+        # print(f"   🚶 Robot moving forward...")
+       
         
         # Hiển thị emotion khẩn cấp
-        result = robot_client.play_emotion("emergency")
+        result = robot_client.play_emotion("emotion://va/techface_upset")
         print(f"   😫 Emotion result: {result}")
+
+        
+        # robot.turn_left(speed=6)
+        # time.sleep(6.2)
+        # robot_client.stop()
+
+        result = robot_client.speak(message)
+
+        # robot_client.move_forward(speed=1)
+        # time.sleep(3)  # Chạy 4 giây (speed=0.5 ~ 0.25 m/s → ~1m, cần test lại)
+        # robot_client.stop()
+
+        # robot.turn_right(speed=1)
+        # time.sleep(0.5)
+
+
+        # robot_client.stop()
+
+        # control_smart_plugs()
+
+        print(f"   ✅ Robot moved")
+        
+      
         
         return True
         

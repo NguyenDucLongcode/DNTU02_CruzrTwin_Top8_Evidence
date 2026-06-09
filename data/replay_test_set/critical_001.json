@@ -6,7 +6,7 @@
   "readings": [
     {
       "t": 30,
-      "temperature": 60,
+      "temperature": 1200,
       "humidity": 74.3,
       "co2": 1137,
       "smoke_status": 1,

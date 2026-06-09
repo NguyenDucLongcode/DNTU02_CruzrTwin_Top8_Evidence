@@ -189,25 +189,49 @@ class CruzrRobotClient:
     # ==================================================
     
     def move(self, direction: str, speed: float = 0.5) -> Dict:
-        """Di chuyển robot"""
-        if direction == "stop":
-            return self.send_command("stream_move_input", {"direction": "stop"})
-        return self.send_command("stream_move_input", {"direction": direction, "speed": speed})
+        """
+        Di chuyển robot
     
-    def move_forward(self, speed: float = 0.5) -> Dict:
-        return self.move("forward", speed)
+        Định dạng: options là string JSON
+        """    
+        if direction == "stop":
+           options = json.dumps({"action": "stop"})
+        else:
+           options = json.dumps({"action": direction})
+    
+        print(f"   📡 move: {options}")
+        return self.send_command("stream_move_input", options)
+    
+    def move_forward(self, speed: float = 0.5 ) -> Dict:
+        return self.move("move_forward", speed)
     
     def move_backward(self, speed: float = 0.5) -> Dict:
-        return self.move("back", speed)
+        return self.move("move_back", speed)
+    
+    def move_left(self, speed: float = 0.5) -> Dict:
+        return self.move("move_forward_left", speed)
+    
+    def move_right(self, speed: float = 0.5) -> Dict:
+        return self.move("move_forward_right", speed)
     
     def turn_left(self, speed: float = 0.5) -> Dict:
-        return self.move("left", speed)
+        return self.move("rotate_left", speed)
     
     def turn_right(self, speed: float = 0.5) -> Dict:
-        return self.move("right", speed)
+        return self.move("rotate_right", speed)
     
     def stop(self) -> Dict:
         return self.move("stop")
+    
+    def _move_for_distance(self, direction: str, distance_m: float, speed: float = 0.5) -> Dict:
+        """Di chuyển theo hướng trong khoảng thời gian ước lượng từ quãng đường."""
+        speed = max(speed, 0.1)
+        duration = distance_m / speed
+        result = self.move(direction, speed)
+        time.sleep(duration)
+        self.stop()
+        return result
+
     
     def speak(self, text: str, language: str = "vi") -> Dict:
         """
@@ -234,6 +258,8 @@ class CruzrRobotClient:
     def shutdown(self) -> Dict:
         """Tắt robot"""
         return self.send_command("shutdown")
+
+   
     
     # ==================================================
     # NAVIGATION COMMANDS
@@ -268,7 +294,7 @@ class CruzrRobotClient:
     
     def play_emotion(self, emotion_id: str) -> Dict:
         """Chơi emotion"""
-        return self.send_command("play_emotion", emotion_id)
+        return self.send_command("play_emotion", json.dumps({"path": emotion_id}))
     
     def get_emotions(self) -> Dict:
         """Lấy danh sách emotions"""

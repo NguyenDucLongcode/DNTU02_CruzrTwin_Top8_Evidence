@@ -1,0 +1,39 @@
+mqtt:
+  broker: "mosquitto"
+  port: 1883
+  user: ""
+  password: ""
+
+devices:
+  # Smart Plug A102
+  - id: "a38764792570512f2fgnnz"
+    name: "smart_plug_a102"
+    device_id: "smart_plug_a102"
+    attrs:
+      - cur_power
+      - switch_1
+
+  # Smart Plug A103
+  - id: "a36c1138920ec8dc84qfqs"
+    name: "smart_plug_a103"
+    device_id: "smart_plug_a103"
+    attrs:
+      - cur_power
+      - switch_1
+
+    # Smart Plug A104
+  - id: "a362ba4e4dd29f17degdum"
+    name: "smart_plug_a104"
+    device_id: "smart_plug_a104"
+    attrs:
+      - cur_power
+      - switch_1
+
+tuya:
+  region: "sg" # Singapore Data Center (override: TUYA_REGION)
+  # key/secret đọc từ .env: TUYA_KEY, TUYA_SECRET
+
+app:
+  period: 30 # Lấy dữ liệu mỗi 30 giây
+  # Topic IoT Agent JSON: /json/<apikey>/<device_id>/attrs
+  topic_status_template: "/json/cruzrtwin2026/{{ device_id }}/attrs"

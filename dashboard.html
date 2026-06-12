@@ -3,216 +3,297 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DNTU Command Center | Digital Twin v1</title>
+    <title>DNTU Command Center | Industrial Monitoring</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         :root {
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
             --accent: #3b82f6;
             --bg: #09090b;
+            --panel: #0c0c0e;
+            --border: rgba(255, 255, 255, 0.05);
         }
         body { 
             background-color: var(--bg); 
-            color: #fafafa; 
-            font-family: 'Outfit', sans-serif; 
+            color: #d4d4d8; 
+            font-family: 'Inter', sans-serif; 
             overflow: hidden; 
             min-height: 100dvh;
         }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
         
-        /* Liquid Glass Refraction */
-        .liquid-glass {
-            background: rgba(24, 24, 27, 0.4);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
         }
         
-        .accent-border { border-color: var(--accent); }
-        .text-accent { color: var(--accent); }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1px;
+            background: var(--border);
+        }
         
+        .status-cell {
+            background: var(--panel);
+            padding: 12px;
+        }
+
         .log-container::-webkit-scrollbar { width: 2px; }
         .log-container::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); }
         
-        /* Tactile Feedback */
-        button:active { transform: scale(0.96); }
-        button { transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
-
-        /* HUD Pointer Line */
-        #hud-line {
-            transition: all 0.3s ease;
-            box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+        /* Scanning Effect */
+        .scan-line {
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            position: absolute;
+            top: 0;
+            left: 0;
+            animation: scan 3s linear infinite;
+            opacity: 0.3;
+        }
+        @keyframes scan {
+            0% { top: 0%; }
+            100% { top: 100%; }
         }
 
-        .bento-slot {
-            @apply liquid-glass rounded-[2rem] p-6 overflow-hidden relative;
+        .alert-flash {
+            animation: flash 1s step-end infinite;
+        }
+        @keyframes flash {
+            50% { border-color: var(--danger); background: rgba(239, 68, 68, 0.1); }
         }
     </style>
 </head>
-<body class="p-4 md:p-8 flex flex-col gap-6">
+<body class="flex flex-col h-screen overflow-hidden border-[12px] border-[#0c0c0e]">
 
-    <!-- Header: Asymmetric & Minimal -->
-    <header class="flex flex-col md:flex-row justify-between items-start md:items-end px-4 gap-4">
-        <div>
-            <h1 class="text-4xl md:text-6xl font-black tracking-tighter leading-none mb-2">
-                CRUZR<span class="text-zinc-500">TWIN</span>
-            </h1>
-            <p class="text-zinc-500 text-sm uppercase tracking-[0.2em] font-light">Autonomous Intelligence Interface</p>
-        </div>
-        <div class="flex gap-8 items-center font-mono text-[10px] tracking-widest text-zinc-400">
+    <!-- Top Bar: Compact & Technical -->
+    <header class="h-12 flex items-center justify-between px-4 border-b border-white/5 bg-[#0c0c0e]">
+        <div class="flex items-center gap-6">
             <div class="flex items-center gap-2">
-                <div id="status-dot" class="w-1.5 h-1.5 rounded-full bg-zinc-700"></div>
-                <span>ROBOT_NODE: <span id="status-text" class="text-zinc-500">OFFLINE</span></span>
+                <div class="w-3 h-3 bg-blue-500 rounded-sm"></div>
+                <span class="text-sm font-black tracking-tighter">DNTU_CRUZR_SYSTEM_v1.0</span>
             </div>
-            <div class="flex items-center gap-2">
-                <div class="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
-                <span>AI_ENGINE: <span class="text-blue-500">ACTIVE</span></span>
+            <div class="h-4 w-px bg-white/10"></div>
+            <div class="flex gap-4 text-[10px] font-mono text-zinc-500">
+                <span>CORE_TEMP: <span class="text-white">42°C</span></span>
+                <span>UPTIME: <span class="text-white">12:44:02</span></span>
+                <span>NETWORK: <span class="text-emerald-500">OPTIMAL</span></span>
             </div>
-            <div id="clock">00:00:00</div>
         </div>
+        <div class="font-mono text-sm font-bold text-blue-500" id="clock">00:00:00</div>
     </header>
 
-    <!-- Main Grid: Asymmetric Bento Layout (Variance 8) -->
-    <main class="flex-1 grid grid-cols-1 md:grid-cols-12 gap-6 min-h-0">
+    <div class="flex-1 flex min-h-0">
         
-        <!-- 3D Visualization: Large Asymmetric Area -->
-        <div class="md:col-span-8 bento-slot !p-0 relative group">
-            <div id="three-container" class="w-full h-full cursor-crosshair"></div>
-            
-            <!-- HUD Overlay -->
-            <div id="hud-callout" class="absolute z-20 hidden pointer-events-none">
-                <div class="flex items-start">
-                    <div class="w-24 h-px bg-red-500 mt-4 origin-left -rotate-45" id="hud-line"></div>
-                    <div class="liquid-glass border-red-500/30 p-5 w-72 rounded-3xl">
-                        <div class="flex justify-between items-center mb-4">
-                            <span class="text-[9px] font-bold text-red-500 tracking-[0.2em] uppercase">Target_Locked</span>
-                            <div class="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping"></div>
-                        </div>
-                        <h3 class="text-2xl font-bold mb-1" id="hud-title">---</h3>
-                        <p class="text-[10px] text-zinc-400 mb-4 font-mono uppercase" id="hud-status">Anomalous Activity</p>
-                        
-                        <div class="space-y-3">
-                            <div class="p-3 bg-white/5 rounded-2xl">
-                                <span class="text-[8px] text-zinc-500 uppercase block mb-1">AI Rationale</span>
-                                <span class="text-xs text-white leading-relaxed" id="hud-rationale">Analyzing data patterns...</span>
+        <!-- Left: Sensor Matrix & Observation -->
+        <aside class="w-80 flex flex-col border-r border-white/5 bg-[#0c0c0e]">
+            <div class="p-4 border-b border-white/5 flex justify-between items-center">
+                <span class="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Sensor Matrix</span>
+                <span class="text-[10px] font-mono bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded">AUTO_REFRESH</span>
+            </div>
+            <div class="flex-1 overflow-y-auto" id="sensor-matrix">
+                <!-- Room List -->
+                <div class="divide-y divide-white/5">
+                    <!-- Room Template -->
+                    <div class="p-4 hover:bg-white/[0.02] transition-colors" id="room-A101">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <h3 class="text-xs font-bold text-white">ZONE_A101</h3>
+                                <p class="text-[9px] text-zinc-500">Server_Room_West</p>
                             </div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div class="p-3 bg-white/5 rounded-2xl border border-white/5">
-                                    <span class="text-[8px] text-zinc-500 uppercase block mb-1">Heat_Idx</span>
-                                    <span class="text-lg font-mono font-bold text-orange-400" id="hud-temp">--.-</span>
-                                </div>
-                                <div class="p-3 bg-white/5 rounded-2xl border border-white/5">
-                                    <span class="text-[8px] text-zinc-500 uppercase block mb-1">CO2_PPM</span>
-                                    <span class="text-lg font-mono font-bold text-blue-400" id="hud-co2">----</span>
-                                </div>
+                            <div class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-emerald-500/10 text-emerald-500" id="room-A101-status">NOMINAL</div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="panel p-2 rounded-sm border-white/5">
+                                <span class="text-[8px] text-zinc-500 block mb-1 uppercase">Heat</span>
+                                <span class="text-sm font-mono font-bold text-white" id="room-A101-temp">24.5°C</span>
+                            </div>
+                            <div class="panel p-2 rounded-sm border-white/5">
+                                <span class="text-[8px] text-zinc-500 block mb-1 uppercase">CO2</span>
+                                <span class="text-sm font-mono font-bold text-white" id="room-A101-co2">402</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Other Rooms -->
+                    <div class="p-4 hover:bg-white/[0.02]" id="room-A102">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <h3 class="text-xs font-bold text-white">ZONE_A102</h3>
+                                <p class="text-[9px] text-zinc-500">Storage_Sector_B</p>
+                            </div>
+                            <div class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-emerald-500/10 text-emerald-500" id="room-A102-status">NOMINAL</div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="panel p-2 rounded-sm border-white/5">
+                                <span class="text-[8px] text-zinc-500 block mb-1 uppercase">Heat</span>
+                                <span class="text-sm font-mono font-bold text-white" id="room-A102-temp">23.8°C</span>
+                            </div>
+                            <div class="panel p-2 rounded-sm border-white/5">
+                                <span class="text-[8px] text-zinc-500 block mb-1 uppercase">CO2</span>
+                                <span class="text-sm font-mono font-bold text-white" id="room-A102-co2">398</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <div class="absolute top-6 left-6 pointer-events-none">
-                <div class="liquid-glass px-4 py-2 rounded-full flex items-center gap-3">
-                    <div class="w-1 h-1 bg-blue-500 rounded-full"></div>
-                    <span class="text-[10px] font-mono tracking-tighter" id="robot-coords">00.00, 00.00</span>
+            
+            <!-- System Stats: Bottom of Left Sidebar -->
+            <div class="p-4 border-t border-white/5 bg-black/40 space-y-4">
+                <div class="flex justify-between items-center">
+                    <span class="text-[10px] text-zinc-500 uppercase tracking-tighter">Robot Node Stability</span>
+                    <span class="text-[10px] font-mono text-emerald-500">99.8%</span>
                 </div>
-            </div>
-        </div>
-
-        <!-- Log Stream: Packed Cockpit Side (Density 4 but Monospace) -->
-        <div class="md:col-span-4 flex flex-col gap-6 min-h-0">
-            <div class="flex-1 bento-slot flex flex-col !p-0">
-                <div class="flex border-b border-white/5 font-mono text-[9px] uppercase tracking-widest overflow-x-auto">
-                    <button onclick="setTab('ai')" id="tab-ai" class="px-6 py-4 border-b-2 border-blue-500 text-blue-500">AI</button>
-                    <button onclick="setTab('alerts')" id="tab-alerts" class="px-6 py-4 border-b-2 border-transparent text-zinc-500">Alert</button>
-                    <button onclick="setTab('state')" id="tab-state" class="px-6 py-4 border-b-2 border-transparent text-zinc-500">Sys</button>
-                    <button onclick="setTab('robot')" id="tab-robot" class="px-6 py-4 border-b-2 border-transparent text-zinc-500">Bot</button>
-                    <button onclick="setTab('sensors')" id="tab-sensors" class="px-6 py-4 border-b-2 border-transparent text-zinc-500">IoT</button>
+                <div class="h-1 bg-white/5 rounded-full overflow-hidden">
+                    <div class="h-full bg-emerald-500 w-[99.8%]"></div>
                 </div>
-                <div id="log-display" class="flex-1 overflow-y-auto p-6 space-y-4 log-container font-mono text-[10px]">
-                    <div class="text-zinc-600 italic">Synchronizing log streams...</div>
-                </div>
-            </div>
-
-            <!-- System Status Bento -->
-            <div class="h-48 bento-slot flex flex-col justify-between">
-                <div class="flex justify-between items-start">
+                <div class="flex justify-between">
                     <div>
-                        <span class="text-[10px] text-zinc-500 uppercase tracking-widest block mb-1">Node Health</span>
-                        <div class="flex items-center gap-2 text-emerald-500">
-                            <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                            <span class="text-xs font-mono font-bold tracking-tighter">LATENCY: 12ms</span>
-                        </div>
+                        <span class="text-[8px] text-zinc-500 uppercase block">Battery</span>
+                        <span class="text-lg font-mono font-bold text-white" id="robot-battery">--%</span>
                     </div>
                     <div class="text-right">
-                        <span class="text-[10px] text-zinc-500 uppercase tracking-widest block mb-1">Battery</span>
-                        <span class="text-3xl font-black font-mono text-blue-500" id="robot-battery">--%</span>
+                        <span class="text-[8px] text-zinc-500 uppercase block">Latency</span>
+                        <span class="text-lg font-mono font-bold text-blue-500">12ms</span>
                     </div>
                 </div>
-                <button onclick="robotCmd('emergency')" class="w-full py-4 bg-red-600 rounded-2xl text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-red-500 shadow-lg shadow-red-900/20">
-                    Emergency Evacuation
-                </button>
             </div>
-        </div>
-    </main>
+        </aside>
+
+        <!-- Center: Tactical Map View -->
+        <main class="flex-1 relative bg-black">
+            <div id="three-container" class="w-full h-full"></div>
+            <div class="scan-line"></div>
+            
+            <!-- Technical Overlays -->
+            <div class="absolute top-4 left-4 pointer-events-none space-y-2">
+                <div class="panel px-3 py-1.5 rounded-sm border-blue-500/30 bg-blue-500/5">
+                    <span class="text-[10px] font-mono text-blue-500">MAP_SCAN: ACTIVE</span>
+                </div>
+                <div class="panel px-3 py-1.5 rounded-sm border-white/5 bg-black/50">
+                    <span class="text-[10px] font-mono text-zinc-400" id="robot-coords">X: 0.00 | Y: 0.00</span>
+                </div>
+            </div>
+
+            <!-- Cinematic HUD Callout -->
+            <div id="hud-callout" class="absolute z-20 hidden pointer-events-none">
+                <div class="flex flex-col items-center">
+                    <div class="panel border-red-500 bg-red-950/20 backdrop-blur-md p-4 w-64">
+                        <div class="flex justify-between items-center mb-2 border-b border-red-500/30 pb-2">
+                            <span class="text-[9px] font-bold text-red-500 uppercase tracking-widest">Anomaly_Detected</span>
+                            <div class="w-2 h-2 bg-red-500 animate-ping"></div>
+                        </div>
+                        <h4 class="text-lg font-black text-white mb-1" id="hud-title">---</h4>
+                        <div class="space-y-2 font-mono text-[10px]">
+                            <div class="flex justify-between">
+                                <span class="text-zinc-500">AI_PROB:</span>
+                                <span class="text-white" id="hud-score">0.9984</span>
+                            </div>
+                            <div class="p-2 bg-black/50 border border-white/5 rounded-sm">
+                                <span class="text-red-400" id="hud-rationale">Processing...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-px h-12 bg-red-500 shadow-[0_0_10px_red]"></div>
+                </div>
+            </div>
+
+            <!-- View Controls -->
+            <div class="absolute bottom-4 right-4 flex gap-2">
+                <button onclick="resetCamera()" class="panel p-2 text-[10px] uppercase font-bold hover:bg-white/5">Reset View</button>
+                <button onclick="robotCmd('emergency')" class="px-4 py-2 bg-red-600 text-[10px] font-black uppercase tracking-widest hover:bg-red-700 shadow-lg shadow-red-900/50">Emergency S.O.S</button>
+            </div>
+        </main>
+
+        <!-- Right: Alert Feed & Technical Logs -->
+        <aside class="w-96 flex flex-col border-l border-white/5 bg-[#0c0c0e]">
+            <!-- Critical Alert Area -->
+            <div class="h-1/3 flex flex-col border-b border-white/5">
+                <div class="p-4 border-b border-white/5 bg-zinc-900/30">
+                    <span class="text-[10px] font-bold uppercase tracking-widest text-red-500 flex items-center gap-2">
+                        <svg width="12" height="12" viewBox="0 0 256 256"><path fill="currentColor" d="M128 24a104 104 0 1 0 104 104A104.11 104.11 0 0 0 128 24Zm0 192a88 88 0 1 1 88-88 88.1 88.1 0 0 1-88 88Zm-8-80V80a8 8 0 0 1 16 0v56a8 8 0 0 1-16 0Zm20 36a12 12 0 1 1-12-12 12 12 0 0 1 12 12Z"/></svg>
+                        Incident Queue
+                    </span>
+                </div>
+                <div class="flex-1 overflow-y-auto p-2 space-y-2" id="alert-queue">
+                    <!-- Alerts will blink here -->
+                    <div class="text-[10px] text-zinc-600 p-4 text-center italic">No active incidents detected.</div>
+                </div>
+            </div>
+
+            <!-- Technical Logs -->
+            <div class="flex-1 flex flex-col min-h-0">
+                <div class="flex border-b border-white/5 font-mono text-[9px] uppercase tracking-widest bg-zinc-900/10">
+                    <button onclick="setTab('ai')" id="tab-ai" class="px-4 py-3 border-b-2 border-blue-500 text-blue-500 bg-blue-500/5">AI_DET</button>
+                    <button onclick="setTab('state')" id="tab-state" class="px-4 py-3 border-b-2 border-transparent text-zinc-500">SYS_ST</button>
+                    <button onclick="setTab('robot')" id="tab-robot" class="px-4 py-3 border-b-2 border-transparent text-zinc-500">BOT_ACT</button>
+                    <button onclick="setTab('sensors')" id="tab-sensors" class="px-4 py-3 border-b-2 border-transparent text-zinc-500">RAW_DAT</button>
+                </div>
+                <div id="log-display" class="flex-1 overflow-y-auto p-4 space-y-3 log-container font-mono text-[10px]">
+                    <div class="text-zinc-600 italic">Connecting to node streams...</div>
+                </div>
+            </div>
+        </aside>
+    </div>
 
     <script>
-        // --- THREE.JS ENGINE ---
+        // --- THREE.JS COMMAND CENTER VIEW ---
         let scene, camera, renderer, robotMarker;
         let roomMeshes = {};
         const container = document.getElementById('three-container');
 
         function init3D() {
             scene = new THREE.Scene();
-            scene.background = null; // Transparent to see background colors if any
-            
-            camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(container.clientWidth, container.clientHeight);
             container.appendChild(renderer.domElement);
 
-            const ambientLight = new THREE.AmbientLight(0x404040, 2);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
             scene.add(ambientLight);
-            const spotLight = new THREE.SpotLight(0x3b82f6, 1);
-            spotLight.position.set(0, 50, 0);
-            scene.add(spotLight);
+            const directionalLight = new THREE.DirectionalLight(0x3b82f6, 1);
+            directionalLight.position.set(50, 50, 50);
+            scene.add(directionalLight);
 
-            const grid = new THREE.GridHelper(100, 40, 0x18181b, 0x09090b);
+            const grid = new THREE.GridHelper(100, 50, 0x1e1e24, 0x1e1e24);
             scene.add(grid);
 
-            // Rooms (Asymmetric Grid Layout)
-            roomMeshes["A101"] = createRoom("A101", -20, -10, 16, 16, 0x18181b);
-            roomMeshes["A102"] = createRoom("A102", 0, -10, 16, 16, 0x18181b);
-            roomMeshes["A103"] = createRoom("A103", 20, -10, 16, 16, 0x18181b);
-            roomMeshes["A104"] = createRoom("A104", 40, -10, 16, 16, 0x18181b);
+            // Rooms (Tactical Blueprint Style)
+            roomMeshes["A101"] = createRoom("A101", -20, -5, 18, 18, 0x0c0c0e);
+            roomMeshes["A102"] = createRoom("A102", 0, -5, 18, 18, 0x0c0c0e);
+            roomMeshes["A103"] = createRoom("A103", 20, -5, 18, 18, 0x0c0c0e);
+            roomMeshes["A104"] = createRoom("A104", 40, -5, 18, 18, 0x0c0c0e);
 
-            // Robot (High-Agency Style)
+            // Robot (Technical Marker)
             const botGroup = new THREE.Group();
-            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 1.8, 6), new THREE.MeshPhongMaterial({ color: 0xffffff }));
-            body.position.y = 0.9;
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 2, 6), new THREE.MeshPhongMaterial({ color: 0x3b82f6, wireframe: true }));
             botGroup.add(body);
-            const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.4), new THREE.MeshPhongMaterial({ color: 0x18181b }));
-            head.position.y = 2.0;
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.4, 0.4), new THREE.MeshPhongMaterial({ color: 0xffffff }));
+            head.position.y = 1.2;
             botGroup.add(head);
             robotMarker = botGroup;
             scene.add(robotMarker);
 
-            camera.position.set(30, 40, 50);
-            camera.lookAt(10, 0, -5);
+            camera.position.set(0, 60, 60);
+            camera.lookAt(10, 0, 0);
 
             animate();
         }
 
         function createRoom(name, x, z, w, d, color) {
             const group = new THREE.Group();
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshPhongMaterial({ color: color, side: THREE.DoubleSide, transparent: true, opacity: 0.5 }));
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshPhongMaterial({ color: color, side: THREE.DoubleSide }));
             floor.rotation.x = Math.PI / 2;
-            floor.position.set(x, 0.05, z);
+            floor.position.set(x, 0.01, z);
             group.add(floor);
 
             const edges = new THREE.EdgesGeometry(new THREE.BoxGeometry(w, 4, d));
-            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x27272a, transparent: true, opacity: 0.3 }));
+            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x333333 }));
             line.position.set(x, 2, z);
             group.add(line);
             
@@ -225,17 +306,17 @@
             renderer.render(scene, camera);
         }
 
-        // --- DASHBOARD CORE ---
+        // --- DASHBOARD LOGIC ---
         let currentTab = 'ai';
 
         function setTab(tab) {
             currentTab = tab;
             document.querySelectorAll('button[id^="tab-"]').forEach(btn => {
-                btn.classList.remove('border-blue-500', 'text-blue-500');
+                btn.classList.remove('border-blue-500', 'text-blue-500', 'bg-blue-500/5');
                 btn.classList.add('border-transparent', 'text-zinc-500');
             });
             const active = document.getElementById('tab-' + tab);
-            active.classList.add('border-blue-500', 'text-blue-500');
+            active.classList.add('border-blue-500', 'text-blue-500', 'bg-blue-500/5');
             active.classList.remove('border-transparent', 'text-zinc-500');
             fetchLogs();
         }
@@ -247,116 +328,146 @@
                 const display = document.getElementById('log-display');
                 display.innerHTML = '';
                 
-                logs.forEach((log, idx) => {
+                logs.forEach(log => {
                     const div = document.createElement('div');
-                    div.className = 'opacity-0 animate-in fade-in slide-in-from-right duration-500';
-                    div.style.animationDelay = `${idx * 50}ms`;
-                    div.style.animationFillMode = 'forwards';
-                    
+                    div.className = 'border-l border-white/10 pl-3';
                     const time = log.timestamp?.split('T')[1]?.split('Z')[0] || '--:--:--';
-                    let detail = '';
                     
+                    let content = `<span class="text-zinc-600 mr-2">${time}</span>`;
                     if (currentTab === 'ai') {
-                        const color = log.predicted_level === 'critical' ? 'text-red-500' : 'text-blue-400';
-                        detail = `<span class="${color}">${log.predicted_level?.toUpperCase()}</span> <span class="text-zinc-600">SCORE:</span> ${log.anomaly_score?.toFixed(4)}`;
-                    } else if (currentTab === 'alerts') {
-                        detail = `<span class="text-red-500 font-bold">ALRT</span> ${log.message}`;
+                        const lvl = log.predicted_level?.toUpperCase();
+                        const color = lvl === 'CRITICAL' ? 'text-red-500' : 'text-blue-400';
+                        content += `<span class="${color} font-bold">${lvl}</span> S:${log.anomaly_score?.toFixed(3)}`;
+                    } else if (currentTab === 'sensors') {
+                        content += `<span class="text-emerald-500">DATA</span> ${log.zone_id || 'SYS'} T:${log.temperature || '--'}`;
                     } else {
-                        detail = `<span class="text-zinc-500">${JSON.stringify(log).substring(0, 40)}...</span>`;
+                        content += `<span class="text-zinc-400">${JSON.stringify(log).substring(0, 50)}...</span>`;
                     }
                     
-                    div.innerHTML = `<span class="text-zinc-700 mr-3">${time}</span> ${detail}`;
+                    div.innerHTML = content;
                     display.appendChild(div);
                 });
-                
                 display.scrollTop = display.scrollHeight;
-                update3DState(logs);
+
+                // Sync 3D & Alert Sidebar
+                updateRealtimeState(logs);
             } catch (e) {}
         }
 
-        function update3DState(logs) {
+        function updateRealtimeState(logs) {
+            // Reset 3D
             Object.values(roomMeshes).forEach(r => {
                 r.floor.material.color.setHex(r.originalColor);
-                r.line.material.color.setHex(0x27272a);
+                r.line.material.color.setHex(0x333333);
             });
 
-            let anomaly = null;
+            const alertQueue = document.getElementById('alert-queue');
+            let criticalFound = false;
+            let activeAnomaly = null;
+
             logs.forEach(log => {
-                if (log.severity === 'critical' || log.predicted_level === 'critical') {
-                    const room = (log.location || log.zone_id || '').split('_').pop();
-                    if (roomMeshes[room]) {
-                        roomMeshes[room].floor.material.color.setHex(0x450a0a);
-                        roomMeshes[room].line.material.color.setHex(0xef4444);
-                        anomaly = { id: room, log: log };
+                if (log.severity === 'critical' || log.predicted_level === 'critical' || log.level === 'critical') {
+                    criticalFound = true;
+                    const roomId = (log.location || log.zone_id || '').split('_').pop();
+                    
+                    if (!activeAnomaly) {
+                        alertQueue.innerHTML = ''; // Clear empty state
+                        activeAnomaly = { id: roomId, log: log };
                     }
+
+                    // Alert Card
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'panel p-3 border-red-500/50 alert-flash flex flex-col gap-1';
+                    alertDiv.innerHTML = `
+                        <div class="flex justify-between font-mono text-[9px]">
+                            <span class="text-red-500 font-bold">CRITICAL_EVENT</span>
+                            <span class="text-zinc-500">${log.timestamp?.split('T')[1]?.split('Z')[0]}</span>
+                        </div>
+                        <div class="text-xs font-bold text-white uppercase">Anomalous Activity in ${roomId}</div>
+                    `;
+                    alertQueue.prepend(alertDiv);
+
+                    // 3D Update
+                    if (roomMeshes[roomId]) {
+                        roomMeshes[roomId].floor.material.color.setHex(0x450a0a);
+                        roomMeshes[roomId].line.material.color.setHex(0xef4444);
+                    }
+
+                    // Matrix Update
+                    const matrixStatus = document.getElementById(`room-${roomId}-status`);
+                    if (matrixStatus) {
+                        matrixStatus.innerText = 'CRITICAL';
+                        matrixStatus.className = 'px-1.5 py-0.5 rounded text-[8px] font-mono bg-red-500/10 text-red-500';
+                    }
+                }
+
+                // Update Sensor Matrix Values
+                const roomId = (log.zone_id || '').split('_').pop();
+                if (roomId && log.temperature) {
+                    const tempEl = document.getElementById(`room-${roomId}-temp`);
+                    const co2El = document.getElementById(`room-${roomId}-co2`);
+                    if (tempEl) tempEl.innerText = `${log.temperature.toFixed(1)}°C`;
+                    if (co2El) co2El.innerText = log.air_quality_or_co2 || log.co2 || '--';
                 }
             });
 
+            if (!criticalFound) {
+                alertQueue.innerHTML = '<div class="text-[10px] text-zinc-600 p-4 text-center italic">No active incidents detected.</div>';
+                // Reset Matrix Status to Nominal
+                document.querySelectorAll('[id$="-status"]').forEach(el => {
+                    el.innerText = 'NOMINAL';
+                    el.className = 'px-1.5 py-0.5 rounded text-[8px] font-mono bg-emerald-500/10 text-emerald-500';
+                });
+            }
+
+            // HUD Logic
             const hud = document.getElementById('hud-callout');
-            if (anomaly) {
+            if (activeAnomaly && roomMeshes[activeAnomaly.id]) {
                 const pos = new THREE.Vector3();
-                roomMeshes[anomaly.id].floor.getWorldPosition(pos);
-                pos.y += 5;
+                roomMeshes[activeAnomaly.id].floor.getWorldPosition(pos);
                 pos.project(camera);
-                
                 const x = (pos.x * 0.5 + 0.5) * container.clientWidth;
                 const y = (pos.y * -0.5 + 0.5) * container.clientHeight;
-
                 hud.style.left = `${x}px`;
                 hud.style.top = `${y}px`;
                 hud.classList.remove('hidden');
-
-                document.getElementById('hud-title').innerText = `ZONE_${anomaly.id}`;
-                document.getElementById('hud-rationale').innerText = anomaly.log.rationale || anomaly.log.message;
-                if (anomaly.log.features) {
-                    document.getElementById('hud-temp').innerText = `${anomaly.log.features.temperature?.toFixed(1)}°`;
-                    document.getElementById('hud-co2').innerText = anomaly.log.features.co2?.toFixed(0);
-                }
+                document.getElementById('hud-title').innerText = `ZONE_${activeAnomaly.id}`;
+                document.getElementById('hud-score').innerText = activeAnomaly.log.anomaly_score?.toFixed(4) || '1.000';
+                document.getElementById('hud-rationale').innerText = activeAnomaly.log.rationale || activeAnomaly.log.message;
             } else {
                 hud.classList.add('hidden');
             }
         }
 
-        async function updateStatus() {
+        async function updateRobotStatus() {
             try {
                 const res = await fetch('/api/robot/status');
                 const s = await res.json();
-                const dot = document.getElementById('status-dot');
-                const txt = document.getElementById('status-text');
-                
                 if (s.connected) {
-                    dot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]';
-                    txt.innerText = 'STABLE';
-                    txt.className = 'text-emerald-500';
                     robotMarker.position.x = s.location.x;
                     robotMarker.position.z = s.location.y;
-                    document.getElementById('robot-coords').innerText = `${s.location.x.toFixed(2)}, ${s.location.y.toFixed(2)}`;
-                } else {
-                    dot.className = 'w-1.5 h-1.5 rounded-full bg-zinc-700';
-                    txt.innerText = 'OFFLINE';
-                    txt.className = 'text-zinc-500';
+                    document.getElementById('robot-coords').innerText = `X: ${s.location.x.toFixed(2)} | Y: ${s.location.y.toFixed(2)}`;
                 }
                 document.getElementById('robot-battery').innerText = s.battery + '%';
             } catch (e) {}
         }
 
-        async function robotCmd(action, extra = {}) {
+        function resetCamera() {
+            camera.position.set(0, 60, 60);
+            camera.lookAt(10, 0, 0);
+        }
+
+        async function robotCmd(action) {
             await fetch('/api/robot/command', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action, ...extra })
+                body: JSON.stringify({ action })
             });
         }
 
-        window.addEventListener('resize', () => {
-            camera.aspect = container.clientWidth / container.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(container.clientWidth, container.clientHeight);
-        });
-
         init3D();
-        setInterval(fetchLogs, 2000);
-        setInterval(updateStatus, 1000);
+        setInterval(fetchLogs, 1500);
+        setInterval(updateRobotStatus, 1000);
         setInterval(() => {
             document.getElementById('clock').innerText = new Date().toLocaleTimeString();
         }, 1000);

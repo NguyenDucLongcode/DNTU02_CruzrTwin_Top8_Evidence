@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNTU Digital Twin Command Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { background-color: #0a0a0c; color: #e2e8f0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .neon-border { border: 1px solid #3b82f6; box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
+        .log-container::-webkit-scrollbar { width: 4px; }
+        .log-container::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; }
+        .status-online { background-color: #10b981; box-shadow: 0 0 8px #10b981; }
+        .status-offline { background-color: #ef4444; }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="h-16 glass flex items-center justify-between px-6 border-b border-slate-700 z-10">
+        <div class="flex items-center space-x-4">
+            <div class="text-blue-500 font-bold text-xl tracking-tighter">DNTU <span class="text-white">CRUZR TWIN</span></div>
+            <div class="h-6 w-px bg-slate-700"></div>
+            <div class="text-xs uppercase tracking-widest text-slate-400">Digital Twin Management Console</div>
+        </div>
+        <div class="flex items-center space-x-6">
+            <div class="flex items-center space-x-2">
+                <span id="robot-status-dot" class="status-dot status-offline"></span>
+                <span class="text-sm font-medium">ROBOT: <span id="robot-status-text" class="text-slate-400">DISCONNECTED</span></span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <span class="status-dot status-online"></span>
+                <span class="text-sm font-medium">AI ENGINE: <span class="text-green-500">ACTIVE</span></span>
+            </div>
+            <div class="text-sm text-slate-400" id="current-time">00:00:00</div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- Left Panel: 3D Visualization -->
+        <div id="three-container" class="flex-1 relative">
+            <div class="absolute top-4 left-4 z-10 pointer-events-none">
+                <div class="glass p-3 rounded-lg border border-slate-700">
+                    <div class="text-[10px] text-blue-400 uppercase font-bold mb-1">Coordinates</div>
+                    <div class="text-sm font-mono" id="robot-coords">X: 0.00 | Y: 0.00</div>
+                </div>
+            </div>
+            <div class="absolute bottom-4 right-4 z-10 flex flex-col space-y-2">
+                <button onclick="resetCamera()" class="glass p-2 rounded hover:bg-slate-700 text-xs">Reset Cam</button>
+            </div>
+        </div>
+
+        <!-- Right Panel: Logs -->
+        <div class="w-[450px] border-l border-slate-800 flex flex-col glass">
+            <div class="flex border-b border-slate-800">
+                <button onclick="setLogTab('ai')" id="tab-ai" class="flex-1 py-3 text-[10px] font-bold uppercase border-b-2 border-blue-500 text-blue-500">AI Detect</button>
+                <button onclick="setLogTab('alerts')" id="tab-alerts" class="flex-1 py-3 text-[10px] font-bold uppercase border-b-2 border-transparent hover:text-blue-400">Alerts</button>
+                <button onclick="setLogTab('state')" id="tab-state" class="flex-1 py-3 text-[10px] font-bold uppercase border-b-2 border-transparent hover:text-blue-400">System</button>
+                <button onclick="setLogTab('robot')" id="tab-robot" class="flex-1 py-3 text-[10px] font-bold uppercase border-b-2 border-transparent hover:text-blue-400">Robot</button>
+                <button onclick="setLogTab('sensors')" id="tab-sensors" class="flex-1 py-3 text-[10px] font-bold uppercase border-b-2 border-transparent hover:text-blue-400">Sensors</button>
+            </div>
+            <div id="log-display" class="flex-1 overflow-y-auto p-4 space-y-3 log-container font-mono text-[11px]">
+                <!-- Logs will appear here -->
+                <div class="text-slate-500 italic">Initializing log stream...</div>
+            </div>
+            <div class="p-4 border-t border-slate-800 bg-black/20">
+                <div class="flex justify-between items-center text-[10px] text-slate-500">
+                    <span>AUTO-SCROLL: ON</span>
+                    <span id="log-count">0 ENTRIES</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer: Controls -->
+    <footer class="h-24 glass border-t border-slate-800 flex items-center px-6 space-x-8">
+        <!-- Robot Movement -->
+        <div class="flex flex-col">
+            <div class="text-[10px] text-slate-500 uppercase font-bold mb-2">Robot Control</div>
+            <div class="flex space-x-2">
+                <button onclick="robotCmd('move_forward')" class="w-10 h-10 glass flex items-center justify-center rounded hover:border-blue-500">▲</button>
+                <button onclick="robotCmd('move_backward')" class="w-10 h-10 glass flex items-center justify-center rounded hover:border-blue-500">▼</button>
+                <button onclick="robotCmd('turn_left')" class="w-10 h-10 glass flex items-center justify-center rounded hover:border-blue-500">◀</button>
+                <button onclick="robotCmd('turn_right')" class="w-10 h-10 glass flex items-center justify-center rounded hover:border-blue-500">▶</button>
+                <button onclick="robotCmd('stop')" class="w-10 h-10 bg-red-900/40 border border-red-500/50 flex items-center justify-center rounded hover:bg-red-800/60">■</button>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="flex flex-col">
+            <div class="text-[10px] text-slate-500 uppercase font-bold mb-2">Quick Actions</div>
+            <div class="flex space-x-2">
+                <button onclick="robotCmd('emergency')" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded animate-pulse">EVACUATE A101</button>
+                <button onclick="robotCmd('speak', {text: 'Hệ thống đang hoạt động bình thường'})" class="px-4 py-2 glass hover:border-blue-500 text-xs rounded">ANNOUNCE STATUS</button>
+            </div>
+        </div>
+
+        <!-- System Stats -->
+        <div class="flex-1"></div>
+        <div class="flex space-x-6">
+            <div class="text-right">
+                <div class="text-[10px] text-slate-500 uppercase font-bold">Battery</div>
+                <div class="text-xl font-bold text-green-400" id="robot-battery">100%</div>
+            </div>
+            <div class="text-right">
+                <div class="text-[10px] text-slate-500 uppercase font-bold">Avg Temp</div>
+                <div class="text-xl font-bold text-blue-400">24.5°C</div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // --- THREE.JS LOGIC ---
+        let scene, camera, renderer, robotMarker;
+        const container = document.getElementById('three-container');
+
+        function init3D() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a0c);
+            
+            camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 2);
+            scene.add(ambientLight);
+            const pointLight = new THREE.PointLight(0x3b82f6, 1, 100);
+            pointLight.position.set(10, 10, 10);
+            scene.add(pointLight);
+
+            // Floor Grid
+            const grid = new THREE.GridHelper(50, 50, 0x1e293b, 0x1e293b);
+            scene.add(grid);
+
+            // Create Rooms (A101 - A104)
+            createRoom("A101", -10, 0, 8, 8, 0xff0000);
+            createRoom("A102", 0, 0, 8, 8, 0x3b82f6);
+            createRoom("A103", 10, 0, 8, 8, 0x3b82f6);
+            createRoom("A104", 20, 0, 8, 8, 0x3b82f6);
+
+            // Robot Marker
+            const robotGeo = new THREE.CylinderGeometry(0.5, 0.5, 1.5, 32);
+            const robotMat = new THREE.MeshPhongMaterial({ color: 0xffffff, emissive: 0x3b82f6, emissiveIntensity: 0.5 });
+            robotMarker = new THREE.Mesh(robotGeo, robotMat);
+            robotMarker.position.y = 0.75;
+            scene.add(robotMarker);
+
+            camera.position.set(10, 20, 20);
+            camera.lookAt(5, 0, 5);
+
+            animate();
+        }
+
+        function createRoom(name, x, z, w, d, color) {
+            const geometry = new THREE.BoxGeometry(w, 0.2, d);
+            const material = new THREE.MeshPhongMaterial({ color: color, transparent: true, opacity: 0.1, side: THREE.DoubleSide });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(x, 0, z);
+            scene.add(mesh);
+
+            // Walls (Wireframe)
+            const edges = new THREE.EdgesGeometry(new THREE.BoxGeometry(w, 3, d));
+            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: 0.3 }));
+            line.position.set(x, 1.5, z);
+            scene.add(line);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+
+        function resetCamera() {
+            camera.position.set(10, 20, 20);
+            camera.lookAt(5, 0, 5);
+        }
+
+        // --- DASHBOARD LOGIC ---
+        let currentTab = 'ai';
+
+        function setLogTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('button[id^="tab-"]').forEach(btn => {
+                btn.classList.remove('border-blue-500', 'text-blue-500');
+                btn.classList.add('border-transparent');
+            });
+            document.getElementById('tab-' + tab).classList.add('border-blue-500', 'text-blue-500');
+            document.getElementById('tab-' + tab).classList.remove('border-transparent');
+            fetchLogs();
+        }
+
+        async function fetchLogs() {
+            try {
+                const response = await fetch(`/api/logs/${currentTab}`);
+                const logs = await response.json();
+                const display = document.getElementById('log-display');
+                display.innerHTML = '';
+                
+                logs.forEach(log => {
+                    const div = document.createElement('div');
+                    div.className = 'border-l-2 border-slate-700 pl-2 mb-2';
+                    
+                    let content = `[${log.timestamp?.split('T')[1]?.split('Z')[0] || '---'}] `;
+                    if (currentTab === 'ai') {
+                        const levelColor = log.predicted_level === 'critical' ? 'text-red-500' : (log.predicted_level === 'warning' ? 'text-yellow-500' : 'text-green-500');
+                        content += `<span class="${levelColor} font-bold">${log.predicted_level?.toUpperCase()}</span>: Score ${log.anomaly_score?.toFixed(4)}`;
+                        content += `<div class="text-slate-500 text-[10px]">${log.rationale || ''}</div>`;
+                    } else if (currentTab === 'alerts') {
+                        content += `<span class="text-red-400 font-bold">${log.severity?.toUpperCase() || log.level?.toUpperCase()}</span>: ${log.message}`;
+                    } else if (currentTab === 'state') {
+                        content += `<span class="text-purple-400 font-bold">SYSTEM</span>: ${log.room || 'Simulation Run'} - Devices: ${log.devices?.length || 0}`;
+                        content += `<div class="text-slate-500 text-[10px]">Events: ${log.alert_events?.length || 0} | Actions: ${log.robot_actions?.length || 0}</div>`;
+                    } else if (currentTab === 'robot') {
+                        content += `<span class="text-blue-400">${log.action_type || 'MOVE'}</span>: ${log.message || log.status}`;
+                    } else {
+                        const sensorType = log.temperature ? 'TEMP' : (log.co2 ? 'AIR' : 'GENERIC');
+                        content += `<span class="text-slate-300">${sensorType}</span>: Room ${log.zone_id || '---'} | Val: ${log.temperature || log.air_quality_or_co2 || '---'}`;
+                    }
+                    
+                    div.innerHTML = content;
+                    display.appendChild(div);
+                });
+                
+                document.getElementById('log-count').innerText = `${logs.length} ENTRIES`;
+                display.scrollTop = display.scrollHeight;
+            } catch (e) {
+                console.error("Fetch logs failed", e);
+            }
+        }
+
+        async function updateStatus() {
+            try {
+                const response = await fetch('/api/robot/status');
+                const status = await response.json();
+                
+                const dot = document.getElementById('robot-status-dot');
+                const text = document.getElementById('robot-status-text');
+                const battery = document.getElementById('robot-battery');
+                const coords = document.getElementById('robot-coords');
+
+                if (status.connected) {
+                    dot.className = 'status-dot status-online';
+                    text.innerText = 'CONNECTED';
+                    text.className = 'text-green-500';
+                    robotMarker.position.x = status.location.x;
+                    robotMarker.position.z = status.location.y;
+                    coords.innerText = `X: ${status.location.x.toFixed(2)} | Y: ${status.location.y.toFixed(2)}`;
+                } else {
+                    dot.className = 'status-dot status-offline';
+                    text.innerText = 'DISCONNECTED';
+                    text.className = 'text-slate-400';
+                }
+                battery.innerText = status.battery + '%';
+            } catch (e) {}
+        }
+
+        async function robotCmd(action, extra = {}) {
+            try {
+                await fetch('/api/robot/command', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action, ...extra })
+                });
+            } catch (e) {
+                alert("Lỗi gửi lệnh robot");
+            }
+        }
+
+        // Initialize
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        init3D();
+        setInterval(fetchLogs, 2000);
+        setInterval(updateStatus, 1000);
+        setInterval(() => {
+            document.getElementById('current-time').innerText = new Date().toLocaleTimeString();
+        }, 1000);
+        fetchLogs();
+    </script>
+</body>
+</html>

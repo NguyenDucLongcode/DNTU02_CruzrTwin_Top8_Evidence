@@ -80,7 +80,7 @@ def detect_anomaly(sensor: dict) -> dict:
             "in_boundary": True,
             "predicted_level": "normal",
             "rule_hits": [],
-            "rationale": "The sensor data is inside the normal boundary.",
+            "rationale": "Sensor values remain within normal operating range.",
             "recommended_action": "NO_ACTION",
             "status": "AI_DETECTED"
         }

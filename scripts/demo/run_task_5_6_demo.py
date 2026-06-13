@@ -18,6 +18,7 @@ def main():
     
     # Define test cases
     normal_case = {
+        "scenario_id": "SCN_NORMAL_001",
         "temperature": 25.0,
         "humidity": 60.0,
         "smoke": 50.0,
@@ -26,6 +27,7 @@ def main():
     }
     
     warning_case = {
+        "scenario_id": "SCN_WARNING_001",
         "temperature": 34.0,
         "humidity": 65.0,
         "smoke": 180.0,
@@ -34,11 +36,12 @@ def main():
     }
     
     critical_case = {
+        "scenario_id": "SCN_CRITICAL_001",
         "temperature": 45.0,
         "humidity": 15.0,
         "smoke": 400.0,
         "co2": 1000.0,
-        "power": 8.0
+        "power": 920.0
     }
     
     # Process

@@ -128,4 +128,5 @@ def test_closed_loop_critical():
     assert res["alert_event"] is not None
     assert res["alert_event"]["level"] == "critical"
     assert res["alert_event"]["status"] == "OPEN"
-    assert res["alert_event"]["recommended_action"] == "DISPATCH_CRUZR_GUIDANCE"
+    assert res["alert_event"]["action_code"] == "DISPATCH_CRUZR_GUIDANCE"
+    assert "send cruzr" in res["alert_event"]["recommended_action"].lower()

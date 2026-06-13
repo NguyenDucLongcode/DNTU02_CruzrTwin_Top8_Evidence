@@ -15,6 +15,9 @@ def main():
     files_to_reset = [
         os.path.join(config["log_dir"], "ai_detection.jsonl"),
         os.path.join(config["log_dir"], "alert_events.jsonl"),
+        os.path.join(config["log_dir"], "robot_actions.jsonl"),
+        os.path.join(config["log_dir"], "sensor_readings.jsonl"),
+        os.path.join(config["log_dir"], "orion_state.jsonl"),
         os.path.join(config["evidence_dir"], "task_5_6_test_summary.json"),
         os.path.join(config["evidence_dir"], "task_5_6_trace_sample.json")
     ]

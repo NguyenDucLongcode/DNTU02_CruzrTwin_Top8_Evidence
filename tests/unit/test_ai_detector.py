@@ -117,3 +117,16 @@ def test_detector_critical():
     assert res["predicted_level"] == "critical"
     assert res["in_boundary"] is False
     assert res["recommended_action"] == "CREATE_CRITICAL_ALERT"
+
+def test_isolation_forest_returns_anomaly_score():
+    sensor = {
+        "temperature": 45.0,
+        "humidity": 15.0,
+        "smoke": 400.0,
+        "co2": 1000.0,
+        "power": 8.0
+    }
+    res = detect_anomaly(sensor)
+    assert "anomaly_score" in res
+    assert isinstance(res["anomaly_score"], float)
+

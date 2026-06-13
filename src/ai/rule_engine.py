@@ -65,10 +65,11 @@ def classify_alert_level(sensor: dict) -> dict:
     # Determine final level
     if is_critical:
         level = "critical"
-        rationale = "High temperature, high smoke, or high CO2 shows a critical room problem."
+        energy_wording = "high energy consumption" if power > 110.0 else "abnormal energy consumption"
+        rationale = f"High temperature, abnormal air quality, smoke status, and {energy_wording} indicate a critical indoor-environment anomaly."
     else:
         level = "warning"
-        rationale = "Elevated sensor values show a warning room problem."
+        rationale = "Abnormal air quality or temperature variation indicates an early warning indoor-environment anomaly."
         
     return {
         "level": level,

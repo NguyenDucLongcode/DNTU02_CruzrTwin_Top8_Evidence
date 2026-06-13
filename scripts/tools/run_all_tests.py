@@ -18,16 +18,16 @@ def main():
     run_cmd([sys.executable, "scripts/tools/reset_task_5_6_outputs.py"])
     
     # 3. Generate sensor data
-    run_cmd([sys.executable, "scripts/ai/generate_sensor_data.py"])
+    run_cmd([sys.executable, "scripts/data_generation/generate_sensor_data.py"])
     
     # 4. Validate data CSV
     run_cmd([sys.executable, "scripts/tools/validate_ai_data.py"])
     
     # 5. Train IsolationForest model
-    run_cmd([sys.executable, "scripts/ai/train_anomaly_model.py"])
+    run_cmd([sys.executable, "scripts/training/train_anomaly_model.py"])
     
     # 6. Evaluate model performance
-    run_cmd([sys.executable, "scripts/ai/evaluate_ai.py"])
+    run_cmd([sys.executable, "scripts/training/evaluate_ai.py"])
     
     # 7. Run Demo
     run_cmd([sys.executable, "scripts/demo/run_task_5_6_demo.py"])

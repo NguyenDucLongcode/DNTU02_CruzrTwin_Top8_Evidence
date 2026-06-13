@@ -52,3 +52,30 @@ def test_rule_engine_critical_co2():
     res = classify_alert_level(sensor)
     assert res["level"] == "critical"
     assert "co2 >= 900" in res["rule_hits"]
+
+def test_energy_rationale_high_consumption():
+    sensor = {
+        "temperature": 45.0,
+        "humidity": 15.0,
+        "smoke": 400.0,
+        "co2": 1000.0,
+        "power": 920.0
+    }
+    res = classify_alert_level(sensor)
+    assert res["level"] == "critical"
+    assert "high energy consumption" in res["rationale"]
+    assert "abnormal energy consumption" not in res["rationale"]
+
+def test_energy_rationale_abnormal_low_consumption():
+    sensor = {
+        "temperature": 45.0,
+        "humidity": 15.0,
+        "smoke": 400.0,
+        "co2": 1000.0,
+        "power": 8.0
+    }
+    res = classify_alert_level(sensor)
+    assert res["level"] == "critical"
+    assert "abnormal energy consumption" in res["rationale"]
+    assert "high energy consumption" not in res["rationale"]
+

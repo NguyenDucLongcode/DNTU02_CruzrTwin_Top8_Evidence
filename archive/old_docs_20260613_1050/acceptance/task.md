@@ -1,0 +1,14 @@
+- `[x]` Sửa đổi `src/fiware/webhook_receiver.py` để gọi pipeline AI khi nhận sensor update.
+- `[x]` Cập nhật `src/orchestration/task_5_6_pipeline.py` để parse payload, map features, chạy Isolation Forest trước, Rule Layer sau, và ghi log `ai_detection.jsonl` đúng tên sensor gốc và tách action_code/recommended_action.
+- `[x]` Cập nhật `src/alerts/alert_service.py` để tạo AlertEvent, upsert lên Orion Context Broker, ghi log `alert_events.jsonl` (status ACTIVE, recommended_action mô tả câu đầy đủ), và kích hoạt RobotAction khi critical.
+- `[x]` Thêm kiểm thử tích hợp mới tại `tests/integration/test_integration_flow.py` bao phủ toàn bộ 14 kịch bản kiểm thử (idempotency, level/severity sync, orion error check, sensor mismatch skip).
+- `[x]` Chạy thử pytest để xác nhận toàn bộ 33 kịch bản kiểm thử pass 100%.
+- `[x]` **P0.1** — Thêm endpoint `/api/operator/ack` trong `webhook_receiver.py` (ACK/ERROR, idempotency cache, Orion upsert, ghi `operator_ack.jsonl`).
+- `[x]` **P0.1 Bugfix** — Sửa lỗi runtime `_processed_acks` (đổi từ `set()` → `dict{}`) để idempotency cache hoạt động đúng.
+- `[x]` **P0.2** — Tạo `src/robot/cruzr_simulator.py` (poll Orion, PENDING→NAVIGATING→DELIVERED, ghi log, offline mode).
+- `[x]` **P0.2** — Thêm `src/robot/__init__.py` để module importable.
+- `[x]` **P1** — Thêm 10 integration tests mới tại `tests/integration/test_operator_ack_and_simulator.py` (ACK decision, ERROR decision, invalid decision, log writing, idempotency, custom note, offline delivery, offline idempotency, schema validation, safety disclaimer).
+- `[x]` **P1** — Tạo minimal Web Dashboard (`src/dashboard/index.html` + `src/dashboard/app.py`) với KPI strip, pipeline flow visualization, và live trace cards (no Flask dependency — dùng `http.server`).
+- `[x]` **P1** — Cập nhật `scripts/tools/show_demo_trace.py` để đọc `alert_events.jsonl` trực tiếp (primary source), fallback orion_state.
+- `[x]` Chạy demo script và xác nhận: NORMAL PASS, WARNING PASS, CRITICAL PASS.
+- `[x]` Chạy pytest xác nhận: **43/43 passed** (33 cũ + 10 mới).

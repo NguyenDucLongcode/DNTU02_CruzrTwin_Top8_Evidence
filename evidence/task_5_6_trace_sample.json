@@ -2,7 +2,7 @@
   "normal_case_trace": {
     "processing_status": "SUCCESS",
     "ai_result": {
-      "timestamp": "2026-06-13T10:34:51Z",
+      "timestamp": "2026-06-13T10:36:34Z",
       "features": {
         "temperature": 25.0,
         "humidity": 60.0,
@@ -26,7 +26,7 @@
   "warning_case_trace": {
     "processing_status": "SUCCESS",
     "ai_result": {
-      "timestamp": "2026-06-13T10:34:51Z",
+      "timestamp": "2026-06-13T10:36:34Z",
       "features": {
         "temperature": 34.0,
         "humidity": 65.0,
@@ -57,7 +57,7 @@
     },
     "alert_event": {
       "demo_run_id": "DNTU02_TOP8_RUN_2026_001",
-      "timestamp": "2026-06-13T10:34:51Z",
+      "timestamp": "2026-06-13T10:36:34Z",
       "alert_id": "AlertEvent:SCN_WARNING_001",
       "type": "AlertEvent",
       "scenario_id": "SCN_WARNING_001",
@@ -72,7 +72,7 @@
       "action_code": "CHECK_ROOM",
       "recommended_action": "Create warning AlertEvent and notify operator.",
       "ai_result_ref": {
-        "timestamp": "2026-06-13T10:34:51Z",
+        "timestamp": "2026-06-13T10:36:34Z",
         "features": {
           "temperature": 34.0,
           "humidity": 65.0,
@@ -107,7 +107,7 @@
   "critical_case_trace": {
     "processing_status": "SUCCESS",
     "ai_result": {
-      "timestamp": "2026-06-13T10:34:51Z",
+      "timestamp": "2026-06-13T10:36:34Z",
       "features": {
         "temperature": 45.0,
         "humidity": 15.0,
@@ -140,7 +140,7 @@
     },
     "alert_event": {
       "demo_run_id": "DNTU02_TOP8_RUN_2026_001",
-      "timestamp": "2026-06-13T10:34:51Z",
+      "timestamp": "2026-06-13T10:36:34Z",
       "alert_id": "AlertEvent:SCN_CRITICAL_001",
       "type": "AlertEvent",
       "scenario_id": "SCN_CRITICAL_001",
@@ -155,7 +155,7 @@
       "action_code": "DISPATCH_CRUZR_GUIDANCE",
       "recommended_action": "Send Cruzr to response point and request operator acknowledgement. Safety-critical actuation should remain operator-approved or simulated.",
       "ai_result_ref": {
-        "timestamp": "2026-06-13T10:34:51Z",
+        "timestamp": "2026-06-13T10:36:34Z",
         "features": {
           "temperature": 45.0,
           "humidity": 15.0,

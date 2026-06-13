@@ -42,9 +42,10 @@ def evaluate_model_performance(data_path: str) -> dict:
             "timestamp": row["timestamp"],
             "temperature": float(row["temperature"]),
             "humidity": float(row["humidity"]),
-            "smoke": float(row["smoke"]),
+            "smoke_status": float(row["smoke_status"]),
+            "raw_smoke_value": float(row.get("raw_smoke_value", row["smoke_status"])),
             "co2": float(row["co2"]),
-            "power": float(row["power"])
+            "energy_consumption": float(row["energy_consumption"])
         }
         expected_label = int(row["label"])
         

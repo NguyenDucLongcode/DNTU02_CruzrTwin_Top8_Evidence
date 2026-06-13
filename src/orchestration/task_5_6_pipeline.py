@@ -125,6 +125,31 @@ def process_sensor_event(orion_payload: dict) -> dict:
         else:
             expected_label = None
     
+    # Load profile to check critical combinations dynamically
+    from src.ai.detector import load_sensor_profile
+    from src.ai.rule_engine import DEFAULT_BASELINE
+    profile_path = cfg.get("sensor_profile_path", "models/sensor_profile.json")
+    profile = load_sensor_profile(profile_path)
+    baseline = None
+    if profile is not None:
+        hour_str = None
+        ts = ai_result.get("timestamp")
+        if ts:
+            try:
+                dt = pd.to_datetime(ts.replace("Z", "+00:00") if isinstance(ts, str) else ts)
+                hour_str = str(dt.hour)
+            except Exception:
+                pass
+        if hour_str is not None and "hourly_baseline" in profile and hour_str in profile["hourly_baseline"]:
+            baseline = profile["hourly_baseline"][hour_str]
+        if baseline is None and "global_statistics" in profile:
+            baseline = profile["global_statistics"]
+    if baseline is None:
+        baseline = DEFAULT_BASELINE
+
+    b_temp = baseline.get("temperature", DEFAULT_BASELINE["temperature"])
+    b_co2 = baseline.get("co2", DEFAULT_BASELINE["co2"])
+
     # 7. Action code and recommended action separation
     if lvl == "normal":
         action_code = "NO_ACTION"
@@ -134,7 +159,7 @@ def process_sensor_event(orion_payload: dict) -> dict:
         rec_action = "Create warning AlertEvent and notify operator."
     elif lvl == "critical":
         action_code = "DISPATCH_CRUZR_GUIDANCE"
-        if float(temp) >= 38.0 and float(smoke) >= 1.0 and float(co2) >= 900.0:
+        if float(temp) >= b_temp["critical_high"] and float(smoke) >= 1.0 and float(co2) >= b_co2["critical_high"]:
             rec_action = "Create critical AlertEvent, send Cruzr to response point, and request operator acknowledgement. Safety-critical actuation should remain operator-approved or simulated."
         else:
             rec_action = "Send Cruzr to response point and request operator acknowledgement."
@@ -199,9 +224,10 @@ def process_sensor_event(orion_payload: dict) -> dict:
         "zone_id": zone_id,
         "temperature": float(temp),
         "humidity": float(hum),
-        "smoke": float(smoke),
+        "smoke_status": 1 if float(smoke) >= 1.0 else 0,
+        "raw_smoke_value": float(smoke),
         "co2": float(co2),
-        "power": float(power),
+        "energy_consumption": float(power),
         "device_status": "ON"
     }
     append_jsonl(sensor_readings_path, sensor_log_entry)

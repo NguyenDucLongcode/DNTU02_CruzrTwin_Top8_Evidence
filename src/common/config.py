@@ -15,6 +15,7 @@ def get_config() -> dict:
         "data_path": os.getenv("DATA_PATH", "data/sensor_data.csv"),
         "model_path": os.getenv("MODEL_PATH", "models/anomaly_model.pkl"),
         "feature_schema_path": os.getenv("FEATURE_SCHEMA_PATH", "models/feature_schema.json"),
+        "sensor_profile_path": os.getenv("SENSOR_PROFILE_PATH", "models/sensor_profile.json"),
         "log_dir": os.getenv("LOG_DIR", "logs"),
         "evidence_dir": os.getenv("EVIDENCE_DIR", "evidence"),
         "orion_enabled": os.getenv("ORION_ENABLED", "false").lower() == "true",

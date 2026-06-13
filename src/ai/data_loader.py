@@ -10,10 +10,17 @@ def get_feature_columns() -> list[str]:
 
 def load_sensor_data(path: str) -> pd.DataFrame:
     """
-    Load sensor data CSV from path.
+    Load sensor data CSV from path, mapping legacy columns if necessary.
     """
     try:
-        return pd.read_csv(path)
+        df = pd.read_csv(path)
+        if "power" in df.columns and "energy_consumption" not in df.columns:
+            df = df.rename(columns={"power": "energy_consumption"})
+        if "smoke" in df.columns and "smoke_status" not in df.columns:
+            df["smoke_status"] = df["smoke"].apply(lambda x: 1 if float(x) >= 1.0 else 0)
+        if "expected_label" in df.columns and "label" not in df.columns:
+            df["label"] = df["expected_label"].apply(lambda x: 0 if x == "normal" else 1)
+        return df
     except Exception as e:
         raise ValidationError(f"Failed to read CSV at {path}. Error: {e}")
 

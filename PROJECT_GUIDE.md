@@ -57,12 +57,15 @@ $$\text{FIWARE Orion Payload} \longrightarrow \mathbf{\text{AI + Rule Layer}} \l
 
 ## 4. Key Runtime Modules
 
-* **[src/ai/detector.py](file:///c:/Users/asus/Videos/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/src/ai/detector.py)**: Isolation Forest inference and anomaly score computation.
-* **[src/ai/rule_engine.py](file:///c:/Users/asus/Videos/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/src/ai/rule_engine.py)**: Threshold rule verification, dynamic rationale wording, and recommended action assignment.
+* **[src/ai/detector.py](file:///c:/Users/asus/Videos/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/src/ai/detector.py)**: Profile-driven Isolation Forest anomaly detection.
+* **[src/ai/rule_engine.py](file:///c:/Users/asus/Videos/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/src/ai/rule_engine.py)**: Dynamic baseline-driven rule verification and recommended action assignment.
 * **[src/orchestration/task_5_6_pipeline.py](file:///c:/Users/asus/Videos/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/src/orchestration/task_5_6_pipeline.py)**: Directs parsing, data validation, AI evaluation, and logs dispatching.
 * **[src/alerts/alert_service.py](file:///c:/Users/asus/Videos/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/src/alerts/alert_service.py)**: AlertEvent lifecycle, RobotAction bootstrapping, idempotency filters, and Orion update client.
 * **[src/fiware/webhook_receiver.py](file:///c:/Users/asus/Videos/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/src/fiware/webhook_receiver.py)**: Webhook endpoint for Orion notifications and operator acknowledgment interface.
 * **[src/robot/cruzr_simulator.py](file:///c:/Users/asus/Videos/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/src/robot/cruzr_simulator.py)**: Simulated Cruzr client daemon to poll and handle `RobotAction`.
+* **[scripts/data_generation/generate_sensor_data.py](file:///c:/Users/asus/Videos/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/scripts/data_generation/generate_sensor_data.py)**: Generates logical 30-day (1-month) sensor telemetry dataset.
+* **[scripts/training/build_sensor_profile.py](file:///c:/Users/asus/Videos/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/scripts/training/build_sensor_profile.py)**: Computes hourly, day-type, and global baseline profiles from normal rows only.
+* **[scripts/training/train_anomaly_model.py](file:///c:/Users/asus/Videos/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/scripts/training/train_anomaly_model.py)**: Tunes and trains the anomaly Isolation Forest model.
 * **[scripts/demo/run_task_5_6_demo.py](file:///c:/Users/asus/Videos/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/scripts/demo/run_task_5_6_demo.py)**: Replays 3 scenarios (Normal, Warning, Critical) to run the pipeline.
 * **[scripts/tools/reset_task_5_6_outputs.py](file:///c:/Users/asus/Videos/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/scripts/tools/reset_task_5_6_outputs.py)**: Cleans all runtime output files, logs, and evidence caches.
 * **[scripts/tools/assert_task_5_6_acceptance.py](file:///c:/Users/asus/Videos/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/scripts/tools/assert_task_5_6_acceptance.py)**: Asserts correct system outputs for acceptance criteria.
@@ -89,7 +92,7 @@ $$\text{FIWARE Orion Payload} \longrightarrow \mathbf{\text{AI + Rule Layer}} \l
 
 ## 6. How to Run All Tests
 
-To run the entire system regression suite (58 passed tests):
+To run the entire system regression suite (65 passed tests):
 ```powershell
 .venv\Scripts\python -m pytest --tb=short -q
 ```
@@ -98,10 +101,45 @@ To run the entire system regression suite (58 passed tests):
 
 ## 7. How to Run My Scope Tests — Tasks 5–6
 
-To run unit and integration tests strictly within the AI detection and AlertEvent scope (48 passed tests):
+To run unit and integration tests strictly within the AI detection and AlertEvent scope (50 passed tests):
 ```powershell
 .venv\Scripts\python -m pytest tests/unit/test_ai_detector.py tests/unit/test_rule_engine.py tests/unit/test_alert_service.py tests/unit/test_ai_training_normal_only.py tests/unit/test_data_loader.py tests/integration/test_integration_flow.py tests/integration/test_closed_loop_task_5_6.py --tb=short -q
 ```
+
+---
+
+## 7.5. How to Train AI & Generate Sensor Baseline Profile
+
+The AI Detector and Rule Layer are driven by a dynamic, learned baseline profile (`models/sensor_profile.json`) instead of hardcoded rules. You can rebuild this baseline profile and retrain the Isolation Forest model whenever the dataset changes:
+
+1. **Generate the 30-day (1-month) sensor telemetry dataset**:
+   Generates a continuous 30-day dataset (8,640 rows, 5-minute interval) with day/night profiles, weekday/weekend cycles, and realistic anomaly patterns:
+   ```powershell
+   .venv\Scripts\python scripts/data_generation/generate_sensor_data.py --days 30 --interval-minutes 5 --output data/sensor_data.csv
+   ```
+   *Primary output:* [sensor_data.csv](file:///c:/Users/asus/Videos/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/data/sensor_data.csv).
+
+2. **Build the sensor baseline profile**:
+   Ingests the dataset and extracts hourly (0–23), day-type (working_day vs. weekend), and global statistics from **normal rows only** (expected_label == "normal"):
+   ```powershell
+   .venv\Scripts\python scripts/training/build_sensor_profile.py --input data/sensor_data.csv --output models/sensor_profile.json
+   ```
+   *Primary output:* [sensor_profile.json](file:///c:/Users/asus/Videos/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/models/sensor_profile.json).
+
+3. **Train and Tune the Anomaly model**:
+   Evaluates a grid of contamination candidates (0.005 to 0.05), selects the best configuration meeting Precision >= 0.85 and Recall >= 0.80, and trains the final Isolation Forest model:
+   ```powershell
+   .venv\Scripts\python scripts/training/train_anomaly_model.py
+   ```
+   *Primary output:* [anomaly_model.pkl](file:///c:/Users/asus/Videos/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/DNTU02_CruzrTwin_Top8_Evidence-khoaduc/models/anomaly_model.pkl).
+
+4. **Evaluate the AI model**:
+   Evaluates anomaly detection performance and calculates Precision, Recall, F1-Score, and confusion matrix:
+   ```powershell
+   .venv\Scripts\python scripts/training/evaluate_ai.py
+   ```
+
+*Note: The canonical fields are temperature, humidity, co2, smoke_status, and energy_consumption. The legacy alias `power` is supported for backward compatibility.*
 
 ---
 
@@ -241,4 +279,4 @@ If the Orion Context Broker is running (e.g. via Docker Compose on port 1026) an
 
 ## 12. Cleanup Note
 
-All historical markdown reports, walkthroughs, task planners, and test plan files have been consolidated into this unified file (`PROJECT_GUIDE.md`) and archived in `archive/` to keep the project clean.
+All historical markdown reports, walkthroughs, task planners, and test plan files have been consolidated into this unified file (`PROJECT_GUIDE.md`) to keep the project clean.

@@ -2,9 +2,9 @@
   "features": [
     "temperature",
     "humidity",
-    "smoke",
     "co2",
-    "power"
+    "smoke_status",
+    "energy_consumption"
   ],
   "label_column": "label",
   "timestamp_column": "timestamp",

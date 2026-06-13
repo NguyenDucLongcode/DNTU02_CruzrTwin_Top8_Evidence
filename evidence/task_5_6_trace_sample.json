@@ -2,17 +2,17 @@
   "normal_case_trace": {
     "processing_status": "SUCCESS",
     "ai_result": {
-      "timestamp": "2026-06-13T05:24:15Z",
+      "timestamp": "2026-06-13T10:34:51Z",
       "features": {
         "temperature": 25.0,
         "humidity": 60.0,
-        "smoke": 50.0,
+        "smoke_status": 0.0,
         "co2": 400.0,
-        "power": 50.0
+        "energy_consumption": 50.0
       },
       "model": "IsolationForest",
       "training_logic": "normal_only_boundary_learning",
-      "anomaly_score": 0.10636241843433203,
+      "anomaly_score": 0.11990788694131671,
       "predicted_anomaly": 0,
       "in_boundary": true,
       "predicted_level": "normal",
@@ -26,27 +26,27 @@
   "warning_case_trace": {
     "processing_status": "SUCCESS",
     "ai_result": {
-      "timestamp": "2026-06-13T05:24:15Z",
+      "timestamp": "2026-06-13T10:34:51Z",
       "features": {
         "temperature": 34.0,
         "humidity": 65.0,
-        "smoke": 180.0,
+        "smoke_status": 0.0,
         "co2": 750.0,
-        "power": 90.0
+        "energy_consumption": 90.0
       },
       "model": "IsolationForest",
       "training_logic": "normal_only_boundary_learning",
-      "anomaly_score": -0.06606203790050424,
+      "anomaly_score": -0.05990088222854717,
       "predicted_anomaly": 1,
       "in_boundary": false,
       "predicted_level": "warning",
       "rule_hits": [
-        "31 <= temperature < 38",
-        "100 <= smoke < 300",
-        "600 <= co2 < 900",
-        "power is a little outside normal range"
+        "30.4 <= temperature < 37",
+        "81.4 <= smoke < 235.1",
+        "630.8 <= co2 < 919.8",
+        "energy_consumption is a little outside normal range"
       ],
-      "rationale": "Abnormal air quality or temperature variation indicates an early warning indoor-environment anomaly.",
+      "rationale": "Temperature is above the learned monthly baseline. CO2 exceeds the learned monthly baseline. These indicate an early warning indoor-environment anomaly.",
       "recommended_action": "Create warning AlertEvent and notify operator.",
       "status": "AI_DETECTED",
       "demo_run_id": "DNTU02_TOP8_RUN_2026_001",
@@ -57,7 +57,7 @@
     },
     "alert_event": {
       "demo_run_id": "DNTU02_TOP8_RUN_2026_001",
-      "timestamp": "2026-06-13T05:24:15Z",
+      "timestamp": "2026-06-13T10:34:51Z",
       "alert_id": "AlertEvent:SCN_WARNING_001",
       "type": "AlertEvent",
       "scenario_id": "SCN_WARNING_001",
@@ -67,32 +67,32 @@
       "status": "OPEN",
       "evidence_status": "ACTIVE",
       "source_model": "rule_assisted_isolation_forest",
-      "anomaly_score": -0.06606203790050424,
+      "anomaly_score": -0.05990088222854717,
       "message": "Warning indoor-environment anomaly detected.",
       "action_code": "CHECK_ROOM",
       "recommended_action": "Create warning AlertEvent and notify operator.",
       "ai_result_ref": {
-        "timestamp": "2026-06-13T05:24:15Z",
+        "timestamp": "2026-06-13T10:34:51Z",
         "features": {
           "temperature": 34.0,
           "humidity": 65.0,
-          "smoke": 180.0,
+          "smoke_status": 0.0,
           "co2": 750.0,
-          "power": 90.0
+          "energy_consumption": 90.0
         },
         "model": "IsolationForest",
         "training_logic": "normal_only_boundary_learning",
-        "anomaly_score": -0.06606203790050424,
+        "anomaly_score": -0.05990088222854717,
         "predicted_anomaly": 1,
         "in_boundary": false,
         "predicted_level": "warning",
         "rule_hits": [
-          "31 <= temperature < 38",
-          "100 <= smoke < 300",
-          "600 <= co2 < 900",
-          "power is a little outside normal range"
+          "30.4 <= temperature < 37",
+          "81.4 <= smoke < 235.1",
+          "630.8 <= co2 < 919.8",
+          "energy_consumption is a little outside normal range"
         ],
-        "rationale": "Abnormal air quality or temperature variation indicates an early warning indoor-environment anomaly.",
+        "rationale": "Temperature is above the learned monthly baseline. CO2 exceeds the learned monthly baseline. These indicate an early warning indoor-environment anomaly.",
         "recommended_action": "Create warning AlertEvent and notify operator.",
         "status": "AI_DETECTED",
         "demo_run_id": "DNTU02_TOP8_RUN_2026_001",
@@ -107,29 +107,29 @@
   "critical_case_trace": {
     "processing_status": "SUCCESS",
     "ai_result": {
-      "timestamp": "2026-06-13T05:24:15Z",
+      "timestamp": "2026-06-13T10:34:51Z",
       "features": {
         "temperature": 45.0,
         "humidity": 15.0,
-        "smoke": 400.0,
+        "smoke_status": 1.0,
         "co2": 1000.0,
-        "power": 920.0
+        "energy_consumption": 920.0
       },
       "model": "IsolationForest",
       "training_logic": "normal_only_boundary_learning",
-      "anomaly_score": -0.10393256833379028,
+      "anomaly_score": -0.008358642680221351,
       "predicted_anomaly": 1,
       "in_boundary": false,
       "predicted_level": "critical",
       "rule_hits": [
-        "temperature >= 38",
-        "smoke >= 300",
-        "co2 >= 900",
-        "smoke high (>=250) + temperature high (>=36)",
-        "smoke high (>=250) + co2 high (>=850)",
-        "two or more strong risk signs (temp >= 36, smoke >= 250, co2 >= 850, power extreme (<10 or >110))"
+        "temperature >= 37",
+        "smoke >= 235.1",
+        "co2 >= 919.8",
+        "smoke high (>=200.9) + temperature high (>=32.4)",
+        "smoke high (>= 200.9) + co2 high (>= 875.3)",
+        "two or more strong risk signs (temp >= 32.4, smoke >= 200.9, co2 >= 875.3, energy extreme (<10 or >110.7))"
       ],
-      "rationale": "High temperature, abnormal air quality, smoke status, and high energy consumption indicate a critical indoor-environment anomaly.",
+      "rationale": "Temperature is above the learned monthly baseline. CO2 exceeds the learned monthly baseline. Energy consumption is unusually high compared with the monthly baseline. Smoke status indicates abnormal indoor condition. These indicate a critical indoor-environment anomaly.",
       "recommended_action": "Create critical AlertEvent, send Cruzr to response point, and request operator acknowledgement. Safety-critical actuation should remain operator-approved or simulated.",
       "status": "AI_DETECTED",
       "demo_run_id": "DNTU02_TOP8_RUN_2026_001",
@@ -140,7 +140,7 @@
     },
     "alert_event": {
       "demo_run_id": "DNTU02_TOP8_RUN_2026_001",
-      "timestamp": "2026-06-13T05:24:15Z",
+      "timestamp": "2026-06-13T10:34:51Z",
       "alert_id": "AlertEvent:SCN_CRITICAL_001",
       "type": "AlertEvent",
       "scenario_id": "SCN_CRITICAL_001",
@@ -150,34 +150,34 @@
       "status": "OPEN",
       "evidence_status": "ACTIVE",
       "source_model": "rule_assisted_isolation_forest",
-      "anomaly_score": -0.10393256833379028,
+      "anomaly_score": -0.008358642680221351,
       "message": "Critical indoor-environment anomaly detected.",
       "action_code": "DISPATCH_CRUZR_GUIDANCE",
       "recommended_action": "Send Cruzr to response point and request operator acknowledgement. Safety-critical actuation should remain operator-approved or simulated.",
       "ai_result_ref": {
-        "timestamp": "2026-06-13T05:24:15Z",
+        "timestamp": "2026-06-13T10:34:51Z",
         "features": {
           "temperature": 45.0,
           "humidity": 15.0,
-          "smoke": 400.0,
+          "smoke_status": 1.0,
           "co2": 1000.0,
-          "power": 920.0
+          "energy_consumption": 920.0
         },
         "model": "IsolationForest",
         "training_logic": "normal_only_boundary_learning",
-        "anomaly_score": -0.10393256833379028,
+        "anomaly_score": -0.008358642680221351,
         "predicted_anomaly": 1,
         "in_boundary": false,
         "predicted_level": "critical",
         "rule_hits": [
-          "temperature >= 38",
-          "smoke >= 300",
-          "co2 >= 900",
-          "smoke high (>=250) + temperature high (>=36)",
-          "smoke high (>=250) + co2 high (>=850)",
-          "two or more strong risk signs (temp >= 36, smoke >= 250, co2 >= 850, power extreme (<10 or >110))"
+          "temperature >= 37",
+          "smoke >= 235.1",
+          "co2 >= 919.8",
+          "smoke high (>=200.9) + temperature high (>=32.4)",
+          "smoke high (>= 200.9) + co2 high (>= 875.3)",
+          "two or more strong risk signs (temp >= 32.4, smoke >= 200.9, co2 >= 875.3, energy extreme (<10 or >110.7))"
         ],
-        "rationale": "High temperature, abnormal air quality, smoke status, and high energy consumption indicate a critical indoor-environment anomaly.",
+        "rationale": "Temperature is above the learned monthly baseline. CO2 exceeds the learned monthly baseline. Energy consumption is unusually high compared with the monthly baseline. Smoke status indicates abnormal indoor condition. These indicate a critical indoor-environment anomaly.",
         "recommended_action": "Create critical AlertEvent, send Cruzr to response point, and request operator acknowledgement. Safety-critical actuation should remain operator-approved or simulated.",
         "status": "AI_DETECTED",
         "demo_run_id": "DNTU02_TOP8_RUN_2026_001",

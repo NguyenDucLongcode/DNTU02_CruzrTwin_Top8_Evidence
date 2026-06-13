@@ -5,14 +5,14 @@
     "1": "anomaly"
   },
   "data_path": "data/sensor_data.csv",
-  "accuracy": 0.9583333333333334,
-  "precision_anomaly": 0.8,
+  "accuracy": 0.990625,
+  "precision_anomaly": 0.869983948635634,
   "recall_anomaly": 1.0,
-  "f1_anomaly": 0.8888888888888888,
+  "f1_anomaly": 0.9304721030042918,
   "severity_summary": {
-    "normal": 950,
-    "warning": 148,
-    "critical": 102
+    "normal": 8017,
+    "warning": 514,
+    "critical": 109
   },
   "notes": [
     "The model is trained only with label=0 normal data.",

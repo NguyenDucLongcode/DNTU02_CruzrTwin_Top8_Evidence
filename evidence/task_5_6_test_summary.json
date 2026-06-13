@@ -1,0 +1,24 @@
+{
+  "demo_run_id": "DNTU02_TOP8_RUN_2026_001",
+  "timestamp": "2026-06-13T10:34:51.110784+00:00",
+  "cases": {
+    "normal": {
+      "predicted_level": "normal",
+      "alert_created": false,
+      "status": "PASS"
+    },
+    "warning": {
+      "predicted_level": "warning",
+      "alert_created": true,
+      "alert_level": "warning",
+      "status": "PASS"
+    },
+    "critical": {
+      "predicted_level": "critical",
+      "alert_created": true,
+      "alert_level": "critical",
+      "status": "PASS"
+    }
+  },
+  "overall_status": "PASS"
+}

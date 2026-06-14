@@ -15,6 +15,7 @@ try:
     sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
     from src.ai.detector import AnomalyDetector
     from src.robot.cruzr_client import CruzrRobotClient
+    from src.iot.devices import DEVICES_TO_REGISTER
     
     ai_detector = AnomalyDetector()
     robot_client = CruzrRobotClient()
@@ -109,6 +110,17 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps(status).encode())
+            return
+            
+        # API: Get Devices from Registry
+        elif self.path == '/api/devices':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            if 'DEVICES_TO_REGISTER' in globals():
+                self.wfile.write(json.dumps(DEVICES_TO_REGISTER).encode())
+            else:
+                self.wfile.write(json.dumps([]).encode())
             return
 
         # 3. Phục vụ các file tĩnh

@@ -6,6 +6,7 @@
     <title>DNTU Command Center | Industrial Monitoring</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -98,48 +99,9 @@
                 <span class="text-[10px] font-mono bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded">AUTO_REFRESH</span>
             </div>
             <div class="flex-1 overflow-y-auto" id="sensor-matrix">
-                <!-- Room List -->
-                <div class="divide-y divide-white/5">
-                    <!-- Room Template -->
-                    <div class="p-4 hover:bg-white/[0.02] transition-colors" id="room-A101">
-                        <div class="flex justify-between items-start mb-3">
-                            <div>
-                                <h3 class="text-xs font-bold text-white">ZONE_A101</h3>
-                                <p class="text-[9px] text-zinc-500">Server_Room_West</p>
-                            </div>
-                            <div class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-emerald-500/10 text-emerald-500" id="room-A101-status">NOMINAL</div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div class="panel p-2 rounded-sm border-white/5">
-                                <span class="text-[8px] text-zinc-500 block mb-1 uppercase">Heat</span>
-                                <span class="text-sm font-mono font-bold text-white" id="room-A101-temp">24.5°C</span>
-                            </div>
-                            <div class="panel p-2 rounded-sm border-white/5">
-                                <span class="text-[8px] text-zinc-500 block mb-1 uppercase">CO2</span>
-                                <span class="text-sm font-mono font-bold text-white" id="room-A101-co2">402</span>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Other Rooms -->
-                    <div class="p-4 hover:bg-white/[0.02]" id="room-A102">
-                        <div class="flex justify-between items-start mb-3">
-                            <div>
-                                <h3 class="text-xs font-bold text-white">ZONE_A102</h3>
-                                <p class="text-[9px] text-zinc-500">Storage_Sector_B</p>
-                            </div>
-                            <div class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-emerald-500/10 text-emerald-500" id="room-A102-status">NOMINAL</div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div class="panel p-2 rounded-sm border-white/5">
-                                <span class="text-[8px] text-zinc-500 block mb-1 uppercase">Heat</span>
-                                <span class="text-sm font-mono font-bold text-white" id="room-A102-temp">23.8°C</span>
-                            </div>
-                            <div class="panel p-2 rounded-sm border-white/5">
-                                <span class="text-[8px] text-zinc-500 block mb-1 uppercase">CO2</span>
-                                <span class="text-sm font-mono font-bold text-white" id="room-A102-co2">398</span>
-                            </div>
-                        </div>
-                    </div>
+                <!-- Room List dynamically loaded here -->
+                <div class="divide-y divide-white/5" id="dynamic-rooms">
+                    <div class="p-4 text-[10px] text-zinc-500 italic text-center">Loading devices...</div>
                 </div>
             </div>
             
@@ -263,11 +225,35 @@
             const grid = new THREE.GridHelper(100, 50, 0x1e1e24, 0x1e1e24);
             scene.add(grid);
 
-            // Rooms (Tactical Blueprint Style)
-            roomMeshes["A101"] = createRoom("A101", -20, -5, 18, 18, 0x0c0c0e);
-            roomMeshes["A102"] = createRoom("A102", 0, -5, 18, 18, 0x0c0c0e);
-            roomMeshes["A103"] = createRoom("A103", 20, -5, 18, 18, 0x0c0c0e);
-            roomMeshes["A104"] = createRoom("A104", 40, -5, 18, 18, 0x0c0c0e);
+            // Load Digital Twin GLB Model
+            const loader = new THREE.GLTFLoader();
+            loader.load('/DNTU_NhaF_DigitalTwin.glb', function (gltf) {
+                const model = gltf.scene;
+                model.scale.set(10, 10, 10); // Adjust scale based on the model
+                model.position.set(0, 0, 0);
+                
+                // Add materials for wireframe/tactical look
+                model.traverse((child) => {
+                    if (child.isMesh) {
+                        child.material = new THREE.MeshPhongMaterial({
+                            color: 0x1e1e24,
+                            wireframe: true,
+                            transparent: true,
+                            opacity: 0.5
+                        });
+                        child.originalColor = 0x1e1e24;
+                        // Keep track of the mesh if it has a name
+                        if(child.name) {
+                            roomMeshes[child.name] = child;
+                        }
+                    }
+                });
+
+                scene.add(model);
+                window.digitalTwinModel = model;
+            }, undefined, function (error) {
+                console.error("Error loading GLB model:", error);
+            });
 
             // Robot (Technical Marker)
             const botGroup = new THREE.Group();
@@ -285,21 +271,8 @@
             animate();
         }
 
-        function createRoom(name, x, z, w, d, color) {
-            const group = new THREE.Group();
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshPhongMaterial({ color: color, side: THREE.DoubleSide }));
-            floor.rotation.x = Math.PI / 2;
-            floor.position.set(x, 0.01, z);
-            group.add(floor);
+        // Removed createRoom primitive since we are using GLB
 
-            const edges = new THREE.EdgesGeometry(new THREE.BoxGeometry(w, 4, d));
-            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x333333 }));
-            line.position.set(x, 2, z);
-            group.add(line);
-            
-            scene.add(group);
-            return { floor, line, originalColor: color };
-        }
 
         function animate() {
             requestAnimationFrame(animate);
@@ -356,10 +329,14 @@
 
         function updateRealtimeState(logs) {
             // Reset 3D
-            Object.values(roomMeshes).forEach(r => {
-                r.floor.material.color.setHex(r.originalColor);
-                r.line.material.color.setHex(0x333333);
-            });
+            if (window.digitalTwinModel) {
+                window.digitalTwinModel.traverse(child => {
+                    if (child.isMesh && child.originalColor) {
+                        child.material.color.setHex(child.originalColor);
+                        child.material.wireframe = true;
+                    }
+                });
+            }
 
             const alertQueue = document.getElementById('alert-queue');
             let criticalFound = false;
@@ -388,9 +365,14 @@
                     alertQueue.prepend(alertDiv);
 
                     // 3D Update
-                    if (roomMeshes[roomId]) {
-                        roomMeshes[roomId].floor.material.color.setHex(0x450a0a);
-                        roomMeshes[roomId].line.material.color.setHex(0xef4444);
+                    if (window.digitalTwinModel) {
+                        // Color the entire model red, or find a specific mesh
+                        window.digitalTwinModel.traverse(child => {
+                            if (child.isMesh && (!roomId || child.name.includes(roomId))) {
+                                child.material.color.setHex(0xef4444);
+                                child.material.wireframe = false;
+                            }
+                        });
                     }
 
                     // Matrix Update
@@ -422,9 +404,12 @@
 
             // HUD Logic
             const hud = document.getElementById('hud-callout');
-            if (activeAnomaly && roomMeshes[activeAnomaly.id]) {
-                const pos = new THREE.Vector3();
-                roomMeshes[activeAnomaly.id].floor.getWorldPosition(pos);
+            if (activeAnomaly) {
+                // If there's a specific mesh for the room, project its pos. Otherwise center.
+                const pos = new THREE.Vector3(0, 0, 0);
+                if (roomMeshes[activeAnomaly.id]) {
+                    roomMeshes[activeAnomaly.id].getWorldPosition(pos);
+                }
                 pos.project(camera);
                 const x = (pos.x * 0.5 + 0.5) * container.clientWidth;
                 const y = (pos.y * -0.5 + 0.5) * container.clientHeight;
@@ -465,7 +450,92 @@
             });
         }
 
-        init3D();
+        async function initDevices() {
+            try {
+                const res = await fetch('/api/devices');
+                const devices = await res.json();
+                
+                // Group devices by room_id
+                const rooms = {};
+                devices.forEach(d => {
+                    const room_id = d.static_attributes.find(a => a.name === 'room_id')?.value || 'UNKNOWN';
+                    if (!rooms[room_id]) rooms[room_id] = [];
+                    rooms[room_id].push(d);
+                });
+
+                const container = document.getElementById('dynamic-rooms');
+                container.innerHTML = '';
+                
+                for (const [roomId, roomDevices] of Object.entries(rooms)) {
+                    const shortRoomId = roomId.split('_').pop();
+                    
+                    let deviceHtml = '';
+                    roomDevices.forEach(d => {
+                        let measure = 'N/A';
+                        if(d.entity_type === 'TemperatureSensor') measure = `<span id="device-${d.device_id}-val">--°C</span>`;
+                        else if(d.entity_type === 'HumiditySensor') measure = `<span id="device-${d.device_id}-val">--%</span>`;
+                        else if(d.entity_type === 'AirQualitySensor') measure = `<span id="device-${d.device_id}-val">-- ppm</span>`;
+                        else if(d.entity_type === 'SmartPlug') measure = `<span id="device-${d.device_id}-val">-- W</span>`;
+                        else if(d.entity_type === 'SmokeDetector') measure = `<span id="device-${d.device_id}-val">Safe</span>`;
+
+                        deviceHtml += `
+                            <div class="panel p-2 rounded-sm border-white/5 flex flex-col">
+                                <span class="text-[8px] text-zinc-500 block mb-1 uppercase" title="${d.device_id}">${d.entity_name}</span>
+                                <span class="text-sm font-mono font-bold text-white">${measure}</span>
+                            </div>
+                        `;
+                    });
+
+                    container.innerHTML += `
+                        <div class="p-4 hover:bg-white/[0.02] transition-colors" id="room-${shortRoomId}">
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <h3 class="text-xs font-bold text-white">ZONE_${shortRoomId}</h3>
+                                    <p class="text-[9px] text-zinc-500">${roomId}</p>
+                                </div>
+                                <div class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-emerald-500/10 text-emerald-500" id="room-${shortRoomId}-status">NOMINAL</div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                ${deviceHtml}
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                console.error("Failed to load devices", e);
+            }
+        }
+
+        // We need to slightly update updateRealtimeState to use new device IDs if possible.
+        // For simplicity, we just inject the values based on existing logic.
+        const originalUpdateRealtimeState = updateRealtimeState;
+        updateRealtimeState = function(logs) {
+            originalUpdateRealtimeState(logs);
+            // Update sensor values mapped dynamically
+            logs.forEach(log => {
+                if(log.temperature) {
+                    const el = document.getElementById('device-temp_sensor_a101-val');
+                    if (el) el.innerText = log.temperature.toFixed(1) + '°C';
+                }
+                if(log.co2 || log.air_quality_or_co2) {
+                    const el = document.getElementById('device-air_sensor_a101-val');
+                    if (el) el.innerText = (log.co2 || log.air_quality_or_co2) + ' ppm';
+                }
+                // Mock other values if present
+                if(log.humidity) {
+                    const el = document.getElementById('device-humid_sensor_a101-val');
+                    if(el) el.innerText = log.humidity + '%';
+                }
+                if(log.energy_consumption) {
+                    const el = document.getElementById('device-smart_plug_a101-val');
+                    if(el) el.innerText = log.energy_consumption + ' W';
+                }
+            });
+        };
+
+        initDevices().then(() => {
+            init3D();
+        });
         setInterval(fetchLogs, 1500);
         setInterval(updateRobotStatus, 1000);
         setInterval(() => {

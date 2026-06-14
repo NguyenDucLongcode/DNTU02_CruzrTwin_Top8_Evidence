@@ -74,8 +74,9 @@
             <input type="range" id="smokeSlider" min="0" max="100" value="10">
         </div>
         
-        <button id="btnSimulate">Randomize All Sensors</button>
+        <button id="btnSimulate" style="display:none;">Randomize All Sensors</button>
         <button id="btnExport" style="background:#0055aa; color:#fff; margin-top:10px;">⬇️ Download as GLB</button>
+        <div style="margin-top: 10px; font-size: 12px; color: #00ff88; text-align: center;">🟢 Live Syncing w/ MongoDB</div>
     </div>
 
     <script type="module">
@@ -204,18 +205,21 @@
             const tempSensorMat = new THREE.MeshBasicMaterial({ color: 0x00ff88 }); 
             const tempSensor = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), tempSensorMat);
             tempSensor.position.set(-1, height - 0.3, 0); 
+            tempSensor.name = "Device:TEMP_" + roomId;
             roomGroup.add(tempSensor);
 
             // Cảm biến Khói (Hình trụ dẹt)
             const smokeSensorMat = new THREE.MeshBasicMaterial({ color: 0xdddddd }); 
             const smokeSensor = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.1, 8), smokeSensorMat);
             smokeSensor.position.set(1, height - 0.1, 0); 
+            smokeSensor.name = "Device:SMOKE_" + roomId;
             roomGroup.add(smokeSensor);
 
             // 1. Cảm biến CO2 (Hình hộp nhỏ)
             const co2SensorMat = new THREE.MeshBasicMaterial({ color: 0x00aaff }); 
             const co2Sensor = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.1, 0.4), co2SensorMat);
             co2Sensor.position.set(0, height - 0.1, 1); 
+            co2Sensor.name = "Device:CO2_" + roomId;
             roomGroup.add(co2Sensor);
 
             // 2. Camera góc chéo (Hình nón đen)
@@ -225,6 +229,7 @@
             cam1.rotation.x = Math.PI / 4; cam1.rotation.y = Math.PI / 4;
             cam1Group.add(cam1);
             cam1Group.position.set(-width/2 + 0.5, height - 0.5, -depth/2 + 0.5);
+            cam1Group.name = "Device:CAM1_" + roomId;
             roomGroup.add(cam1Group);
 
             const cam2Group = new THREE.Group();
@@ -232,6 +237,7 @@
             cam2.rotation.x = Math.PI / 4; cam2.rotation.y = -Math.PI * 3/4;
             cam2Group.add(cam2);
             cam2Group.position.set(width/2 - 0.5, height - 0.5, depth/2 - 0.5);
+            cam2Group.name = "Device:CAM2_" + roomId;
             roomGroup.add(cam2Group);
 
             // 3. Bàn giáo viên cho tầng 2 đến tầng 5 (floorIdx 1 đến 4)
@@ -263,10 +269,12 @@
             const acGeom = new THREE.BoxGeometry(1.5, 0.1, 1.5);
             const ac1 = new THREE.Mesh(acGeom, acMat);
             ac1.position.set(-width/4, height - 0.05, 0);
+            ac1.name = "Device:AC1_" + roomId;
             roomGroup.add(ac1);
             
             const ac2 = new THREE.Mesh(acGeom, acMat);
             ac2.position.set(width/4, height - 0.05, 0);
+            ac2.name = "Device:AC2_" + roomId;
             roomGroup.add(ac2);
 
             // 6. Thêm 4 Đèn âm trần
@@ -278,9 +286,10 @@
                 {x: -width/3, z: depth/4},
                 {x: width/3, z: depth/4}
             ];
-            lightPositions.forEach(pos => {
+            lightPositions.forEach((pos, idx) => {
                 const light = new THREE.Mesh(lightGeom, lightMat);
                 light.position.set(pos.x, height - 0.02, pos.z);
+                light.name = "Device:LIGHT" + (idx+1) + "_" + roomId;
                 roomGroup.add(light);
             });
 
@@ -290,6 +299,7 @@
             const cbBox = new THREE.Mesh(cbGeom, cbMat);
             const cbZ = z < 0 ? doorWallZ - 0.1 : doorWallZ + 0.1;
             cbBox.position.set(width/3 + 1.2, 1.5, cbZ);
+            cbBox.name = "Device:CB_" + roomId;
             roomGroup.add(cbBox);
 
             roomGroup.position.set(x, 0, z);
@@ -579,24 +589,48 @@
 
         isolateMode.addEventListener('change', updateIsolation);
 
-        btnSimulate.addEventListener('click', () => {
-            for (let id in roomRegistry) {
-                roomRegistry[id].temp = Math.floor(Math.random() * 12) + 18; 
-                roomRegistry[id].smoke = Math.floor(Math.random() * 15); 
-                applyIoTColor(id);
+        // TÍCH HỢP MONGODB REAL-TIME (THAY THẾ HOÀN TOÀN DỮ LIỆU MOCK)
+        async function syncWithDatabase() {
+            try {
+                const res = await fetch('http://localhost:8000/api/db/sensors');
+                if (!res.ok) return;
+                
+                const dbData = await res.json();
+                if (dbData.error) {
+                    console.error("DB Error:", dbData.error);
+                    return;
+                }
+                
+                // Cập nhật roomRegistry từ DB
+                for (let roomId in dbData) {
+                    if (roomRegistry[roomId]) {
+                        roomRegistry[roomId].temp = dbData[roomId].temp;
+                        roomRegistry[roomId].smoke = dbData[roomId].smoke;
+                        if(dbData[roomId].co2 !== undefined) {
+                            roomRegistry[roomId].co2 = dbData[roomId].co2;
+                        }
+                        
+                        applyIoTColor(roomId);
+                    }
+                }
+                
+                // Cập nhật UI Slider cho phòng đang chọn (để hiển thị trực quan)
+                const selectedId = roomSelect.value;
+                if (roomRegistry[selectedId]) {
+                    tempSlider.value = roomRegistry[selectedId].temp;
+                    tempValue.innerText = Number(roomRegistry[selectedId].temp).toFixed(1);
+                    smokeSlider.value = roomRegistry[selectedId].smoke;
+                    smokeValue.innerText = Number(roomRegistry[selectedId].smoke).toFixed(1);
+                }
+                
+                checkOverallStatus();
+            } catch(e) {
+                console.error("Failed to sync DB:", e);
             }
-            roomRegistry['A101'].temp = 55;
-            roomRegistry['A101'].smoke = 80;
-            applyIoTColor('A101');
-            
-            roomSelect.value = 'A101';
-            tempSlider.value = 55; tempValue.innerText = 55;
-            smokeSlider.value = 80; smokeValue.innerText = 80;
-            checkOverallStatus();
-            
-            // Focus lại vào A101
-            controls.target.set(roomRegistry['A101'].x, roomRegistry['A101'].y + 2, roomRegistry['A101'].z);
-        });
+        }
+        
+        // Gọi đồng bộ tự động mỗi 2 giây
+        setInterval(syncWithDatabase, 2000);
 
         // XUẤT FILE GLB TỪ MÔ HÌNH THREE.JS
         btnExport.addEventListener('click', () => {

@@ -116,6 +116,25 @@ services:
              /opt/fiware-device-simulator/bin/fiwareDeviceSimulatorCLI -c /app/config/simulation.json"
     networks:
       - fiware-net
+
+  # ============================================================
+  # DASHBOARD WEB - Node.js 3D View
+  # ============================================================
+  dashboard-web:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: dashboard-web
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+    networks:
+      - fiware-net
+    depends_on:
+      - mongo
+
 volumes:
   cruzrtwin_mongo_data:
 networks:

@@ -3,545 +3,486 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DNTU Command Center | Industrial Monitoring</title>
+    <title>DNTU X-Ray | Drill-down Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --success: #10b981;
-            --accent: #3b82f6;
-            --bg: #09090b;
-            --panel: #0c0c0e;
-            --border: rgba(255, 255, 255, 0.05);
-        }
         body { 
-            background-color: var(--bg); 
+            background-color: #000; 
             color: #d4d4d8; 
             font-family: 'Inter', sans-serif; 
             overflow: hidden; 
-            min-height: 100dvh;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
         }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
         
-        .panel {
-            background: var(--panel);
-            border: 1px solid var(--border);
-        }
-        
-        .status-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1px;
-            background: var(--border);
-        }
-        
-        .status-cell {
-            background: var(--panel);
-            padding: 12px;
-        }
-
-        .log-container::-webkit-scrollbar { width: 2px; }
-        .log-container::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); }
-        
-        /* Scanning Effect */
-        .scan-line {
-            width: 100%;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--accent), transparent);
-            position: absolute;
-            top: 0;
-            left: 0;
-            animation: scan 3s linear infinite;
-            opacity: 0.3;
-        }
-        @keyframes scan {
-            0% { top: 0%; }
-            100% { top: 100%; }
-        }
-
-        .alert-flash {
-            animation: flash 1s step-end infinite;
-        }
-        @keyframes flash {
-            50% { border-color: var(--danger); background: rgba(239, 68, 68, 0.1); }
-        }
+        .log-container::-webkit-scrollbar { width: 4px; }
+        .log-container::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
     </style>
 </head>
-<body class="flex flex-col h-screen overflow-hidden border-[12px] border-[#0c0c0e]">
+<body>
 
-    <!-- Top Bar: Compact & Technical -->
-    <header class="h-12 flex items-center justify-between px-4 border-b border-white/5 bg-[#0c0c0e]">
-        <div class="flex items-center gap-6">
-            <div class="flex items-center gap-2">
-                <div class="w-3 h-3 bg-blue-500 rounded-sm"></div>
-                <span class="text-sm font-black tracking-tighter">DNTU_CRUZR_SYSTEM_v1.0</span>
-            </div>
-            <div class="h-4 w-px bg-white/10"></div>
-            <div class="flex gap-4 text-[10px] font-mono text-zinc-500">
-                <span>CORE_TEMP: <span class="text-white">42°C</span></span>
-                <span>UPTIME: <span class="text-white">12:44:02</span></span>
-                <span>NETWORK: <span class="text-emerald-500">OPTIMAL</span></span>
+    <main class="flex-1 relative bg-black">
+        <div id="three-container" class="w-full h-full cursor-crosshair"></div>
+        
+        <!-- Nút Back -->
+        <button id="btn-back" onclick="restoreOverallModel()" class="absolute top-4 left-4 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold font-mono text-xs rounded uppercase tracking-wider hidden shadow-lg shadow-blue-500/20 transition-all border border-blue-400 z-10">
+            ⬅️ Back to Overall Campus
+        </button>
+        
+        <!-- Context & Sensor Panel -->
+        <div id="context-panel" class="absolute top-16 left-4 w-64 bg-[#0c0c0e]/90 border border-blue-500/30 rounded p-4 font-mono text-xs shadow-lg shadow-blue-500/10 hidden transition-all z-10">
+            <h3 id="ctx-title" class="text-blue-400 font-bold text-sm mb-2 border-b border-white/10 pb-2">OVERALL CAMPUS</h3>
+            <div id="ctx-sensors" class="space-y-2 hidden">
+                <div class="flex justify-between"><span class="text-zinc-400">Nhiệt độ:</span> <span id="ctx-temp" class="font-bold">-- °C</span></div>
+                <div class="flex justify-between"><span class="text-zinc-400">Mức khói:</span> <span id="ctx-smoke" class="font-bold">-- %</span></div>
+                <div class="flex justify-between"><span class="text-zinc-400">Mức CO2:</span> <span id="ctx-co2" class="font-bold">-- ppm</span></div>
             </div>
         </div>
-        <div class="font-mono text-sm font-bold text-blue-500" id="clock">00:00:00</div>
-    </header>
-
-    <div class="flex-1 flex min-h-0">
         
-        <!-- Left: Sensor Matrix & Observation -->
-        <aside class="w-80 flex flex-col border-r border-white/5 bg-[#0c0c0e]">
-            <div class="p-4 border-b border-white/5 flex justify-between items-center">
-                <span class="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Sensor Matrix</span>
-                <span class="text-[10px] font-mono bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded">AUTO_REFRESH</span>
-            </div>
-            <div class="flex-1 overflow-y-auto" id="sensor-matrix">
-                <!-- Room List dynamically loaded here -->
-                <div class="divide-y divide-white/5" id="dynamic-rooms">
-                    <div class="p-4 text-[10px] text-zinc-500 italic text-center">Loading devices...</div>
-                </div>
-            </div>
-            
-            <!-- System Stats: Bottom of Left Sidebar -->
-            <div class="p-4 border-t border-white/5 bg-black/40 space-y-4">
-                <div class="flex justify-between items-center">
-                    <span class="text-[10px] text-zinc-500 uppercase tracking-tighter">Robot Node Stability</span>
-                    <span class="text-[10px] font-mono text-emerald-500">99.8%</span>
-                </div>
-                <div class="h-1 bg-white/5 rounded-full overflow-hidden">
-                    <div class="h-full bg-emerald-500 w-[99.8%]"></div>
-                </div>
-                <div class="flex justify-between">
-                    <div>
-                        <span class="text-[8px] text-zinc-500 uppercase block">Battery</span>
-                        <span class="text-lg font-mono font-bold text-white" id="robot-battery">--%</span>
-                    </div>
-                    <div class="text-right">
-                        <span class="text-[8px] text-zinc-500 uppercase block">Latency</span>
-                        <span class="text-lg font-mono font-bold text-blue-500">12ms</span>
-                    </div>
-                </div>
-            </div>
-        </aside>
+        <!-- Floating Info -->
+        <div class="absolute bottom-4 left-4 text-[10px] font-mono text-zinc-500 pointer-events-none">
+            <div id="click-info" class="text-blue-400 mb-1">Click vào Toà nhà để bóc tách...</div>
+            <div class="flex items-center gap-2 mb-1"><span class="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_#00aaff]"></span> <span>Cruzr Robot Marker</span></div>
+            DNTU_CRUZR_SYSTEM_v2.0<br>
+            NPM + MongoDB Driven
+        </div>
+    </main>
 
-        <!-- Center: Tactical Map View -->
-        <main class="flex-1 relative bg-black">
-            <div id="three-container" class="w-full h-full"></div>
-            <div class="scan-line"></div>
-            
-            <!-- Technical Overlays -->
-            <div class="absolute top-4 left-4 pointer-events-none space-y-2">
-                <div class="panel px-3 py-1.5 rounded-sm border-blue-500/30 bg-blue-500/5">
-                    <span class="text-[10px] font-mono text-blue-500">MAP_SCAN: ACTIVE</span>
-                </div>
-                <div class="panel px-3 py-1.5 rounded-sm border-white/5 bg-black/50">
-                    <span class="text-[10px] font-mono text-zinc-400" id="robot-coords">X: 0.00 | Y: 0.00</span>
-                </div>
+    <!-- RIGHT PANEL: LOGS (5 luồng song song) -->
+    <aside class="w-[350px] flex flex-col border-l border-white/10 bg-[#0c0c0e] h-screen overflow-hidden">
+        <!-- AI DETECTION -->
+        <div class="h-1/5 border-b border-white/10 flex flex-col">
+            <div class="bg-blue-500/10 text-blue-400 font-bold text-[10px] px-3 py-1.5 uppercase border-b border-white/5 flex justify-between">
+                <span>AI_DETECTION</span> <span class="text-zinc-500">Live</span>
             </div>
-
-            <!-- Cinematic HUD Callout -->
-            <div id="hud-callout" class="absolute z-20 hidden pointer-events-none">
-                <div class="flex flex-col items-center">
-                    <div class="panel border-red-500 bg-red-950/20 backdrop-blur-md p-4 w-64">
-                        <div class="flex justify-between items-center mb-2 border-b border-red-500/30 pb-2">
-                            <span class="text-[9px] font-bold text-red-500 uppercase tracking-widest">Anomaly_Detected</span>
-                            <div class="w-2 h-2 bg-red-500 animate-ping"></div>
-                        </div>
-                        <h4 class="text-lg font-black text-white mb-1" id="hud-title">---</h4>
-                        <div class="space-y-2 font-mono text-[10px]">
-                            <div class="flex justify-between">
-                                <span class="text-zinc-500">AI_PROB:</span>
-                                <span class="text-white" id="hud-score">0.9984</span>
-                            </div>
-                            <div class="p-2 bg-black/50 border border-white/5 rounded-sm">
-                                <span class="text-red-400" id="hud-rationale">Processing...</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="w-px h-12 bg-red-500 shadow-[0_0_10px_red]"></div>
-                </div>
+            <div id="log-ai" class="flex-1 overflow-y-auto p-2 space-y-1 log-container font-mono text-[9px]"></div>
+        </div>
+        
+        <!-- ALERTS -->
+        <div class="h-1/5 border-b border-white/10 flex flex-col">
+            <div class="bg-red-500/10 text-red-400 font-bold text-[10px] px-3 py-1.5 uppercase border-b border-white/5 flex justify-between">
+                <span>ALERT_EVENTS</span> <span class="text-zinc-500">Live</span>
             </div>
-
-            <!-- View Controls -->
-            <div class="absolute bottom-4 right-4 flex gap-2">
-                <button onclick="resetCamera()" class="panel p-2 text-[10px] uppercase font-bold hover:bg-white/5">Reset View</button>
-                <button onclick="robotCmd('emergency')" class="px-4 py-2 bg-red-600 text-[10px] font-black uppercase tracking-widest hover:bg-red-700 shadow-lg shadow-red-900/50">Emergency S.O.S</button>
+            <div id="log-alerts" class="flex-1 overflow-y-auto p-2 space-y-1 log-container font-mono text-[9px]"></div>
+        </div>
+        
+        <!-- ROBOT ACTIONS -->
+        <div class="h-1/5 border-b border-white/10 flex flex-col">
+            <div class="bg-yellow-500/10 text-yellow-400 font-bold text-[10px] px-3 py-1.5 uppercase border-b border-white/5 flex justify-between">
+                <span>ROBOT_ACTIONS</span> <span class="text-zinc-500">Live</span>
             </div>
-        </main>
-
-        <!-- Right: Alert Feed & Technical Logs -->
-        <aside class="w-96 flex flex-col border-l border-white/5 bg-[#0c0c0e]">
-            <!-- Critical Alert Area -->
-            <div class="h-1/3 flex flex-col border-b border-white/5">
-                <div class="p-4 border-b border-white/5 bg-zinc-900/30">
-                    <span class="text-[10px] font-bold uppercase tracking-widest text-red-500 flex items-center gap-2">
-                        <svg width="12" height="12" viewBox="0 0 256 256"><path fill="currentColor" d="M128 24a104 104 0 1 0 104 104A104.11 104.11 0 0 0 128 24Zm0 192a88 88 0 1 1 88-88 88.1 88.1 0 0 1-88 88Zm-8-80V80a8 8 0 0 1 16 0v56a8 8 0 0 1-16 0Zm20 36a12 12 0 1 1-12-12 12 12 0 0 1 12 12Z"/></svg>
-                        Incident Queue
-                    </span>
-                </div>
-                <div class="flex-1 overflow-y-auto p-2 space-y-2" id="alert-queue">
-                    <!-- Alerts will blink here -->
-                    <div class="text-[10px] text-zinc-600 p-4 text-center italic">No active incidents detected.</div>
-                </div>
+            <div id="log-robot" class="flex-1 overflow-y-auto p-2 space-y-1 log-container font-mono text-[9px]"></div>
+        </div>
+        
+        <!-- SYS STATE -->
+        <div class="h-1/5 border-b border-white/10 flex flex-col">
+            <div class="bg-purple-500/10 text-purple-400 font-bold text-[10px] px-3 py-1.5 uppercase border-b border-white/5 flex justify-between">
+                <span>ORION_STATE</span> <span class="text-zinc-500">Live</span>
             </div>
-
-            <!-- Technical Logs -->
-            <div class="flex-1 flex flex-col min-h-0">
-                <div class="flex border-b border-white/5 font-mono text-[9px] uppercase tracking-widest bg-zinc-900/10">
-                    <button onclick="setTab('ai')" id="tab-ai" class="px-4 py-3 border-b-2 border-blue-500 text-blue-500 bg-blue-500/5">AI_DET</button>
-                    <button onclick="setTab('state')" id="tab-state" class="px-4 py-3 border-b-2 border-transparent text-zinc-500">SYS_ST</button>
-                    <button onclick="setTab('robot')" id="tab-robot" class="px-4 py-3 border-b-2 border-transparent text-zinc-500">BOT_ACT</button>
-                    <button onclick="setTab('sensors')" id="tab-sensors" class="px-4 py-3 border-b-2 border-transparent text-zinc-500">RAW_DAT</button>
-                </div>
-                <div id="log-display" class="flex-1 overflow-y-auto p-4 space-y-3 log-container font-mono text-[10px]">
-                    <div class="text-zinc-600 italic">Connecting to node streams...</div>
-                </div>
+            <div id="log-state" class="flex-1 overflow-y-auto p-2 space-y-1 log-container font-mono text-[9px]"></div>
+        </div>
+        
+        <!-- SENSORS -->
+        <div class="h-1/5 flex flex-col">
+            <div class="bg-emerald-500/10 text-emerald-400 font-bold text-[10px] px-3 py-1.5 uppercase border-b border-white/5 flex justify-between">
+                <span>RAW_SENSORS</span> <span class="text-zinc-500">Live</span>
             </div>
-        </aside>
-    </div>
+            <div id="log-sensors" class="flex-1 overflow-y-auto p-2 space-y-1 log-container font-mono text-[9px]"></div>
+        </div>
+    </aside>
 
     <script>
-        // --- THREE.JS COMMAND CENTER VIEW ---
-        let scene, camera, renderer, robotMarker;
-        let roomMeshes = {};
+        // --- LOGS LOGIC (Gọi NPM API cho 5 bảng song song) ---
+        const logTypes = ['ai', 'alerts', 'robot', 'state', 'sensors'];
+
+        async function fetchLogs() {
+            logTypes.forEach(async (type) => {
+                try {
+                    const res = await fetch(`http://localhost:8000/api/logs/${type}`);
+                    if (!res.ok) return;
+                    const logs = await res.json();
+                    
+                    const display = document.getElementById('log-' + type);
+                    display.innerHTML = '';
+                    
+                    if (logs.length === 0) {
+                        display.innerHTML = '<div class="text-zinc-600 italic">Chưa có dữ liệu.</div>';
+                        return;
+                    }
+
+                    // Lọc log nếu đang xem 1 phòng
+                    let filteredLogs = logs;
+                    if (activeRoomId) {
+                        const searchToken = activeRoomId.toLowerCase();
+                        filteredLogs = logs.filter(log => JSON.stringify(log).toLowerCase().includes(searchToken));
+                    }
+
+                    if (filteredLogs.length === 0 && activeRoomId) {
+                        display.innerHTML = `<div class="text-zinc-600 italic">Không có sự kiện cho phòng ${activeRoomId}</div>`;
+                        return;
+                    }
+
+                    // --- ĐIỀU PHỐI VỊ TRÍ ROBOT TỪ LOG ---
+                    if (type === 'robot' && logs.length > 0) {
+                        const latestDest = logs[0].destination;
+                        if (latestDest && latestDest !== currentRobotDest) {
+                            currentRobotDest = latestDest;
+                            updateRobotTarget(latestDest);
+                        }
+                    }
+
+                    filteredLogs.forEach(log => {
+                        const div = document.createElement('div');
+                        div.className = 'border-l-2 border-white/5 pl-2 py-0.5 hover:bg-white/5 transition-all text-ellipsis overflow-hidden whitespace-nowrap';
+                        
+                        const time = log.timestamp?.split('T')[1]?.split('Z')[0] || log.TimeInstant || '--:--:--';
+                        let content = `<span class="text-zinc-600 mr-1">[${time}]</span>`;
+                        
+                        if (type === 'ai') {
+                            const lvl = log.predicted_level || log.level || 'INFO';
+                            const color = lvl.toUpperCase() === 'CRITICAL' ? 'text-red-500' : 'text-blue-400';
+                            content += `<span class="${color}">${lvl.toUpperCase()}</span> ${log.rationale || log.message || ''}`;
+                        } else if (type === 'alerts') {
+                            content += `<span class="text-red-400">${log.event || 'ALERT'}</span> ${log.description || ''}`;
+                        } else if (type === 'robot') {
+                            content += `<span class="text-yellow-400">${log.action || 'MOVE'}</span> ${log.destination || ''}`;
+                        } else if (type === 'sensors') {
+                            content += `<span class="text-emerald-500">Z_${log.zone_id?.replace('DNTU_ROOM_','') || 'SYS'}</span> T:${log.temperature||'--'}°C S:${log.smoke||'--'}`;
+                        } else {
+                            content += `<span class="text-zinc-400">${JSON.stringify(log).substring(0, 50)}...</span>`;
+                        }
+                        
+                        div.innerHTML = content;
+                        display.appendChild(div);
+                    });
+                } catch (e) {
+                    // ignore
+                }
+            });
+        }
+        let currentRobotDest = null;
+        let targetRobotPos = new THREE.Vector3(0, 0, 0); // Trạm sạc
+
+        function updateRobotTarget(dest) {
+            if (dest.includes('CHARGING')) {
+                targetRobotPos.set(0, 0, 0);
+                return;
+            }
+            
+            let y = 0, x = 0, z = 0;
+            
+            // Xử lý tầng (Y)
+            if (dest.includes('L2')) y = 4;
+            else if (dest.includes('L3')) y = 8;
+            else if (dest.includes('L4')) y = 12;
+            else if (dest.includes('L5')) y = 16;
+            else y = 0; // A101 hoặc L1
+            
+            // Xử lý X và Z (Giả lập vị trí các phòng)
+            if (dest === 'A101') { x = -24; z = -7; } // Phòng A101
+            else if (dest.includes('T')) { z = -7; x = -24 + (parseInt(dest.split('T')[1]||1)-1)*12; } // Dãy Trái
+            else if (dest.includes('B')) { z = 7; x = -36 + (parseInt(dest.split('B')[1]||1)-1)*12; }  // Dãy Phải
+            else { x = 0; z = -7; }
+
+            // Nâng y lên một chút để lอย lơ lửng trên mặt sàn
+            targetRobotPos.set(x, y + 2, z);
+        }
+
+        setInterval(fetchLogs, 2000); // Tự động sync DB mỗi 2 giây
+
+        // --- 3D REAL-TIME SENSOR SYNC ---
+        // Giả sử có 1 biến lưu trạng thái active room hiện tại để map với SubModel
+        let activeRoomId = null;
+
+        async function syncSensorsTo3D() {
+            try {
+                const res = await fetch('http://localhost:8000/api/db/sensors');
+                if (!res.ok) return;
+                const dbData = await res.json();
+                
+                // Hàm đổi màu linh hoạt
+                const updateMeshColor = (model, deviceName, type, val) => {
+                    if (!model) return;
+                    // Trong Three.js, getObjectByName trả về object đầu tiên match
+                    const mesh = model.getObjectByName(deviceName);
+                    if (!mesh || !mesh.material) return;
+                    
+                    // Clone material để không đổi màu hàng loạt (nếu dùng chung material)
+                    if (!mesh.userData.materialCloned) {
+                        mesh.material = mesh.material.clone();
+                        mesh.userData.materialCloned = true;
+                    }
+
+                    if (type === 'TEMP') {
+                        if (val >= 45) mesh.material.color.setHex(0xff0000); // Cháy -> Đỏ rực
+                        else if (val >= 30) mesh.material.color.setHex(0xffff00); // Nóng -> Vàng
+                        else mesh.material.color.setHex(0x00ff88); // Bình thường -> Xanh ngọc
+                    } else if (type === 'SMOKE') {
+                        if (val >= 60) mesh.material.color.setHex(0xff3300); 
+                        else if (val >= 30) mesh.material.color.setHex(0xff9900);
+                        else mesh.material.color.setHex(0xdddddd);
+                    }
+                };
+
+                // Quét qua các thiết bị trong dbData
+                for (let roomId in dbData) {
+                    const data = dbData[roomId];
+                    
+                    // 1. Nếu đang xem Model Tổng (overallModel)
+                    if (overallModel && !activeSubModel) {
+                        updateMeshColor(overallModel, "Device:TEMP_" + roomId, 'TEMP', data.temp);
+                        updateMeshColor(overallModel, "Device:SMOKE_" + roomId, 'SMOKE', data.smoke);
+                    }
+                    
+                    // 2. Nếu đang Drill-down vào phòng cụ thể (SubModel)
+                    if (activeSubModel && activeRoomId === roomId) {
+                        updateMeshColor(activeSubModel, "Device:TEMP", 'TEMP', data.temp);
+                        updateMeshColor(activeSubModel, "Device:SMOKE", 'SMOKE', data.smoke);
+                        
+                        // Cập nhật lên Panel Giao diện
+                        document.getElementById('ctx-temp').innerText = data.temp + ' °C';
+                        document.getElementById('ctx-smoke').innerText = data.smoke + ' %';
+                        document.getElementById('ctx-co2').innerText = (data.co2 || '--') + ' ppm';
+                        
+                        // Đổi màu Text Panel nếu có cảnh báo
+                        document.getElementById('ctx-temp').className = data.temp >= 45 ? 'text-red-500 font-bold' : (data.temp >= 30 ? 'text-yellow-400 font-bold' : 'text-emerald-400 font-bold');
+                        document.getElementById('ctx-smoke').className = data.smoke >= 60 ? 'text-red-500 font-bold' : (data.smoke >= 30 ? 'text-yellow-400 font-bold' : 'text-emerald-400 font-bold');
+                    }
+                }
+            } catch (e) {
+                console.error("Lỗi sync sensor:", e);
+            }
+        }
+        setInterval(syncSensorsTo3D, 2000);
+
+        // --- THREE.JS LOGIC & RAYCASTER ---
         const container = document.getElementById('three-container');
+        let scene, camera, renderer, controls;
+        let overallModel = null;
+        let activeSubModel = null;
+        
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
 
         function init3D() {
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(0, 100, 120);
+
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setClearColor(0x000000, 1);
             container.appendChild(renderer.domElement);
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
-            scene.add(ambientLight);
-            const directionalLight = new THREE.DirectionalLight(0x3b82f6, 1);
-            directionalLight.position.set(50, 50, 50);
-            scene.add(directionalLight);
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.target.set(0, 10, 0);
 
-            const grid = new THREE.GridHelper(100, 50, 0x1e1e24, 0x1e1e24);
+            // Ánh sáng
+            const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambient);
+            const directional = new THREE.DirectionalLight(0x00aaff, 1);
+            directional.position.set(50, 80, 50);
+            scene.add(directional);
+
+            // Grid
+            const grid = new THREE.GridHelper(150, 50, 0x112233, 0x112233);
             scene.add(grid);
 
-            // Load Digital Twin GLB Model
-            const loader = new THREE.GLTFLoader();
-            loader.load('/DNTU_NhaF_DigitalTwin.glb', function (gltf) {
-                const model = gltf.scene;
-                model.scale.set(10, 10, 10); // Adjust scale based on the model
-                model.position.set(0, 0, 0);
-                
-                // Add materials for wireframe/tactical look
-                model.traverse((child) => {
-                    if (child.isMesh) {
-                        child.material = new THREE.MeshPhongMaterial({
-                            color: 0x1e1e24,
-                            wireframe: true,
-                            transparent: true,
-                            opacity: 0.5
-                        });
-                        child.originalColor = 0x1e1e24;
-                        // Keep track of the mesh if it has a name
-                        if(child.name) {
-                            roomMeshes[child.name] = child;
-                        }
-                    }
-                });
+            // Lắp ráp mô hình tổng từ các file Tầng trong thư mục mohinh/
+            overallModel = new THREE.Group();
+            scene.add(overallModel);
+            
+            // --- THÊM CHẤM ROBOT CRUZR ---
+            robotPoint = new THREE.Mesh(
+                new THREE.SphereGeometry(1.2, 16, 16),
+                new THREE.MeshPhongMaterial({ color: 0x00aaff, emissive: 0x00aaff, emissiveIntensity: 1 })
+            );
+            robotPoint.position.set(0, 0, 0);
+            scene.add(robotPoint);
 
-                scene.add(model);
-                window.digitalTwinModel = model;
-            }, undefined, function (error) {
-                console.error("Error loading GLB model:", error);
+            // Đèn rọi cho Robot để tạo hiệu ứng hào quang
+            const robotLight = new THREE.PointLight(0x00aaff, 2, 20);
+            robotPoint.add(robotLight);
+            
+            const loader = new THREE.GLTFLoader();
+            const floorsToLoad = [
+                { file: 'mohinh/FloorType1_Ground.glb', y: 0 },
+                { file: 'mohinh/FloorType2_Middle.glb', y: 4 },
+                { file: 'mohinh/FloorType2_Middle.glb', y: 8 },
+                { file: 'mohinh/FloorType3_Top.glb', y: 12 },
+                { file: 'mohinh/FloorType3_Top.glb', y: 16 }
+            ];
+
+            let loadedCount = 0;
+            floorsToLoad.forEach(floor => {
+                loader.load(floor.file, (gltf) => {
+                    const floorMesh = gltf.scene;
+                    floorMesh.position.y = floor.y;
+                    overallModel.add(floorMesh);
+                    
+                    loadedCount++;
+                    if (loadedCount === floorsToLoad.length) {
+                        document.getElementById('click-info').innerText = "Đã lắp ráp xong 5 Tầng. Click để bóc tách...";
+                    }
+                }, undefined, (err) => {
+                    console.error("Lỗi load tầng:", floor.file);
+                });
             });
 
-            // Robot (Technical Marker)
-            const botGroup = new THREE.Group();
-            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 2, 6), new THREE.MeshPhongMaterial({ color: 0x3b82f6, wireframe: true }));
-            botGroup.add(body);
-            const head = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.4, 0.4), new THREE.MeshPhongMaterial({ color: 0xffffff }));
-            head.position.y = 1.2;
-            botGroup.add(head);
-            robotMarker = botGroup;
-            scene.add(robotMarker);
-
-            camera.position.set(0, 60, 60);
-            camera.lookAt(10, 0, 0);
+            // Sự kiện Click (Raycaster Drill-down)
+            renderer.domElement.addEventListener('click', onMouseClick);
+            window.addEventListener('resize', onWindowResize);
 
             animate();
         }
 
-        // Removed createRoom primitive since we are using GLB
+        function onMouseClick(event) {
+            // Nếu đang xem Sub-model thì bỏ qua click
+            if (activeSubModel !== null || overallModel === null) return;
 
+            // Tính toán toạ độ chuột
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ( (event.clientX - rect.left) / rect.width ) * 2 - 1;
+            mouse.y = - ( (event.clientY - rect.top) / rect.height ) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(overallModel, true);
+
+            if (intersects.length > 0) {
+                const point = intersects[0].point;
+                // Scale lại nếu lúc xuất model bị scale. Tạm coi scale = 1.
+                // Mô hình tổng: Tầng cao 4m. Hành lang ở Z từ -3 đến 3.
+                
+                const floorIdx = Math.max(0, Math.min(4, Math.floor(point.y / 4)));
+                const isHallway = Math.abs(point.z) < 3.5;
+                
+                let fileToLoad = "";
+                let msg = "";
+
+                if (isHallway) {
+                    // Click vào khu vực giữa -> Tải Tầng
+                    if (floorIdx === 0) fileToLoad = 'mohinh/FloorType1_Ground.glb';
+                    else if (floorIdx === 1 || floorIdx === 2) fileToLoad = 'mohinh/FloorType2_Middle.glb';
+                    else fileToLoad = 'mohinh/FloorType3_Top.glb';
+                    msg = `Đang load chi tiết toàn Tầng ${floorIdx}...`;
+                    
+                    activeRoomId = null;
+                    document.getElementById('context-panel').classList.remove('hidden');
+                    document.getElementById('ctx-title').innerText = `TẦNG ${floorIdx === 0 ? 'TRỆT' : floorIdx}`;
+                    document.getElementById('ctx-sensors').classList.add('hidden'); // Tầng thì tạm ẩn Sensor của 1 phòng
+                } else {
+                    // Click ra 2 bên -> Tải Phòng
+                    const isTopRow = point.z < 0; // Trục Z âm là dãy bên trái (nếu nhìn từ đầu hành lang)
+                    if (floorIdx === 0) fileToLoad = isTopRow ? 'mohinh/RoomType1_Left.glb' : 'mohinh/RoomType1_Right.glb';
+                    else if (floorIdx === 1 || floorIdx === 2) fileToLoad = isTopRow ? 'mohinh/RoomType2_Left.glb' : 'mohinh/RoomType2_Right.glb';
+                    else fileToLoad = isTopRow ? 'mohinh/RoomType3_Left.glb' : 'mohinh/RoomType3_Right.glb';
+                    
+                    // Tính toán gần đúng ID phòng dựa trên toạ độ x của raycast
+                    const idx = Math.floor((point.x + 44) / 12);
+                    activeRoomId = `L${floorIdx+1}-${isTopRow ? 'T' : 'B'}${idx+1}`; 
+                    
+                    msg = `Đang load chi tiết phòng ${activeRoomId}...`;
+                    
+                    // Cập nhật UI Panel
+                    document.getElementById('context-panel').classList.remove('hidden');
+                    document.getElementById('ctx-title').innerText = `PHÒNG ${activeRoomId} (Tầng ${floorIdx})`;
+                    document.getElementById('ctx-sensors').classList.remove('hidden');
+                    document.getElementById('ctx-temp').innerText = 'Loading...';
+                    document.getElementById('ctx-smoke').innerText = 'Loading...';
+                    document.getElementById('ctx-co2').innerText = 'Loading...';
+                }
+
+                document.getElementById('click-info').innerText = msg;
+                document.getElementById('click-info').style.color = '#00ff88';
+                
+                loadSubModel(fileToLoad, point);
+            }
+        }
+
+        function loadSubModel(filename, focusPoint) {
+            // Xóa model tổng
+            scene.remove(overallModel);
+            
+            const loader = new THREE.GLTFLoader();
+            loader.load('/' + filename, (gltf) => {
+                activeSubModel = gltf.scene;
+                
+                // Tô màu chuẩn cho Model con để nhìn rõ nội thất
+                activeSubModel.traverse(child => {
+                    if (child.isMesh) {
+                        child.material.wireframe = false;
+                        if (!child.material.color) {
+                            child.material = new THREE.MeshPhongMaterial({ color: 0xaaaaaa });
+                        }
+                    }
+                });
+
+                scene.add(activeSubModel);
+
+                // Zoom camera vào sát
+                camera.position.set(0, 15, 30);
+                controls.target.set(0, 2, 0);
+
+                // Hiện nút Back
+                document.getElementById('btn-back').classList.remove('hidden');
+                document.getElementById('click-info').innerText = "Đã load thành công: " + filename;
+            }, undefined, (error) => {
+                console.error("Không tìm thấy file:", filename);
+                document.getElementById('click-info').innerText = "Lỗi: File " + filename + " không tồn tại!";
+                document.getElementById('click-info').style.color = 'red';
+                restoreOverallModel(); // Bị lỗi thì trả về model cũ
+            });
+        }
+
+        function restoreOverallModel() {
+            if (activeSubModel) {
+                scene.remove(activeSubModel);
+                activeSubModel = null;
+                activeRoomId = null;
+            }
+            if (overallModel) {
+                scene.add(overallModel);
+            }
+            
+            // Zoom camera ra xa
+            camera.position.set(0, 100, 120);
+            controls.target.set(0, 10, 0);
+            
+            document.getElementById('btn-back').classList.add('hidden');
+            document.getElementById('context-panel').classList.add('hidden');
+            document.getElementById('click-info').innerText = "Click vào Toà nhà để bóc tách...";
+            document.getElementById('click-info').style.color = '#3b82f6';
+        }
+
+        function onWindowResize() {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
 
         function animate() {
             requestAnimationFrame(animate);
+            controls.update();
+            
+            // Di chuyển Robot Point mượt mà (Lerp)
+            if (typeof robotPoint !== 'undefined') {
+                robotPoint.position.lerp(targetRobotPos, 0.05);
+            }
+
             renderer.render(scene, camera);
         }
 
-        // --- DASHBOARD LOGIC ---
-        let currentTab = 'ai';
-
-        function setTab(tab) {
-            currentTab = tab;
-            document.querySelectorAll('button[id^="tab-"]').forEach(btn => {
-                btn.classList.remove('border-blue-500', 'text-blue-500', 'bg-blue-500/5');
-                btn.classList.add('border-transparent', 'text-zinc-500');
-            });
-            const active = document.getElementById('tab-' + tab);
-            active.classList.add('border-blue-500', 'text-blue-500', 'bg-blue-500/5');
-            active.classList.remove('border-transparent', 'text-zinc-500');
-            fetchLogs();
-        }
-
-        async function fetchLogs() {
-            try {
-                const response = await fetch(`/api/logs/${currentTab}`);
-                const logs = await response.json();
-                const display = document.getElementById('log-display');
-                display.innerHTML = '';
-                
-                logs.forEach(log => {
-                    const div = document.createElement('div');
-                    div.className = 'border-l border-white/10 pl-3';
-                    const time = log.timestamp?.split('T')[1]?.split('Z')[0] || '--:--:--';
-                    
-                    let content = `<span class="text-zinc-600 mr-2">${time}</span>`;
-                    if (currentTab === 'ai') {
-                        const lvl = log.predicted_level?.toUpperCase();
-                        const color = lvl === 'CRITICAL' ? 'text-red-500' : 'text-blue-400';
-                        content += `<span class="${color} font-bold">${lvl}</span> S:${log.anomaly_score?.toFixed(3)}`;
-                    } else if (currentTab === 'sensors') {
-                        content += `<span class="text-emerald-500">DATA</span> ${log.zone_id || 'SYS'} T:${log.temperature || '--'}`;
-                    } else {
-                        content += `<span class="text-zinc-400">${JSON.stringify(log).substring(0, 50)}...</span>`;
-                    }
-                    
-                    div.innerHTML = content;
-                    display.appendChild(div);
-                });
-                display.scrollTop = display.scrollHeight;
-
-                // Sync 3D & Alert Sidebar
-                updateRealtimeState(logs);
-            } catch (e) {}
-        }
-
-        function updateRealtimeState(logs) {
-            // Reset 3D
-            if (window.digitalTwinModel) {
-                window.digitalTwinModel.traverse(child => {
-                    if (child.isMesh && child.originalColor) {
-                        child.material.color.setHex(child.originalColor);
-                        child.material.wireframe = true;
-                    }
-                });
-            }
-
-            const alertQueue = document.getElementById('alert-queue');
-            let criticalFound = false;
-            let activeAnomaly = null;
-
-            logs.forEach(log => {
-                if (log.severity === 'critical' || log.predicted_level === 'critical' || log.level === 'critical') {
-                    criticalFound = true;
-                    const roomId = (log.location || log.zone_id || '').split('_').pop();
-                    
-                    if (!activeAnomaly) {
-                        alertQueue.innerHTML = ''; // Clear empty state
-                        activeAnomaly = { id: roomId, log: log };
-                    }
-
-                    // Alert Card
-                    const alertDiv = document.createElement('div');
-                    alertDiv.className = 'panel p-3 border-red-500/50 alert-flash flex flex-col gap-1';
-                    alertDiv.innerHTML = `
-                        <div class="flex justify-between font-mono text-[9px]">
-                            <span class="text-red-500 font-bold">CRITICAL_EVENT</span>
-                            <span class="text-zinc-500">${log.timestamp?.split('T')[1]?.split('Z')[0]}</span>
-                        </div>
-                        <div class="text-xs font-bold text-white uppercase">Anomalous Activity in ${roomId}</div>
-                    `;
-                    alertQueue.prepend(alertDiv);
-
-                    // 3D Update
-                    if (window.digitalTwinModel) {
-                        // Color the entire model red, or find a specific mesh
-                        window.digitalTwinModel.traverse(child => {
-                            if (child.isMesh && (!roomId || child.name.includes(roomId))) {
-                                child.material.color.setHex(0xef4444);
-                                child.material.wireframe = false;
-                            }
-                        });
-                    }
-
-                    // Matrix Update
-                    const matrixStatus = document.getElementById(`room-${roomId}-status`);
-                    if (matrixStatus) {
-                        matrixStatus.innerText = 'CRITICAL';
-                        matrixStatus.className = 'px-1.5 py-0.5 rounded text-[8px] font-mono bg-red-500/10 text-red-500';
-                    }
-                }
-
-                // Update Sensor Matrix Values
-                const roomId = (log.zone_id || '').split('_').pop();
-                if (roomId && log.temperature) {
-                    const tempEl = document.getElementById(`room-${roomId}-temp`);
-                    const co2El = document.getElementById(`room-${roomId}-co2`);
-                    if (tempEl) tempEl.innerText = `${log.temperature.toFixed(1)}°C`;
-                    if (co2El) co2El.innerText = log.air_quality_or_co2 || log.co2 || '--';
-                }
-            });
-
-            if (!criticalFound) {
-                alertQueue.innerHTML = '<div class="text-[10px] text-zinc-600 p-4 text-center italic">No active incidents detected.</div>';
-                // Reset Matrix Status to Nominal
-                document.querySelectorAll('[id$="-status"]').forEach(el => {
-                    el.innerText = 'NOMINAL';
-                    el.className = 'px-1.5 py-0.5 rounded text-[8px] font-mono bg-emerald-500/10 text-emerald-500';
-                });
-            }
-
-            // HUD Logic
-            const hud = document.getElementById('hud-callout');
-            if (activeAnomaly) {
-                // If there's a specific mesh for the room, project its pos. Otherwise center.
-                const pos = new THREE.Vector3(0, 0, 0);
-                if (roomMeshes[activeAnomaly.id]) {
-                    roomMeshes[activeAnomaly.id].getWorldPosition(pos);
-                }
-                pos.project(camera);
-                const x = (pos.x * 0.5 + 0.5) * container.clientWidth;
-                const y = (pos.y * -0.5 + 0.5) * container.clientHeight;
-                hud.style.left = `${x}px`;
-                hud.style.top = `${y}px`;
-                hud.classList.remove('hidden');
-                document.getElementById('hud-title').innerText = `ZONE_${activeAnomaly.id}`;
-                document.getElementById('hud-score').innerText = activeAnomaly.log.anomaly_score?.toFixed(4) || '1.000';
-                document.getElementById('hud-rationale').innerText = activeAnomaly.log.rationale || activeAnomaly.log.message;
-            } else {
-                hud.classList.add('hidden');
-            }
-        }
-
-        async function updateRobotStatus() {
-            try {
-                const res = await fetch('/api/robot/status');
-                const s = await res.json();
-                if (s.connected) {
-                    robotMarker.position.x = s.location.x;
-                    robotMarker.position.z = s.location.y;
-                    document.getElementById('robot-coords').innerText = `X: ${s.location.x.toFixed(2)} | Y: ${s.location.y.toFixed(2)}`;
-                }
-                document.getElementById('robot-battery').innerText = s.battery + '%';
-            } catch (e) {}
-        }
-
-        function resetCamera() {
-            camera.position.set(0, 60, 60);
-            camera.lookAt(10, 0, 0);
-        }
-
-        async function robotCmd(action) {
-            await fetch('/api/robot/command', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action })
-            });
-        }
-
-        async function initDevices() {
-            try {
-                const res = await fetch('/api/devices');
-                const devices = await res.json();
-                
-                // Group devices by room_id
-                const rooms = {};
-                devices.forEach(d => {
-                    const room_id = d.static_attributes.find(a => a.name === 'room_id')?.value || 'UNKNOWN';
-                    if (!rooms[room_id]) rooms[room_id] = [];
-                    rooms[room_id].push(d);
-                });
-
-                const container = document.getElementById('dynamic-rooms');
-                container.innerHTML = '';
-                
-                for (const [roomId, roomDevices] of Object.entries(rooms)) {
-                    const shortRoomId = roomId.split('_').pop();
-                    
-                    let deviceHtml = '';
-                    roomDevices.forEach(d => {
-                        let measure = 'N/A';
-                        if(d.entity_type === 'TemperatureSensor') measure = `<span id="device-${d.device_id}-val">--°C</span>`;
-                        else if(d.entity_type === 'HumiditySensor') measure = `<span id="device-${d.device_id}-val">--%</span>`;
-                        else if(d.entity_type === 'AirQualitySensor') measure = `<span id="device-${d.device_id}-val">-- ppm</span>`;
-                        else if(d.entity_type === 'SmartPlug') measure = `<span id="device-${d.device_id}-val">-- W</span>`;
-                        else if(d.entity_type === 'SmokeDetector') measure = `<span id="device-${d.device_id}-val">Safe</span>`;
-
-                        deviceHtml += `
-                            <div class="panel p-2 rounded-sm border-white/5 flex flex-col">
-                                <span class="text-[8px] text-zinc-500 block mb-1 uppercase" title="${d.device_id}">${d.entity_name}</span>
-                                <span class="text-sm font-mono font-bold text-white">${measure}</span>
-                            </div>
-                        `;
-                    });
-
-                    container.innerHTML += `
-                        <div class="p-4 hover:bg-white/[0.02] transition-colors" id="room-${shortRoomId}">
-                            <div class="flex justify-between items-start mb-3">
-                                <div>
-                                    <h3 class="text-xs font-bold text-white">ZONE_${shortRoomId}</h3>
-                                    <p class="text-[9px] text-zinc-500">${roomId}</p>
-                                </div>
-                                <div class="px-1.5 py-0.5 rounded text-[8px] font-mono bg-emerald-500/10 text-emerald-500" id="room-${shortRoomId}-status">NOMINAL</div>
-                            </div>
-                            <div class="grid grid-cols-2 gap-2">
-                                ${deviceHtml}
-                            </div>
-                        </div>
-                    `;
-                }
-            } catch (e) {
-                console.error("Failed to load devices", e);
-            }
-        }
-
-        // We need to slightly update updateRealtimeState to use new device IDs if possible.
-        // For simplicity, we just inject the values based on existing logic.
-        const originalUpdateRealtimeState = updateRealtimeState;
-        updateRealtimeState = function(logs) {
-            originalUpdateRealtimeState(logs);
-            // Update sensor values mapped dynamically
-            logs.forEach(log => {
-                if(log.temperature) {
-                    const el = document.getElementById('device-temp_sensor_a101-val');
-                    if (el) el.innerText = log.temperature.toFixed(1) + '°C';
-                }
-                if(log.co2 || log.air_quality_or_co2) {
-                    const el = document.getElementById('device-air_sensor_a101-val');
-                    if (el) el.innerText = (log.co2 || log.air_quality_or_co2) + ' ppm';
-                }
-                // Mock other values if present
-                if(log.humidity) {
-                    const el = document.getElementById('device-humid_sensor_a101-val');
-                    if(el) el.innerText = log.humidity + '%';
-                }
-                if(log.energy_consumption) {
-                    const el = document.getElementById('device-smart_plug_a101-val');
-                    if(el) el.innerText = log.energy_consumption + ' W';
-                }
-            });
-        };
-
-        initDevices().then(() => {
-            init3D();
-        });
-        setInterval(fetchLogs, 1500);
-        setInterval(updateRobotStatus, 1000);
-        setInterval(() => {
-            document.getElementById('clock').innerText = new Date().toLocaleTimeString();
-        }, 1000);
+        // Khởi động
         fetchLogs();
+        init3D();
     </script>
 </body>
 </html>

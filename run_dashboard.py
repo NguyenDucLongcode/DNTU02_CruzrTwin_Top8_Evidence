@@ -123,6 +123,44 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps([]).encode())
             return
 
+        # API: Đọc REAL-TIME từ MongoDB Orion
+        elif self.path == '/api/db/sensors':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            try:
+                import pymongo
+                client = pymongo.MongoClient('mongodb://localhost:27017/', serverSelectionTimeoutMS=2000)
+                db = client['orion-cruzrtwin']
+                entities = db['entities'].find({})
+                
+                room_data = {}
+                for ent in entities:
+                    ent_id = ent.get('_id', {}).get('id', '')
+                    if not ent_id.startswith('Device:'): continue
+                    
+                    parts = ent_id.split('_', 1)
+                    if len(parts) < 2: continue
+                    
+                    dev_type_prefix = parts[0] # Vd: Device:TEMP
+                    room_id = parts[1]         # Vd: A101
+                    
+                    if room_id not in room_data:
+                        room_data[room_id] = {"temp": 25.0, "smoke": 0.0, "co2": 400.0}
+                        
+                    attrs = ent.get('attrs', {})
+                    if 'TEMP' in dev_type_prefix and 'temperature' in attrs:
+                        room_data[room_id]['temp'] = attrs['temperature'].get('value', 25.0)
+                    elif 'SMOKE' in dev_type_prefix and 'smoke_status' in attrs:
+                        room_data[room_id]['smoke'] = attrs['smoke_status'].get('value', 0.0)
+                    elif 'CO2' in dev_type_prefix and 'co2_level' in attrs:
+                        room_data[room_id]['co2'] = attrs['co2_level'].get('value', 400.0)
+                        
+                self.wfile.write(json.dumps(room_data).encode())
+            except Exception as e:
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
+            return
+
         # 3. Phục vụ các file tĩnh
         else:
             if self.path == '/' or self.path == '':

@@ -1,4 +1,11 @@
+import os
 import sys
+
+# Ensure project root is in path
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
 from src.ai.detector import detect_anomaly
 
 def print_result(case_name, input_data):

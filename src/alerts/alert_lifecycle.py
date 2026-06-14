@@ -1,4 +1,4 @@
-ALLOWED_STATUSES = {"OPEN", "ACKED", "RESOLVED", "ERROR"}
+ALLOWED_STATUSES = {"OPEN", "ACKED", "RESOLVED", "ERROR", "ACTIVE"}
 
 def is_valid_alert_status(status: str) -> bool:
     """

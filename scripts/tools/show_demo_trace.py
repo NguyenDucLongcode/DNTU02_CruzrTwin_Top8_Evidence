@@ -17,8 +17,9 @@ DEFAULT_ZONE_ID = os.getenv("ZONE_ID", "DNTU_ROOM_A101")
 LOG_DIR = Path("logs")
 SENSOR_LOG = LOG_DIR / "sensor_readings.jsonl"
 AI_LOG = LOG_DIR / "ai_detection.jsonl"
+ALERT_LOG = LOG_DIR / "alert_events.jsonl"
 ORION_LOG = LOG_DIR / "orion_state.jsonl"
-ROBOT_LOG = LOG_DIR / "robot_action.jsonl"
+ROBOT_LOG = LOG_DIR / "robot_actions.jsonl"
 ACK_LOG = LOG_DIR / "operator_ack.jsonl"
 
 
@@ -82,14 +83,18 @@ def main() -> int:
 
     sensor_entries = load_jsonl_lines(SENSOR_LOG)
     ai_entries = load_jsonl_lines(AI_LOG)
+    alert_entries = load_jsonl_lines(ALERT_LOG)
     orion_entries = load_jsonl_lines(ORION_LOG)
     robot_entries = load_jsonl_lines(ROBOT_LOG)
     ack_entries = load_jsonl_lines(ACK_LOG)
 
     sensor = latest_matching(sensor_entries, args.demo_run_id, args.scenario_id, args.zone_id)
     ai = latest_matching(ai_entries, args.demo_run_id, args.scenario_id, args.zone_id)
+    # Primary: alert_events.jsonl; fallback: extract from orion_state
+    alert = latest_matching(alert_entries, args.demo_run_id, args.scenario_id, args.zone_id)
     orion = latest_matching(orion_entries, args.demo_run_id, args.scenario_id, args.zone_id)
-    alert = build_alert_from_orion(orion)
+    if not alert:
+        alert = build_alert_from_orion(orion)
     robot = latest_matching(robot_entries, args.demo_run_id, args.scenario_id, args.zone_id)
     ack = latest_matching(ack_entries, args.demo_run_id, args.scenario_id, args.zone_id)
 
@@ -103,7 +108,7 @@ def main() -> int:
     print_section("1. SensorReading", sensor, SENSOR_LOG)
     print_section("2. Orion state", orion, ORION_LOG)
     print_section("3. AI detection", ai, AI_LOG)
-    print_section("4. AlertEvent", alert, ORION_LOG)
+    print_section("4. AlertEvent", alert, ALERT_LOG)
     print_section("5. RobotAction", robot, ROBOT_LOG)
     print_section("6. OperatorAck", ack, ACK_LOG)
 

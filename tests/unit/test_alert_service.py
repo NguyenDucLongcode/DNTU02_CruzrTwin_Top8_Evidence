@@ -73,4 +73,42 @@ def test_alert_service_critical():
     assert event["level"] == "critical"
     assert event["status"] == "OPEN"
     assert "Critical" in event["message"]
-    assert event["recommended_action"] == "DISPATCH_CRUZR_GUIDANCE"
+    assert event["action_code"] == "DISPATCH_CRUZR_GUIDANCE"
+    assert "Send Cruzr" in event["recommended_action"]
+
+def test_alert_event_has_source_ai_event_id():
+    ai_result = {
+        "timestamp": "2026-06-08T12:00:20Z",
+        "predicted_anomaly": 1,
+        "predicted_level": "critical",
+        "anomaly_score": -0.35,
+        "source_ai_event_id": "AIEvent:TEST_AI_EVENT_123"
+    }
+    event = create_alert_event(ai_result)
+    assert event is not None
+    assert event["source_ai_event_id"] == "AIEvent:TEST_AI_EVENT_123"
+
+def test_alert_event_evidence_status_active():
+    ai_result = {
+        "timestamp": "2026-06-08T12:00:20Z",
+        "predicted_anomaly": 1,
+        "predicted_level": "critical",
+        "anomaly_score": -0.35
+    }
+    event = create_alert_event(ai_result)
+    assert event is not None
+    assert event["evidence_status"] == "ACTIVE"
+
+def test_alert_event_recommended_action_cleaned():
+    ai_result = {
+        "timestamp": "2026-06-08T12:00:20Z",
+        "predicted_anomaly": 1,
+        "predicted_level": "critical",
+        "anomaly_score": -0.35,
+        "recommended_action": "Create critical AlertEvent, send Cruzr to response point, and request operator acknowledgement. Safety-critical actuation should remain operator-approved or simulated."
+    }
+    event = create_alert_event(ai_result)
+    assert event is not None
+    assert event["recommended_action"].startswith("Send Cruzr")
+    assert not event["recommended_action"].startswith("Create critical")
+

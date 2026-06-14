@@ -1,4 +1,12 @@
+import os
+import sys
 import time
+
+# Ensure project root is in path
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
 from src.orchestration.task_5_6_pipeline import process_sensor_event
 
 def main():

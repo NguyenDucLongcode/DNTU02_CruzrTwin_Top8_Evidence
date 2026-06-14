@@ -1,7 +1,6 @@
 """
 Webhook Receiver - Nhận notification từ Orion
 - Cập nhật Room entity khi có dữ liệu mới
-- Gọi robot CRUZR khi phát hiện cháy
 """
 
 import json
@@ -9,30 +8,26 @@ import os
 import sys
 from datetime import datetime, timezone
 from flask import Flask, request, jsonify
-import time 
-
 
 # Thêm đường dẫn để import
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, ROOT_DIR)
 
 from src.fiware.entities import update_room_sensors
-from src.robot.cruzr_client import CruzrRobotClient
-from src.fiware import get_room_state, get_all_devices, get_alert_events, get_robot_actions
-from src.tuya.commands import control_fire_emergency_plugs
+from src.orchestration.task_5_6_pipeline import process_sensor_event
+from src.common.config import get_config
+from src.common.logging_utils import append_jsonl
+from src.fiware.client import update_entity_attrs
+from src.fiware.entities.entities_manager import upsert_entity
 
 app = Flask(__name__)
 
-# Khởi tạo robot client (sẽ kết nối khi cần)
-robot = None
+_processed_acks = {}
 
+def reset_processed_acks():
+    global _processed_acks
+    _processed_acks.clear()
 
-def get_robot():
-    """Lazy initialization của robot client, giữ kết nối lâu dài"""
-    global robot
-    if robot is None:
-        robot = CruzrRobotClient()
-    return robot
 
 
 def _utc_now() -> str:
@@ -44,168 +39,10 @@ def _extract_value(value):
         return value["value"]
     return value
 
-def write_robot_action_log(alert_id: str, zone_id: str, message: str, status: str = "ACK"):
-    """
-    Ghi log RobotAction theo đúng format file Word 4.4
-    
-    Format yêu cầu:
-    {
-        "demo_run_id": "DNTU02_TOP8_RUN_2026_001",
-        "timestamp": "2026-05-17T09:00:25Z",
-        "robot_id": "CRUZR_01",
-        "alert_id": "AlertEvent:SCN_CRITICAL_001",
-        "zone_id": "DNTU_ROOM_A101",
-        "action_type": "VOICE_DISPLAY_GUIDANCE",
-        "navigation_mode": "PREDEFINED_RESPONSE_POINT",
-        "message": "...",
-        "status": "ACK"
-    }
-    """
-    log_file = "logs/robot_actions.jsonl"
-    os.makedirs("logs", exist_ok=True)
-    
-    log_entry = {
-        "demo_run_id": os.getenv("DEMO_RUN_ID", "DNTU02_TOP8_RUN_2026_001"),
-        "timestamp": _utc_now(),
-        "robot_id": "CRUZR_01",
-        "alert_id": alert_id,
-        "zone_id": zone_id,
-        "action_type": "VOICE_DISPLAY_GUIDANCE",
-        "navigation_mode": "PREDEFINED_RESPONSE_POINT",
-        "message": message,
-        "status": status
-    }
-    
-    with open(log_file, "a", encoding="utf-8") as f:
-        f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
-    
-    print(f"   📝 RobotAction log saved: {log_file}")
-    return log_entry
-
-def write_orion_state_log():
-    """
-    Ghi log Orion state: Room, Devices, AlertEvent (AI), RobotAction
-    Theo file Word 4.2
-    """
-    log_file = "logs/orion_state.jsonl"
-    os.makedirs("logs", exist_ok=True)
-    
-    # Lấy Room entity
-    room = get_room_state() or {}
-    room_id = room.get("id", f"Room:{os.getenv('ZONE_ID', 'DNTU_ROOM_A101')}")
-    
-    # Lấy tất cả Device entities
-    all_devices = get_all_devices() or []
-    device_ids = [d.get("id") for d in all_devices if d.get("id")]
-    
-    # Lấy AlertEvent entities (AI tạo ra)
-    alert_events = get_alert_events() or []
-    alert_ids = [a.get("id") for a in alert_events if a.get("id")]
-    
-    # Lấy RobotAction entities (robot tạo ra)
-    robot_actions = get_robot_actions() or []
-    robot_ids = [r.get("id") for r in robot_actions if r.get("id")]
-    
-    # Log đầy đủ
-    log_entry = {
-        "timestamp": _utc_now(),
-        "demo_run_id": os.getenv("DEMO_RUN_ID", "DNTU02_TOP8_RUN_2026_001"),
-        "room": room_id,
-        "devices": device_ids,
-        "alert_events": alert_ids,
-        "robot_actions": robot_ids
-    }
-    
-    with open(log_file, "a", encoding="utf-8") as f:
-        f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
-    
-    print(f"   📝 Orion state logged: {log_file}")
-
-def control_smart_plugs():
-    """Điều khiển ổ cắm khi cháy: tắt a102/a103, bật a104 (1 kết nối, song song)."""
-    print("\n🔌 Controlling smart plugs...")
-
-    results = control_fire_emergency_plugs()
-    for name, outcome in results.items():
-        action = "ON" if name.endswith("a104") else "OFF"
-        if outcome["success"]:
-            print(f"   ✅ {name} turned {action}")
-        else:
-            err = outcome.get("error") or "unknown error"
-            print(f"   ❌ {name} failed ({action}): {err}")
-
-    print("\n🔌 Smart plugs control completed!")
-
-
-def send_robot_emergency(temperature: float, smoke: int):
-    """Gửi lệnh khẩn cấp đến robot (giữ kết nối)"""
-    robot_client = get_robot()
-
-  
-    
-    # Kết nối nếu chưa kết nối
-    if not robot_client.is_connected():
-        if not robot_client.connect():
-            print(f"   ❌ Cannot connect to robot at {robot_client.ip}:{robot_client.port}")
-            return False
-    
-    try:
-
-        zone_id = os.getenv("ZONE_ID", "DNTU_ROOM_A101")
-        alert_id = "AlertEvent:SCN_CRITICAL_001"
-        message = f"⚠️ CẢNH BÁO CHÁY! Nhiệt độ {temperature} độ C! Vui lòng sơ tán khẩn cấp! ⚠️"
-        
-        # 1. GHI LOG ROBOTACTION (TRƯỚC KHI GỬI LỆNH)
-        write_robot_action_log(
-            alert_id=alert_id,
-            zone_id=zone_id,
-            message=message,
-            status="DISPATCHED"
-        )
-
-
-          # 2. Di chuyển robot lên trước (ước lượng 2 mét)
-        # Theo tài liệu: stream_move_input với direction="forward", speed=0.5
-        # print(f"   🚶 Robot moving forward...")
-       
-        
-        # Hiển thị emotion khẩn cấp
-        result = robot_client.play_emotion("emotion://va/techface_upset")
-        print(f"   😫 Emotion result: {result}")
-
-        
-        # robot.turn_left(speed=6)
-        # time.sleep(6.2)
-        # robot_client.stop()
-
-        result = robot_client.speak(message)
-
-        # robot_client.move_forward(speed=1)
-        # time.sleep(3)  # Chạy 4 giây (speed=0.5 ~ 0.25 m/s → ~1m, cần test lại)
-        # robot_client.stop()
-
-        # robot.turn_right(speed=1)
-        # time.sleep(0.5)
-
-
-        # robot_client.stop()
-
-        # control_smart_plugs()
-
-        print(f"   ✅ Robot moved")
-        
-      
-        
-        return True
-        
-    except Exception as e:
-        print(f"   ❌ Robot command failed: {e}")
-        return False
-
 
 @app.route('/webhook/notify', methods=['POST'])
 def webhook_notify():
-    """Nhận notification từ Orion, cập nhật Room và gọi robot nếu cháy"""
+    """Nhận notification từ Orion, cập nhật Room và chạy AI pipeline"""
 
     data = request.get_json(silent=True) or {}
 
@@ -221,64 +58,148 @@ def webhook_notify():
     if isinstance(data, dict) and isinstance(data.get("data"), list) and data["data"]:
         entity = data["data"][0] or {}
 
-    # Lấy các giá trị cảm biến
-    sensor_data = {}
+    # Lấy các giá trị cảm biến đã thay đổi
+    changed_sensor_data = {}
     for key in tracked_attrs:
         if key in entity:
-            sensor_data[key] = _extract_value(entity[key])
-        else:
-            sensor_data[key] = 0
+            changed_sensor_data[key] = _extract_value(entity[key])
 
     # Cập nhật Room entity
-    if any(sensor_data.values()):
-        update_room_sensors(sensor_data)
-
-     # Ghi log Orion state sau khi cập nhật (theo file Word 4.2)
-    write_orion_state_log()
-    
-    # ==================================================
-    # PHÁT HIỆN CHÁY -> GỌI ROBOT
-    # ==================================================
-    temperature = sensor_data.get("temperature", 0)
-    smoke = sensor_data.get("smoke_status", 0)
-    
-    # Điều kiện cháy: nhiệt độ >= 50°C HOẶC (nhiệt độ >= 38°C và có khói)
-    is_fire = (temperature >= 50) or (temperature >= 38 and smoke == 1)
-    
-    if is_fire:
-        print("\n" + "🔥" * 30)
-        print("🔥🔥🔥 CRITICAL ALERT! FIRE DETECTED! 🔥🔥🔥")
-        print(f"   Temperature: {temperature}°C")
-        print(f"   Smoke: {smoke}")
-        print("🔥" * 30)
+    if changed_sensor_data:
+        update_room_sensors(changed_sensor_data)
         
-        # Ghi log robot action
-        log_entry = {
-            "timestamp": _utc_now(),
-            "demo_run_id": os.getenv("DEMO_RUN_ID", "DNTU02_TOP8_RUN_2026_001"),
-            "zone_id": os.getenv("ZONE_ID", "DNTU_ROOM_A101"),
-            "robot_id": "CRUZR_01",
-            "action_type": "VOICE_DISPLAY_GUIDANCE",
-            "temperature": temperature,
-            "smoke": smoke,
-            "message": f"⚠️ CẢNH BÁO CHÁY! Nhiệt độ {temperature}°C!",
-            "status": "DISPATCHED"
-        }
-        
-        os.makedirs("logs", exist_ok=True)
-        with open("logs/robot_actions.jsonl", "a", encoding="utf-8") as f:
-            f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
-        
-        # GỌI ROBOT CRUZR
-        print("\n🤖 Sending emergency command to robot...")
-        success = send_robot_emergency(temperature, smoke)
-        
-        if success:
-            print("   ✅ Robot emergency dispatched!")
-        else:
-            print("   ❌ Failed to dispatch robot")
+        # Chạy AI pipeline và sinh Alert/RobotAction
+        try:
+            # Truyền thêm metadata nếu có từ entity hoặc data
+            if "scenario_id" in entity:
+                changed_sensor_data["scenario_id"] = _extract_value(entity["scenario_id"])
+            if "demo_run_id" in entity:
+                changed_sensor_data["demo_run_id"] = _extract_value(entity["demo_run_id"])
+            if "zone_id" in entity:
+                changed_sensor_data["zone_id"] = _extract_value(entity["zone_id"])
+            if "expected_label" in entity:
+                changed_sensor_data["expected_label"] = _extract_value(entity["expected_label"])
+            elif "expected" in entity:
+                changed_sensor_data["expected_label"] = _extract_value(entity["expected"])
+                
+            process_sensor_event(changed_sensor_data)
+        except Exception as e:
+            print(f"Error processing sensor event in webhook: {e}")
 
     return jsonify({"status": "ok"}), 200
+
+
+@app.route('/api/operator/ack', methods=['POST'])
+def operator_ack():
+    """Nhận xác nhận từ Operator, cập nhật Orion và ghi nhận audit log"""
+    req_data = request.get_json(silent=True) or {}
+    
+    cfg = get_config()
+    decision = req_data.get("decision")
+    if decision not in ["ACK", "ERROR"]:
+        return jsonify({"error": "Invalid decision. Must be ACK or ERROR"}), 400
+        
+    alert_id = req_data.get("alert_id") or "AlertEvent:SCN_CRITICAL_001"
+    robot_action_id = req_data.get("robot_action_id") or "RobotAction:SCN_CRITICAL_001"
+    operator_id = req_data.get("operator_id") or "demo_operator"
+    demo_run_id = req_data.get("demo_run_id") or cfg["demo_run_id"]
+    scenario_id = req_data.get("scenario_id") or "SCN_CRITICAL_001"
+    zone_id = req_data.get("zone_id") or cfg["default_zone_id"]
+    note = req_data.get("note") or ("Operator confirmed Cruzr guidance delivered." if decision == "ACK" else "Operator reported error.")
+    
+    operator_ack_id = f"OperatorAck:{scenario_id}"
+    
+    # Kiểm tra Idempotency cache
+    if operator_ack_id in _processed_acks:
+        return jsonify(_processed_acks[operator_ack_id]), 200
+        
+    orion_upsert_status = "SKIPPED_OFFLINE"
+    error_message = None
+    
+    if cfg["orion_enabled"]:
+        try:
+            if decision == "ACK":
+                alert_status = "RESOLVED"
+                robot_status = "COMPLETED"
+                result = "ACK"
+            else:
+                alert_status = "NEEDS_REVIEW"
+                robot_status = "ERROR"
+                result = "ERROR"
+                
+            # Cập nhật AlertEvent
+            alert_success = update_entity_attrs(alert_id, {
+                "status": {"type": "Text", "value": alert_status}
+            })
+            
+            # Cập nhật RobotAction
+            robot_success = update_entity_attrs(robot_action_id, {
+                "status": {"type": "Text", "value": robot_status}
+            })
+            
+            # Upsert OperatorAck entity
+            timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+            ack_attrs = {
+                "demo_run_id": {"type": "Text", "value": demo_run_id},
+                "scenario_id": {"type": "Text", "value": scenario_id},
+                "zone_id": {"type": "Text", "value": zone_id},
+                "operator_id": {"type": "Text", "value": operator_id},
+                "alert_id": {"type": "Text", "value": alert_id},
+                "robot_action_id": {"type": "Text", "value": robot_action_id},
+                "operator_decision": {"type": "Text", "value": decision},
+                "result": {"type": "Text", "value": result},
+                "note": {"type": "Text", "value": note},
+                "created_at": {"type": "DateTime", "value": timestamp}
+            }
+            ack_success = upsert_entity(operator_ack_id, "OperatorAck", ack_attrs)
+            
+            if alert_success and robot_success and ack_success:
+                orion_upsert_status = "SUCCESS"
+            else:
+                orion_upsert_status = "FAILED"
+                error_message = "One or more Orion updates returned False"
+        except Exception as e:
+            orion_upsert_status = "FAILED"
+            error_message = str(e)
+            
+    # Ghi log operator_ack.jsonl
+    timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    log_entry = {
+        "demo_run_id": demo_run_id,
+        "timestamp": timestamp,
+        "scenario_id": scenario_id,
+        "zone_id": zone_id,
+        "operator_ack_id": operator_ack_id,
+        "operator_id": operator_id,
+        "alert_id": alert_id,
+        "robot_action_id": robot_action_id,
+        "operator_decision": decision,
+        "result": "ACK" if decision == "ACK" else "ERROR",
+        "note": note,
+        "orion_upsert_status": orion_upsert_status
+    }
+    if error_message:
+        log_entry["error_message"] = error_message
+        
+    ack_log_path = os.path.join(cfg["log_dir"], "operator_ack.jsonl")
+    append_jsonl(ack_log_path, log_entry)
+    
+    # Trả response
+    response_status = "acknowledged" if decision == "ACK" else "error_reported"
+    res = {
+        "status": response_status,
+        "operator_decision": decision,
+        "alert_id": alert_id,
+        "robot_action_id": robot_action_id,
+        "operator_ack_id": operator_ack_id,
+        "orion_upsert_status": orion_upsert_status
+    }
+    if error_message:
+        res["error_message"] = error_message
+        
+    _processed_acks[operator_ack_id] = res
+    
+    return jsonify(res), 200
 
 
 @app.route('/webhook/health', methods=['GET'])
@@ -286,12 +207,12 @@ def health_check():
     return {"status": "healthy"}, 200
 
 
+
 if __name__ == "__main__":
     print("\n" + "=" * 50)
-    print("🔔 Webhook Receiver Ready")
+    print("Webhook Receiver Ready")
     print("=" * 50)
     print("   URL: http://0.0.0.0:5000/webhook/notify")
-    print("   Trigger: temperature >= 50°C OR (temperature >= 38°C AND smoke = 1)")
     print("=" * 50 + "\n")
     
     app.run(host='0.0.0.0', port=5000, debug=False)

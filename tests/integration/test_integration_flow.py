@@ -2,7 +2,7 @@ import os
 import json
 import pytest
 from unittest.mock import patch, MagicMock
-from src.orchestration.task_5_6_pipeline import process_sensor_event
+from orchestration.pipeline import process_sensor_event
 from src.alerts.alert_service import create_alert_event, create_robot_action_from_alert, reset_alert_service_cache
 from src.ai.detector import detect_anomaly
 import src.common.config

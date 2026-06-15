@@ -11,30 +11,6 @@
       "co2": 403,
       "smoke_status": 0,
       "energy_consumption": 338
-    },
-    {
-      "t": 10,
-      "temperature": 24.7,
-      "humidity": 54.0,
-      "co2": 420,
-      "smoke_status": 0,
-      "energy_consumption": 354
-    },
-    {
-      "t": 20,
-      "temperature": 24.9,
-      "humidity": 55.2,
-      "co2": 418,
-      "smoke_status": 0,
-      "energy_consumption": 357
-    },
-    {
-      "t": 30,
-      "temperature": 25.8,
-      "humidity": 55.8,
-      "co2": 430,
-      "smoke_status": 0,
-      "energy_consumption": 352
     }
   ]
 }

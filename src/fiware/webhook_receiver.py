@@ -9,18 +9,22 @@ import sys
 from datetime import datetime, timezone
 from flask import Flask, request, jsonify
 
+
 # Thêm đường dẫn để import
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, ROOT_DIR)
 
-from src.fiware.entities import update_room_sensors
-from src.orchestration.task_5_6_pipeline import process_sensor_event
+from src.fiware import update_room_sensors,get_room_state,upsert_entity
 from src.common.config import get_config
 from src.common.logging_utils import append_jsonl
 from src.fiware.client import update_entity_attrs
-from src.fiware.entities.entities_manager import upsert_entity
+from src.orchestration import process_ai_detector_event
+from src.utils import write_orion_state_log
+
 
 app = Flask(__name__)
+
+ZONE_ID = os.getenv("ZONE_ID", "DNTU_ROOM_A101")
 
 _processed_acks = {}
 
@@ -68,7 +72,6 @@ def webhook_notify():
     if changed_sensor_data:
         update_room_sensors(changed_sensor_data)
         
-        # Chạy AI pipeline và sinh Alert/RobotAction
         try:
             # Truyền thêm metadata nếu có từ entity hoặc data
             if "scenario_id" in entity:
@@ -81,10 +84,23 @@ def webhook_notify():
                 changed_sensor_data["expected_label"] = _extract_value(entity["expected_label"])
             elif "expected" in entity:
                 changed_sensor_data["expected_label"] = _extract_value(entity["expected"])
-                
-            process_sensor_event(changed_sensor_data)
         except Exception as e:
             print(f"Error processing sensor event in webhook: {e}")
+
+
+    # Lấy dữ liệu của room sau khi cập nhật để truyền cho AI detect_anomaly
+    room_state = get_room_state(ZONE_ID)
+     
+    write_orion_state_log()  # Ghi log state sau khi cập nhật và trước khi chạy AI
+
+    if room_state :
+        try:
+            # Truyền scenario_id nếu có trong room_state, ưu tiên hơn scenario_id từ entity
+            scenario_id = room_state["scenario_id"]["value"]
+            print(f"Running AI anomaly detection for scenario_id: {scenario_id}")
+            process_ai_detector_event(room_state, scenario_id)
+        except Exception as e:
+            print(f"Error running AI anomaly detection in webhook: {e}")
 
     return jsonify({"status": "ok"}), 200
 

@@ -15,6 +15,8 @@ from .mqtt_helper import (
     DEFAULT_ZONE_ID,
 )
 
+from .log_helper import write_orion_state_log
+
 from .replay_helpers import (
     load_test_files,
     now_iso,
@@ -48,4 +50,7 @@ __all__ = [
     "extract_scenario_type",
     "build_scenario_id",
     "get_device_status_from_filename",
+
+    # Log helpers
+    "write_orion_state_log"
 ]

@@ -4,6 +4,7 @@ from src.ai.detector import detect_anomaly
 from src.alerts.alert_service import create_alert_event
 from src.common import config
 from src.common.logging_utils import append_jsonl
+import pandas as pd
 
 def parse_payload(payload: dict) -> dict:
     # 1. Webhook payload
@@ -33,7 +34,7 @@ def parse_entity(entity: dict) -> dict:
         parsed["type"] = entity["type"]
     return parsed
 
-def process_sensor_event(orion_payload: dict) -> dict:
+def process_ai_detector_event(orion_payload: dict, scenario_id: str = None,) -> dict:
     """
     Orchestrate the processing of a single sensor reading event.
     Returns a dictionary containing:
@@ -50,16 +51,8 @@ def process_sensor_event(orion_payload: dict) -> dict:
     demo_run_id = parsed_data.get("demo_run_id") or cfg["demo_run_id"]
     
     # scenario_id fallback
-    scenario_id = parsed_data.get("scenario_id")
-    if not scenario_id:
-        # Check label if any to identify scenario
-        exp_lbl = parsed_data.get("expected_label") or parsed_data.get("expected")
-        if exp_lbl == "critical":
-            scenario_id = "SCN_CRITICAL_RUNTIME"
-        elif exp_lbl == "warning":
-            scenario_id = "SCN_WARNING_RUNTIME"
-        else:
-            scenario_id = "SCN_NORMAL_RUNTIME"
+    if scenario_id is None:
+        scenario_id = parsed_data.get("scenario_id") or parsed_data.get("scenario") or cfg["default_scenario_id"]
             
     zone_id = parsed_data.get("zone_id") or cfg["default_zone_id"]
     
@@ -215,33 +208,7 @@ def process_sensor_event(orion_payload: dict) -> dict:
             zone_id=zone_id
         )
         
-    # 10. Sync additional logging files for trace validation
-    sensor_readings_path = os.path.join(cfg["log_dir"], "sensor_readings.jsonl")
-    sensor_log_entry = {
-        "demo_run_id": demo_run_id,
-        "timestamp": ts,
-        "scenario_id": scenario_id,
-        "zone_id": zone_id,
-        "temperature": float(temp),
-        "humidity": float(hum),
-        "smoke_status": 1 if float(smoke) >= 1.0 else 0,
-        "raw_smoke_value": float(smoke),
-        "co2": float(co2),
-        "energy_consumption": float(power),
-        "device_status": "ON"
-    }
-    append_jsonl(sensor_readings_path, sensor_log_entry)
-    
-    orion_state_path = os.path.join(cfg["log_dir"], "orion_state.jsonl")
-    orion_log_entry = {
-        "demo_run_id": demo_run_id,
-        "timestamp": ts,
-        "scenario_id": scenario_id,
-        "zone_id": zone_id,
-        "room_status": "NORMAL" if lvl == "normal" else lvl.upper(),
-        "alerts": [alert_event] if alert_event else []
-    }
-    append_jsonl(orion_state_path, orion_log_entry)
+
     
     return {
         "processing_status": "SUCCESS",

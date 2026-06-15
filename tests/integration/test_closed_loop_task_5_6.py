@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import json
 
-from src.orchestration.task_5_6_pipeline import process_sensor_event
+from orchestration.pipeline import process_sensor_event
 from src.ai.model_trainer import train_normal_boundary_model
 from src.common.config import get_config
 

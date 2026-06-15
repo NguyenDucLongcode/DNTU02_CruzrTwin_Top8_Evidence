@@ -6,35 +6,11 @@
   "readings": [
     {
       "t": 0,
-      "temperature": 32.1,
-      "humidity": 65.1,
-      "co2": 801,
-      "smoke_status": 0,
-      "energy_consumption": 491
-    },
-    {
-      "t": 10,
-      "temperature": 34.2,
-      "humidity": 68.3,
-      "co2": 918,
-      "smoke_status": 0,
-      "energy_consumption": 610
-    },
-    {
-      "t": 20,
       "temperature": 36.1,
       "humidity": 71.1,
       "co2": 1019,
       "smoke_status": 0,
       "energy_consumption": 702
-    },
-    {
-      "t": 30,
-      "temperature": 37.7,
-      "humidity": 74.3,
-      "co2": 1137,
-      "smoke_status": 1,
-      "energy_consumption": 805
     }
   ]
 }

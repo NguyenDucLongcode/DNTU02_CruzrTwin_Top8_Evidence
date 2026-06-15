@@ -4,6 +4,8 @@ from .entities_manager import (
     update_room_sensors,
     create_alert_event,
     create_robot_action,
+    update_room_scenario,
+    update_room_devices
 )
 
 from .query import (
@@ -12,6 +14,8 @@ from .query import (
     get_entity_by_type,
     print_summary,
 )
+
+from ..client import get_orion_version, get_entities, get_entity ,update_entity_attrs
 
 __all__ = [
     "upsert_entity",
@@ -23,4 +27,10 @@ __all__ = [
     "get_all_devices",
     "get_entity_by_type",
     "print_summary",
+    "get_orion_version",
+    "get_entities", 
+    "get_entity"
+    "update_entity_attrs",
+    "update_room_scenario"
+    "update_room_devices"
 ]

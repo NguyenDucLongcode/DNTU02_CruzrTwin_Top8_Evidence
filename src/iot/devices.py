@@ -48,6 +48,11 @@ ROOM_CONFIG = {
         {"name": "energy_consumption", "type": "Number"},
 
         # ==================================================
+        # DEVICE INFO - CHỈ LƯU DANH SÁCH THIẾT BỊ
+        # ==================================================
+        {"name": "device_ids", "type": "Array"},  # ["Device:TEMP_A101", "Device:ENERGY_E101"]
+
+        # ==================================================
         # ROOM STATUS
         # ==================================================
         {"name": "device_status", "type": "Text"},
@@ -312,6 +317,61 @@ DEVICES_TO_REGISTER = [
             {"name": "installation_area", "type": "Text", "value": "Room A101 Ceiling"}
         ]
     },
+
+    # ==================================================
+    # ENERGY SENSOR (Power / Energy Consumption)
+    # ==================================================
+{
+    "device_id": "energy_sensor_e101",
+    "entity_name": "Device:ENERGY_E101",
+    "entity_type": "EnergyMeter",
+
+    "attributes": [
+        {"object_id": "energy_consumption", "name": "energy_consumption", "type": "Number"},
+        {"object_id": "power", "name": "instant_power", "type": "Number"},
+        {"object_id": "voltage", "name": "voltage", "type": "Number"},
+        {"object_id": "current", "name": "current", "type": "Number"},
+        {"object_id": "ts", "name": "TimeInstant", "type": "DateTime"}
+    ],
+
+    "static_attributes": [
+
+        # Core
+        {"name": "demo_run_id", "type": "Text", "value": DEMO_RUN_ID},
+        {"name": "zone_id", "type": "Text", "value": ZONE_ID},
+        {"name": "room_id", "type": "Text", "value": ZONE_ID},
+
+        # Device info
+        {"name": "unit", "type": "Text", "value": "kWh"},
+        {"name": "manufacturer", "type": "Text", "value": "DNTU IoT Lab"},
+        {"name": "device_model", "type": "Text", "value": "DNTU-ENERGY-V1"},
+        {"name": "firmware_version", "type": "Text", "value": "1.0.0"},
+
+        # Status
+        {"name": "status", "type": "Text", "value": "online"},
+        {"name": "connectivity", "type": "Text", "value": "connected"},
+        {"name": "battery_level", "type": "Number", "value": 90},
+        {"name": "signal_strength", "type": "Number", "value": -58},
+
+        # Thresholds (kWh)
+        {"name": "normal_min", "type": "Number", "value": 0},
+        {"name": "normal_max", "type": "Number", "value": 500},
+        {"name": "warning_threshold", "type": "Number", "value": 800},
+        {"name": "critical_threshold", "type": "Number", "value": 1000},
+
+        # Sensor config
+        {"name": "sampling_rate_seconds", "type": "Number", "value": 10},
+        {"name": "accuracy", "type": "Number", "value": 0.01},
+        {"name": "calibration_status", "type": "Text", "value": "calibrated"},
+        {"name": "ct_ratio", "type": "Number", "value": 2000},
+        {"name": "meter_type", "type": "Text", "value": "single_phase"},
+
+        # Location
+        {"name": "building_id", "type": "Text", "value": BUILDING_ID},
+        {"name": "floor", "type": "Number", "value": 1},
+        {"name": "installation_area", "type": "Text", "value": "Room E101 - Electrical Panel"}
+    ]
+},
 
     # ==================================================
     # SMART PLUG

@@ -7,7 +7,7 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from src.orchestration.task_5_6_pipeline import process_sensor_event
+from orchestration.pipeline import process_sensor_event
 
 def main():
     print("=" * 60)

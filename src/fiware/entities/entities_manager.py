@@ -62,6 +62,46 @@ def update_room_sensors(sensor_data: dict) -> bool:
     
     return update_entity_attrs(entity_id, attrs)
 
+def update_room_scenario(
+    scenario_id: str,
+    zone_id: str = None
+) -> bool:
+
+    room_id = f"Room:{zone_id or ZONE_ID}"
+
+    attrs = {
+        "scenario_id": {
+            "value": scenario_id
+        }
+    }
+
+    return update_entity_attrs(room_id, attrs)
+
+def update_room_devices(device_ids: list) -> bool:
+    """
+    Cập nhật danh sách thiết bị cho Room
+    
+    Args:
+        device_ids: List các device ID (ví dụ: ["Device:TEMP_A101", "Device:ENERGY_E101"])
+    
+    Returns:
+        bool: True nếu cập nhật thành công
+    """
+    entity_id = f"Room:{ZONE_ID}"
+    
+    attrs = {
+        "device_ids": {
+            "type": "Array",
+            "value": device_ids
+        },
+        "last_updated": {
+            "type": "DateTime",
+            "value": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+        }
+    }
+    
+    return update_entity_attrs(entity_id, attrs)
+
 def create_alert_event(scenario_id: str, severity: str, source_room: str) -> bool:
     """Tạo AlertEvent entity trong Orion (do AI tạo)"""
     alert_event = {

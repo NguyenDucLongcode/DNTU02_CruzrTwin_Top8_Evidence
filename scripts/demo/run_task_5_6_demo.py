@@ -8,7 +8,7 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from orchestration.pipeline import process_sensor_event
+from src.orchestration.pipeline import process_sensor_event
 from src.common.config import get_config
 from src.common.logging_utils import ensure_dir
 

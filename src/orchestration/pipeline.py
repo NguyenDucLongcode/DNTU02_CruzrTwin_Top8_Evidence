@@ -215,3 +215,6 @@ def process_ai_detector_event(orion_payload: dict, scenario_id: str = None,) -> 
         "ai_result": ai_result,
         "alert_event": alert_event
     }
+
+# Alias for backward compatibility
+process_sensor_event = process_ai_detector_event

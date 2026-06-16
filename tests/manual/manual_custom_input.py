@@ -7,7 +7,7 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from orchestration.pipeline import process_sensor_event
+from src.orchestration.pipeline import process_sensor_event
 
 def get_interactive_input(prompt, default_val):
     val = input(f"{prompt} (Default: {default_val}): ").strip()

@@ -67,7 +67,7 @@ def create_subscription_for_devices():
             "attrsFormat": "keyValues",
             "metadata": ["dateCreated", "dateModified"]
         },
-        "throttling": 0,
+        "throttling": 3, # Giới hạn gửi notification tối đa 1 lần mỗi 3 giây để tránh quá tải
         "status": "active"
     }
     

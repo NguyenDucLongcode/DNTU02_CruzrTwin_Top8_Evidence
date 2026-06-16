@@ -2,7 +2,7 @@ import os
 import json
 import pytest
 from unittest.mock import patch, MagicMock
-from orchestration.pipeline import process_sensor_event
+from src.orchestration.pipeline import process_sensor_event
 from src.alerts.alert_service import create_alert_event, create_robot_action_from_alert, reset_alert_service_cache
 from src.ai.detector import detect_anomaly
 import src.common.config
@@ -107,7 +107,7 @@ def test_isolation_forest_before_rule_layer():
         "smoke_status": 0.0,
         "energy_consumption": 90.0
     }
-    with patch("src.orchestration.task_5_6_pipeline.detect_anomaly", wraps=detect_anomaly) as mock_detect:
+    with patch("src.orchestration.pipeline.detect_anomaly", wraps=detect_anomaly) as mock_detect:
         res = process_sensor_event(sensor)
         assert mock_detect.called
         assert "anomaly_score" in res["ai_result"]

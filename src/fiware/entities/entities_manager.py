@@ -143,3 +143,4 @@ def create_robot_action(action_id: str, robot_id: str, target_room: str, scenari
     return upsert_entity(robot_action["id"], "RobotAction", {
         k: v for k, v in robot_action.items() if k not in ["id", "type"]
     })
+

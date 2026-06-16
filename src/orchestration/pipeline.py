@@ -41,7 +41,8 @@ def process_ai_detector_event(orion_payload: dict, scenario_id: str = None,) -> 
     - processing_status: SUCCESS or SKIPPED_INCOMPLETE_SENSOR_DATA
     - ai_result: result from the AI detector
     - alert_event: created AlertEvent dictionary (or None if normal)
-    """
+    """ 
+
     cfg = config.get_config()
     
     # 1. Parse payload

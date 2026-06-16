@@ -64,10 +64,11 @@ def create_subscription_for_devices():
                 "smoke_status",
                 "energy_consumption"
             ],
+            "covered": True, 
             "attrsFormat": "keyValues",
             "metadata": ["dateCreated", "dateModified"]
         },
-        "throttling": 3, # Giới hạn gửi notification tối đa 1 lần mỗi 3 giây để tránh quá tải
+        "throttling": 0,
         "status": "active"
     }
     

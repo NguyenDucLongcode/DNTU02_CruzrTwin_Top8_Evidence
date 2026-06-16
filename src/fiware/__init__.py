@@ -13,7 +13,17 @@ from .entities.entities_manager import (
     update_room_devices
 )
 from .subscription import create_subscription_for_devices, get_all_subscriptions, delete_subscription
-from .entities.query import get_room_state, get_all_devices, print_summary, get_alert_events, get_robot_actions
+from .entities.query import( 
+    get_room_state, 
+    get_all_devices, 
+    print_summary, 
+    get_alert_events, 
+    get_robot_actions, 
+    get_all_devices_in_room, 
+    get_smart_plugs_in_room, 
+    get_locks_in_room, 
+    get_alarms_in_room
+)
 
 __all__ = [
     # client
@@ -40,5 +50,9 @@ __all__ = [
     "get_all_devices",
     "print_summary",
     "get_alert_events",
-    "get_robot_actions"
+    "get_robot_actions",
+    "get_all_devices_in_room",
+    "get_smart_plugs_in_room",
+    "get_locks_in_room",
+    "get_alarms_in_room"
 ]

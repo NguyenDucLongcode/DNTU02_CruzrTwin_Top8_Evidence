@@ -4,7 +4,6 @@ Adapter để kết nối FIWARE với Tuya Cloud
 Hỗ trợ: Smart Plug, Audible Alarm, Door Lock
 """
 
-import json
 import yaml
 from pathlib import Path
 from typing import Optional, Dict, Union

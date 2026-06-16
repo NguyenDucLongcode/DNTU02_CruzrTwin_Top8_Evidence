@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT_DIR))
 
-from src.tuya import get_adapter, control_multiple_by_fiware_ids
+from src.tuya import control_multiple_by_fiware_ids
 
 ALL_PLUGS = [
     "smart_plug_a101",

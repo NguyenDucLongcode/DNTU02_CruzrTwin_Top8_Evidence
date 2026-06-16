@@ -11,7 +11,7 @@ from src.fiware import get_room_state
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
-def write_orion_state_log():
+def write_orion_state_log(zone_id: str,):
     """
     Ghi log Orion state: Room, Devices, AlertEvent (AI), RobotAction
     Theo file Word 4.2
@@ -20,9 +20,8 @@ def write_orion_state_log():
     os.makedirs("logs", exist_ok=True)
     
     # Lấy Room entity
-    room = get_room_state() or {}
-    room_id = room.get("id", f"Room:{os.getenv('ZONE_ID', 'DNTU_ROOM_A101')}")
-    
+    room = get_room_state(zone_id) or {}
+
     # Lấy tất cả Device entities
     device_ids = room.get("device_ids", [])
     
@@ -31,7 +30,7 @@ def write_orion_state_log():
     log_entry = {
         "timestamp": _utc_now(),
         "demo_run_id": os.getenv("DEMO_RUN_ID", "DNTU02_TOP8_RUN_2026_001"),
-        "room": room_id,
+        "room": zone_id,
         "devices": device_ids,
     }
     

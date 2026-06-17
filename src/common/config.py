@@ -11,10 +11,12 @@ def get_config() -> dict:
     """
     return {
         "demo_run_id": os.getenv("DEMO_RUN_ID", "DNTU02_TOP8_RUN_2026_001"),
+        "default_scenario_id": os.getenv("DEFAULT_SCENARIO_ID", "SCN_DEFAULT_001"),
         "default_zone_id": os.getenv("DEFAULT_ZONE_ID", "DNTU_ROOM_A101"),
         "data_path": os.getenv("DATA_PATH", "data/sensor_data.csv"),
         "model_path": os.getenv("MODEL_PATH", "models/anomaly_model.pkl"),
         "feature_schema_path": os.getenv("FEATURE_SCHEMA_PATH", "models/feature_schema.json"),
+        "sensor_profile_path": os.getenv("SENSOR_PROFILE_PATH", "models/sensor_profile.json"),
         "log_dir": os.getenv("LOG_DIR", "logs"),
         "evidence_dir": os.getenv("EVIDENCE_DIR", "evidence"),
         "orion_enabled": os.getenv("ORION_ENABLED", "false").lower() == "true",

@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 
 import paho.mqtt.client as mqtt
 from src.fiware.entities.query import get_room_state, get_all_devices, get_entity_by_type
-
+from src.fiware import update_room_scenario
 from src.utils.replay_helpers import (
     build_scenario_id,
     get_device_status_from_filename,
@@ -38,20 +38,19 @@ DEFAULT_ZONE_ID = os.getenv("ZONE_ID", "DNTU_ROOM_A101")
 
 
 # Log file paths
-ORION_SYNC_LOG = os.path.join("logs", "SensorReading.jsonl")
+SENSOR_LOG = os.path.join("logs", "sensorReading.jsonl")
 
 # ======================================================
 # MAP DEVICE ID → OBJECT ID
 # ======================================================
 
-def get_object_id(device_id: str) -> str:
-    if device_id.startswith("temp_sensor"): return "t"
-    if device_id.startswith("humid_sensor"): return "h"
-    if device_id.startswith("air_sensor"): return "co2"
-    if device_id.startswith("smoke_sensor"): return "smoke"
-    if device_id.startswith("smart_plug"): return "energy"
-    return "value"
-
+OBJECT_ID_MAP = {
+    "temp_sensor_a101": "t",           # Map với object_id "t" trong Device:TEMP_A101
+    "humid_sensor_a101": "h",          # Map với object_id "h" (nếu có)
+    "air_sensor_a101": "co2",          # Map với object_id "co2" trong Device:TEMP_A101
+    "smoke_sensor_a101": "smoke",      # Map với object_id "smoke_status" (hoặc "smoke")
+    "energy_sensor_e101": "energy_consumption"  # Map với object_id "energy_consumption" trong Device:ENERGY_E101
+}
 
 # ======================================================
 # HÀM MQTT CLIENT
@@ -94,10 +93,21 @@ def build_mqtt_payload(
     value,
     timestamp: Optional[str] = None
 ) -> dict:
+    """
+    Tạo payload MQTT cho 1 device
+    
+    Args:
+        device_id: ID của thiết bị (vd: temp_sensor_a101)
+        value: Giá trị cảm biến
+        timestamp: Thời gian (tự tạo nếu None)
+    
+    Returns:
+        dict: Payload MQTT
+    """
     if timestamp is None:
        timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
     
-    obj_id = get_object_id(device_id)
+    obj_id = OBJECT_ID_MAP.get(device_id, "value")
     
     return {
         obj_id: value,
@@ -139,7 +149,7 @@ def publish_device_data(
     payload_text = json.dumps(payload, ensure_ascii=False)
     
     if verbose:
-        print(f"   {device_id} -> {value}")
+        print(f"   {device_id} → {value}")
     
     result = client.publish(topic, payload_text, qos=1)
     return result.rc == mqtt.MQTT_ERR_SUCCESS
@@ -218,6 +228,12 @@ def publish_scenario_with_client(
     delay: float = 0.05,
 ) -> bool:
 
+    # In WARNING scenario, we also want to update the room scenario in Orion for each reading
+    update_room_scenario(
+        scenario_id=scenario_id,
+                
+    )
+
     success_count = publish_multiple_devices(
         client,
         device_values,
@@ -262,14 +278,14 @@ def save_scenario_logs(
         "humidity": device_values.get("humid_sensor_a101", 0),
         "air_quality_or_co2": device_values.get("air_sensor_a101", 0),
         "smoke_status": device_values.get("smoke_sensor_a101", 0),
-        "energy_consumption": device_values.get("smart_plug_a101", 0),
+        "energy_consumption": device_values.get("energy_sensor_e101", 0),
         "device_status": device_status,
     }
  
 
-    _append_jsonl(ORION_SYNC_LOG, sensor_entry)
+    _append_jsonl(SENSOR_LOG, sensor_entry)
 
-    print(f"   SensorReading log saved: {ORION_SYNC_LOG}")
+    print(f"   SensorReading log saved: {SENSOR_LOG}")
 
 
 # ======================================================

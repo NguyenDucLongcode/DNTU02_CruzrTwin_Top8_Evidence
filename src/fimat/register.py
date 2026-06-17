@@ -27,7 +27,6 @@ import requests
 # ======================================================
 
 # Lấy thư mục gốc của project
-# để có thể import các module nội bộ
 ROOT_DIR = os.path.dirname(
     os.path.dirname(
         os.path.dirname(os.path.abspath(__file__))
@@ -44,42 +43,23 @@ sys.path.insert(0, ROOT_DIR)
 # Danh sách tất cả thiết bị cần đăng ký
 from src.iot.devices import DEVICES_TO_REGISTER
 
+# Import hàm cập nhật room devices
+from src.fiware import update_room_devices
+
 # ======================================================
 # CONFIGURATION
 # ======================================================
 
-# URL của FIWARE IoT Agent
-#
-# Ưu tiên:
-# 1. IOT_AGENT_URL
-# 2. FIMAT_API_URL
-# 3. fallback localhost
-#
-# Ví dụ:
-# http://localhost:4041
 IOT_AGENT_URL = os.getenv(
     "IOT_AGENT_URL",
     os.getenv("FIMAT_API_URL", "http://localhost:4041")
 )
 
-# API Key dùng chung cho tất cả thiết bị
-#
-# MQTT device bắt buộc phải gửi đúng APIKEY
-# thì IoT Agent mới chấp nhận dữ liệu
-#
-# Ví dụ MQTT topic:
-# /iot/json/cruzrtwin2026/device001/attrs
 APIKEY = os.getenv(
     "IOT_DEVICE_APIKEY",
     "cruzrtwin2026"
 )
 
-# Resource dùng chung cho tất cả thiết bị
-#
-# Resource sẽ xuất hiện trong MQTT endpoint
-#
-# Ví dụ:
-# /iot/json
 IOT_AGENT_RESOURCE = os.getenv(
     "IOT_AGENT_RESOURCE",
     "/iot/json"
@@ -89,27 +69,9 @@ IOT_AGENT_RESOURCE = os.getenv(
 # FIWARE MULTI-TENANT CONFIG
 # ======================================================
 
-# Namespace/service chính
-#
-# Tương tự tenant hoặc project
 FIWARE_SERVICE = "cruzrtwin"
-
-# Nhóm logical path của dữ liệu
-#
-# Tương tự folder hoặc domain dữ liệu
 FIWARE_SERVICE_PATH = "/asean/buildings"
 
-# ======================================================
-# FIWARE HEADERS
-# ======================================================
-
-# Header bắt buộc khi làm việc với FIWARE
-#
-# Fiware-Service:
-#     xác định tenant/service
-#
-# Fiware-ServicePath:
-#     xác định logical path
 FIWARE_HEADERS = {
     "Content-Type": "application/json",
     "Fiware-Service": FIWARE_SERVICE,
@@ -121,34 +83,16 @@ FIWARE_HEADERS = {
 # ======================================================
 
 def register_service_group() -> bool:
-    """
-    Tạo Service Group trong IoT Agent.
-
-    Service Group giúp IoT Agent biết:
-    - API Key nào hợp lệ
-    - Resource nào được phép dùng
-    - Dữ liệu sẽ forward sang Orion nào
-
-    Nếu service group đã tồn tại:
-    → IoT Agent trả về 409
-    → vẫn xem là thành công
-    """
+    """Tạo Service Group trong IoT Agent."""
 
     url = f"{IOT_AGENT_URL}/iot/services"
 
     payload = {
         "services": [
             {
-                # API Key xác thực device
                 "apikey": APIKEY,
-
-                # MQTT resource
                 "resource": IOT_AGENT_RESOURCE,
-
-                # Entity type mặc định
                 "entity_type": "Device",
-
-                # Địa chỉ Orion Context Broker
                 "cbroker": "http://orion:1026",
             }
         ]
@@ -162,12 +106,10 @@ def register_service_group() -> bool:
             timeout=10,
         )
 
-        # Thành công hoặc đã tồn tại
         if response.status_code in (200, 201, 204, 409):
             print(f"   Service group ready for resource {IOT_AGENT_RESOURCE}")
             return True
 
-        # Lỗi đăng ký
         print(f"   Failed service group registration: {response.status_code}")
         print(f"   Response: {response.text[:200]}")
         return False
@@ -181,76 +123,29 @@ def register_service_group() -> bool:
 # ======================================================
 
 def register_device(device_config: dict):
-    """
-    Đăng ký 1 thiết bị vào IoT Agent.
-
-    Sau khi đăng ký:
-    - IoT Agent sẽ nhận dữ liệu MQTT
-    - map dữ liệu thành entity NGSI
-    - gửi sang Orion
-    """
+    """Đăng ký 1 thiết bị vào IoT Agent."""
 
     url = f"{IOT_AGENT_URL}/iot/devices"
-
-    # ID thiết bị MQTT
     device_id = device_config["device_id"]
 
-    # --------------------------------------------------
-    # XÓA DEVICE CŨ (nếu có)
-    # --------------------------------------------------
-    #
-    # Mục đích:
-    # - tránh conflict
-    # - cập nhật config mới nhất
-    # - đảm bảo apikey/resource đúng
-    #
+    # Xóa device cũ nếu có
     requests.delete(
         f"{url}/{device_id}",
         headers=FIWARE_HEADERS,
         timeout=10,
     )
 
-    # --------------------------------------------------
-    # PAYLOAD ĐĂNG KÝ DEVICE
-    # --------------------------------------------------
-
     payload = {
         "devices": [
             {
-                # ID device MQTT
                 "device_id": device_id,
-
-                # Tên entity trong Orion
                 "entity_name": device_config["entity_name"],
-
-                # Loại entity
                 "entity_type": device_config["entity_type"],
-
-                # Protocol của IoT Agent
                 "protocol": "PDI-IoTA-MQTT",
-
-                # Transport layer
                 "transport": "MQTT",
-
-                # API Key xác thực
                 "apikey": APIKEY,
-
-                # MQTT resource
                 "resource": IOT_AGENT_RESOURCE,
-
-                # Dynamic attributes
-                #
-                # Ví dụ:
-                # temperature
-                # humidity
                 "attributes": device_config["attributes"],
-
-                # Static attributes
-                #
-                # Ví dụ:
-                # room
-                # floor
-                # building
                 "static_attributes": device_config["static_attributes"]
             }
         ]
@@ -264,17 +159,12 @@ def register_device(device_config: dict):
             timeout=10
         )
 
-        # Đăng ký thành công
         if response.status_code in (200, 201, 204):
             print(f"   Registered: {device_id}")
             return True
-
-        # Device đã tồn tại
         elif response.status_code == 409:
             print(f"   Already Exists: {device_id}")
             return True
-
-        # Đăng ký thất bại
         else:
             print(f"      Failed: {device_id}")
             print(f"      Status: {response.status_code}")
@@ -286,13 +176,30 @@ def register_device(device_config: dict):
         return False
 
 # ======================================================
+# GET DEVICE IDS FROM CONFIG
+# ======================================================
+
+def get_device_ids_from_config():
+    """
+    Lấy danh sách device IDs từ DEVICES_TO_REGISTER
+    
+    Returns:
+        list: Danh sách entity_name của các thiết bị
+    """
+    device_ids = []
+    for device in DEVICES_TO_REGISTER:
+        # Lấy entity_name (đây là ID trong Orion)
+        entity_name = device.get("entity_name")
+        if entity_name:
+            device_ids.append(entity_name)
+    return device_ids
+
+# ======================================================
 # REGISTER ALL DEVICES
 # ======================================================
 
 def register_all_devices():
-    """
-    Đăng ký toàn bộ thiết bị.
-    """
+    """Đăng ký toàn bộ thiết bị và cập nhật vào Room."""
 
     print("\n" + "=" * 60)
     print("  FIWARE IoT Device Registration")
@@ -306,18 +213,12 @@ def register_all_devices():
 
     print("-" * 60)
 
-    # --------------------------------------------------
-    # TẠO SERVICE GROUP
-    # --------------------------------------------------
-
+    # Tạo Service Group
     if not register_service_group():
         print("   Aborting device registration because service group setup failed.")
         return False
 
-    # --------------------------------------------------
-    # HIỂN THỊ DANH SÁCH DEVICE
-    # --------------------------------------------------
-
+    # Hiển thị danh sách device
     print("    Devices to register:")
 
     for device in DEVICES_TO_REGISTER:
@@ -331,19 +232,12 @@ def register_all_devices():
 
     print("-" * 60)
 
-    # --------------------------------------------------
-    # ĐĂNG KÝ TỪNG DEVICE
-    # --------------------------------------------------
-
+    # Đăng ký từng device
     success_count = 0
 
     for device in DEVICES_TO_REGISTER:
         if register_device(device):
             success_count += 1
-
-    # --------------------------------------------------
-    # KẾT QUẢ
-    # --------------------------------------------------
 
     print("-" * 60)
 
@@ -353,6 +247,28 @@ def register_all_devices():
         f"devices registered"
     )
 
+    # ==================================================
+    # CẬP NHẬT DANH SÁCH DEVICE VÀO ROOM
+    # ==================================================
+    
+    if success_count > 0:
+        print("-" * 60)
+        print("   Updating Room with device list...")
+        
+        # Lấy danh sách device IDs từ config
+        device_ids = get_device_ids_from_config()
+        
+        if device_ids:
+            print(f"   Device IDs to update: {device_ids}")
+            
+            # Cập nhật vào Room entity
+            if update_room_devices(device_ids):
+                print(f"   ✅ Updated Room with {len(device_ids)} devices")
+            else:
+                print(f"   ⚠️ Failed to update Room devices")
+        else:
+            print("   ⚠️ No device IDs found to update")
+    
     print("=" * 60)
 
     return success_count == len(DEVICES_TO_REGISTER)
@@ -362,6 +278,4 @@ def register_all_devices():
 # ======================================================
 
 if __name__ == "__main__":
-
-    # Chạy đăng ký toàn bộ thiết bị
     register_all_devices()

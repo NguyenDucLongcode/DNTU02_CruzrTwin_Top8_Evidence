@@ -15,28 +15,31 @@ CONFIG_PATH = ROOT_DIR / "docker" / "tuya2mqtt.yaml"
 
 def load_tuya_credentials() -> dict:
     """
-    Đọc thông tin đăng nhập Tuya
-    
+    Đọc thông tin đăng nhập Tuya từ .env hoặc tuya2mqtt.yaml
+     
     Returns:
         dict: {"region": "sg", "key": "...", "secret": "..."}
     """
-    if not CONFIG_PATH.exists():
-        raise FileNotFoundError(f"Không tìm thấy config: {CONFIG_PATH}")
+    # Ưu tiên biến môi trường trước
+    region = os.getenv("TUYA_REGION")
+    key = os.getenv("TUYA_KEY")
+    secret = os.getenv("TUYA_SECRET")
     
-    with CONFIG_PATH.open(encoding="utf-8") as f:
-        config = yaml.safe_load(f) or {}
-    
-    tuya = config.get("tuya") or {}
-    
-    # Ưu tiên biến môi trường, sau đó đến file config
-    region = os.getenv("TUYA_REGION", tuya.get("region", "sg"))
-    key = os.getenv("TUYA_KEY", tuya.get("key"))
-    secret = os.getenv("TUYA_SECRET", tuya.get("secret"))
+    # Fallback sang file config nếu thiếu biến môi trường
+    if not key or not secret:
+        if not CONFIG_PATH.exists():
+            raise FileNotFoundError(f"Không tìm thấy config: {CONFIG_PATH}")
+        with CONFIG_PATH.open(encoding="utf-8") as f:
+            config = yaml.safe_load(f) or {}
+        tuya = config.get("tuya") or {}
+        region = region or tuya.get("region", "sg")
+        key = key or tuya.get("key")
+        secret = secret or tuya.get("secret")
     
     if not key or not secret:
         raise ValueError("Thiếu Tuya API key/secret trong config hoặc env")
     
-    return {"region": region, "key": key, "secret": secret}
+    return {"region": region or "sg", "key": key, "secret": secret}
 
 
 def get_device_config(device_id: str) -> dict:

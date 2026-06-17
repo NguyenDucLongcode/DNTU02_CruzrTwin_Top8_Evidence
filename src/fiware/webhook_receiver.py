@@ -8,19 +8,24 @@ import os
 import sys
 from datetime import datetime, timezone
 from flask import Flask, request, jsonify
+import time
+
 
 # Thêm đường dẫn để import
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, ROOT_DIR)
 
-from src.fiware.entities import update_room_sensors
-from src.orchestration.task_5_6_pipeline import process_sensor_event
+from src.fiware import update_room_sensors,get_room_state,upsert_entity
 from src.common.config import get_config
 from src.common.logging_utils import append_jsonl
 from src.fiware.client import update_entity_attrs
-from src.fiware.entities.entities_manager import upsert_entity
+from src.orchestration import process_ai_detector_event
+from src.utils import write_orion_state_log
+
 
 app = Flask(__name__)
+
+ZONE_ID = os.getenv("ZONE_ID", "DNTU_ROOM_A101")
 
 _processed_acks = {}
 
@@ -30,8 +35,35 @@ def reset_processed_acks():
 
 
 
-def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+# Cache để lưu dữ liệu tạm thời
+_sensor_cache = {}
+_cache_time = {}
+
+def aggregate_sensor_data(device_data: dict) -> dict:
+    """
+    Gộp dữ liệu từ nhiều notification vào 1 dict
+    """
+    global _sensor_cache, _cache_time
+    
+    # Cập nhật cache
+    for key, value in device_data.items():
+        if value is not None:
+            _sensor_cache[key] = value
+    
+    # Cập nhật thời gian
+    _cache_time = time.time()
+    
+    # Kiểm tra xem đã có đủ 5 attributes chưa
+    required_attrs = ["temperature", "humidity", "co2", "smoke_status", "energy_consumption"]
+    has_all = all(attr in _sensor_cache for attr in required_attrs)
+    
+    if has_all:
+        # Có đủ dữ liệu, trả về và reset cache
+        result = _sensor_cache.copy()
+        _sensor_cache = {}
+        return result
+    
+    return {}  # Chưa đủ dữ liệu
 
 
 def _extract_value(value):
@@ -40,52 +72,74 @@ def _extract_value(value):
     return value
 
 
+# Trong webhook_receiver.py, thêm logic gộp dữ liệu
+
+# Cache để lưu dữ liệu tạm thời
+_sensor_cache = {}
+_cache_time = {}
+
+def aggregate_sensor_data(device_data: dict) -> dict:
+    """
+    Gộp dữ liệu từ nhiều notification vào 1 dict
+    """
+    global _sensor_cache, _cache_time
+    
+    # Cập nhật cache
+    for key, value in device_data.items():
+        if value is not None:
+            _sensor_cache[key] = value
+    
+    # Cập nhật thời gian
+    _cache_time = time.time()
+    
+    # Kiểm tra xem đã có đủ 5 attributes chưa
+    required_attrs = ["temperature", "humidity", "co2", "smoke_status", "energy_consumption"]
+    has_all = all(attr in _sensor_cache for attr in required_attrs)
+    
+    if has_all:
+        # Có đủ dữ liệu, trả về và reset cache
+        result = _sensor_cache.copy()
+        _sensor_cache = {}
+        return result
+    
+    return {}  # Chưa đủ dữ liệu
+
+
 @app.route('/webhook/notify', methods=['POST'])
 def webhook_notify():
-    """Nhận notification từ Orion, cập nhật Room và chạy AI pipeline"""
-
+    """Nhận notification từ Orion"""
+    global _sensor_cache
+    
     data = request.get_json(silent=True) or {}
-
-    tracked_attrs = [
-        "temperature",
-        "humidity",
-        "co2",
-        "smoke_status",
-        "energy_consumption",
-    ]
-
-    entity = {}
-    if isinstance(data, dict) and isinstance(data.get("data"), list) and data["data"]:
-        entity = data["data"][0] or {}
-
-    # Lấy các giá trị cảm biến đã thay đổi
-    changed_sensor_data = {}
-    for key in tracked_attrs:
-        if key in entity:
-            changed_sensor_data[key] = _extract_value(entity[key])
-
-    # Cập nhật Room entity
-    if changed_sensor_data:
-        update_room_sensors(changed_sensor_data)
+    entity = data.get("data", [{}])[0] if data.get("data") else {}
+    
+    # Lấy dữ liệu từ notification
+    device_data = {}
+    for attr in ["temperature", "humidity", "co2", "smoke_status", "energy_consumption"]:
+        if attr in entity:
+            device_data[attr] = entity[attr].get("value") if isinstance(entity[attr], dict) else entity[attr]
+    
+    print(f"Received: {device_data}")
+    
+    # Gộp dữ liệu
+    aggregated = aggregate_sensor_data(device_data)
+    
+    if aggregated:
+        # Đã có đủ dữ liệu, tiến hành AI detection
+        print(f"Aggregated: {aggregated}")
         
-        # Chạy AI pipeline và sinh Alert/RobotAction
-        try:
-            # Truyền thêm metadata nếu có từ entity hoặc data
-            if "scenario_id" in entity:
-                changed_sensor_data["scenario_id"] = _extract_value(entity["scenario_id"])
-            if "demo_run_id" in entity:
-                changed_sensor_data["demo_run_id"] = _extract_value(entity["demo_run_id"])
-            if "zone_id" in entity:
-                changed_sensor_data["zone_id"] = _extract_value(entity["zone_id"])
-            if "expected_label" in entity:
-                changed_sensor_data["expected_label"] = _extract_value(entity["expected_label"])
-            elif "expected" in entity:
-                changed_sensor_data["expected_label"] = _extract_value(entity["expected"])
-                
-            process_sensor_event(changed_sensor_data)
-        except Exception as e:
-            print(f"Error processing sensor event in webhook: {e}")
-
+        # Cập nhật Room entity
+        update_room_sensors(aggregated)
+       
+       # Ghi log trạng thái hiện tại của Room vào file
+        write_orion_state_log(ZONE_ID)
+        
+        # Chạy AI detection
+        room_state = get_room_state(ZONE_ID)
+        if room_state:
+            scenario_id = room_state.get("scenario_id", {}).get("value", "SCN_CRITICAL_001")
+            process_ai_detector_event(room_state, scenario_id)
+    
     return jsonify({"status": "ok"}), 200
 
 

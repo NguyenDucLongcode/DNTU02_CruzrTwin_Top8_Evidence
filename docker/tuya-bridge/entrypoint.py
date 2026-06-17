@@ -85,7 +85,7 @@ def tuya_to_mqtt(config: Config, raw_config: dict):
     )
 
     try:
-        mqtt_client = mqtt.Client()
+        mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
         if mqtt_user and mqtt_password:
             mqtt_client.username_pw_set(mqtt_user, mqtt_password)
         mqtt_client.connect(mqtt_broker, mqtt_port)
@@ -144,10 +144,11 @@ def tuya_to_mqtt(config: Config, raw_config: dict):
         try:
             topic = render_topic(topic_status_template, topic_context)
             payload = json.dumps(payload_data)
-            mqtt_client.publish(topic, payload)
-            logger.info(
-                f"Published {mapping['device_id']} -> {topic}: {payload}"
-            )
+            info = mqtt_client.publish(topic, payload)
+            if info.rc != mqtt.MQTT_ERR_SUCCESS:
+                logger.error(f"MQTT publish failed for {mapping['device_id']} (rc={info.rc})")
+            else:
+                logger.info(f"Published {mapping['device_id']} -> {topic}: {payload}")
         except Exception as e:
             logger.error(f"Failed to publish to MQTT: {e}", exc_info=True)
             continue

@@ -4,6 +4,7 @@ from src.ai.detector import detect_anomaly
 from src.alerts.alert_service import create_alert_event
 from src.common import config
 from src.common.logging_utils import append_jsonl
+import pandas as pd
 
 def parse_payload(payload: dict) -> dict:
     # 1. Webhook payload
@@ -33,14 +34,15 @@ def parse_entity(entity: dict) -> dict:
         parsed["type"] = entity["type"]
     return parsed
 
-def process_sensor_event(orion_payload: dict) -> dict:
+def process_ai_detector_event(orion_payload: dict, scenario_id: str = None,) -> dict:
     """
     Orchestrate the processing of a single sensor reading event.
     Returns a dictionary containing:
     - processing_status: SUCCESS or SKIPPED_INCOMPLETE_SENSOR_DATA
     - ai_result: result from the AI detector
     - alert_event: created AlertEvent dictionary (or None if normal)
-    """
+    """ 
+
     cfg = config.get_config()
     
     # 1. Parse payload
@@ -50,16 +52,8 @@ def process_sensor_event(orion_payload: dict) -> dict:
     demo_run_id = parsed_data.get("demo_run_id") or cfg["demo_run_id"]
     
     # scenario_id fallback
-    scenario_id = parsed_data.get("scenario_id")
-    if not scenario_id:
-        # Check label if any to identify scenario
-        exp_lbl = parsed_data.get("expected_label") or parsed_data.get("expected")
-        if exp_lbl == "critical":
-            scenario_id = "SCN_CRITICAL_RUNTIME"
-        elif exp_lbl == "warning":
-            scenario_id = "SCN_WARNING_RUNTIME"
-        else:
-            scenario_id = "SCN_NORMAL_RUNTIME"
+    if scenario_id is None:
+        scenario_id = parsed_data.get("scenario_id") or parsed_data.get("scenario") or cfg["default_scenario_id"]
             
     zone_id = parsed_data.get("zone_id") or cfg["default_zone_id"]
     
@@ -125,6 +119,31 @@ def process_sensor_event(orion_payload: dict) -> dict:
         else:
             expected_label = None
     
+    # Load profile to check critical combinations dynamically
+    from src.ai.detector import load_sensor_profile
+    from src.ai.rule_engine import DEFAULT_BASELINE
+    profile_path = cfg.get("sensor_profile_path", "models/sensor_profile.json")
+    profile = load_sensor_profile(profile_path)
+    baseline = None
+    if profile is not None:
+        hour_str = None
+        ts = ai_result.get("timestamp")
+        if ts:
+            try:
+                dt = pd.to_datetime(ts.replace("Z", "+00:00") if isinstance(ts, str) else ts)
+                hour_str = str(dt.hour)
+            except Exception:
+                pass
+        if hour_str is not None and "hourly_baseline" in profile and hour_str in profile["hourly_baseline"]:
+            baseline = profile["hourly_baseline"][hour_str]
+        if baseline is None and "global_statistics" in profile:
+            baseline = profile["global_statistics"]
+    if baseline is None:
+        baseline = DEFAULT_BASELINE
+
+    b_temp = baseline.get("temperature", DEFAULT_BASELINE["temperature"])
+    b_co2 = baseline.get("co2", DEFAULT_BASELINE["co2"])
+
     # 7. Action code and recommended action separation
     if lvl == "normal":
         action_code = "NO_ACTION"
@@ -134,7 +153,7 @@ def process_sensor_event(orion_payload: dict) -> dict:
         rec_action = "Create warning AlertEvent and notify operator."
     elif lvl == "critical":
         action_code = "DISPATCH_CRUZR_GUIDANCE"
-        if float(temp) >= 38.0 and float(smoke) >= 1.0 and float(co2) >= 900.0:
+        if float(temp) >= b_temp["critical_high"] and float(smoke) >= 1.0 and float(co2) >= b_co2["critical_high"]:
             rec_action = "Create critical AlertEvent, send Cruzr to response point, and request operator acknowledgement. Safety-critical actuation should remain operator-approved or simulated."
         else:
             rec_action = "Send Cruzr to response point and request operator acknowledgement."
@@ -190,35 +209,13 @@ def process_sensor_event(orion_payload: dict) -> dict:
             zone_id=zone_id
         )
         
-    # 10. Sync additional logging files for trace validation
-    sensor_readings_path = os.path.join(cfg["log_dir"], "sensor_readings.jsonl")
-    sensor_log_entry = {
-        "demo_run_id": demo_run_id,
-        "timestamp": ts,
-        "scenario_id": scenario_id,
-        "zone_id": zone_id,
-        "temperature": float(temp),
-        "humidity": float(hum),
-        "smoke": float(smoke),
-        "co2": float(co2),
-        "power": float(power),
-        "device_status": "ON"
-    }
-    append_jsonl(sensor_readings_path, sensor_log_entry)
-    
-    orion_state_path = os.path.join(cfg["log_dir"], "orion_state.jsonl")
-    orion_log_entry = {
-        "demo_run_id": demo_run_id,
-        "timestamp": ts,
-        "scenario_id": scenario_id,
-        "zone_id": zone_id,
-        "room_status": "NORMAL" if lvl == "normal" else lvl.upper(),
-        "alerts": [alert_event] if alert_event else []
-    }
-    append_jsonl(orion_state_path, orion_log_entry)
+
     
     return {
         "processing_status": "SUCCESS",
         "ai_result": ai_result,
         "alert_event": alert_event
     }
+
+# Alias for backward compatibility
+process_sensor_event = process_ai_detector_event

@@ -1,47 +1,23 @@
-"""
-Các lệnh điều khiển ổ cắm thông minh Tuya
-"""
-
-from .client import TuyaCloudClient
-
-
-class SmartPlugController:
-    """Điều khiển ổ cắm thông minh Tuya"""
-    
-    def __init__(self, device_id: str):
-        self.device_id = device_id
-        self._client = TuyaCloudClient(device_id)
-    
-    @property
-    def client(self):
-        return self._client
-    
-    def turn_on(self) -> dict:
-        """Bật ổ cắm"""
-        return self.client.send_command("switch_1", True)
-    
-    def turn_off(self) -> dict:
-        """Tắt ổ cắm"""
-        return self.client.send_command("switch_1", False)
-    
-    def get_switch_state(self) -> bool:
-        """Lấy trạng thái bật/tắt"""
-        status = self.client.get_status()
-        return status.get("switch_1", False)
-    
-    def get_power(self) -> float:
-        """Lấy công suất tiêu thụ (W)"""
-        status = self.client.get_status()
-        return status.get("cur_power", 0)
-    
-    def get_all_status(self) -> dict:
-        """Lấy tất cả thông số"""
-        return self.client.get_status()
-    
-    def toggle(self) -> dict:
-        """Đảo trạng thái bật/tắt"""
-        current = self.get_switch_state()
-        if current:
-            return self.turn_off()
-        else:
-            return self.turn_on()
+from .client import TuyaCloudClient, create_cloud_client
+from .commands import SmartPlugController, AudibleAlarmController, DoorLockController
+from .config import load_tuya_credentials, get_device_config
+from .fiware_adapter import TuyaFiwareAdapter, get_adapter
+from .hepler import control_multiple_devices, turn_off_all_plugs, turn_on_all_plugs , get_all_plugs_status,control_multiple_by_fiware_ids,control_device, control_device_by_fiware_id
+__all__ = [
+    "TuyaCloudClient",
+    "create_cloud_client",
+    "SmartPlugController",
+    "load_tuya_credentials",
+    "get_device_config",
+    "TuyaFiwareAdapter",   # ← Thêm
+    "get_adapter",         # ← Thêm
+    "AudibleAlarmController",  # ← Thêm
+    "DoorLockController",
+    "control_multiple_devices",
+    "turn_off_all_plugs",
+    "turn_on_all_plugs",
+    "get_all_plugs_status",
+    "control_multiple_by_fiware_ids",
+    "control_device",
+    "control_device_by_fiware_id",
+]

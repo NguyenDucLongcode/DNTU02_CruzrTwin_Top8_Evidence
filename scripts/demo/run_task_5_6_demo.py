@@ -8,7 +8,7 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from src.orchestration.task_5_6_pipeline import process_sensor_event
+from src.orchestration.pipeline import process_sensor_event
 from src.common.config import get_config
 from src.common.logging_utils import ensure_dir
 
@@ -88,6 +88,36 @@ def main():
         print("PASS")
     else:
         print("FAIL")
+    print()
+
+    # Simulate Cruzr Robot Simulator delivery
+    print("SIMULATING ROBOT ACTION DELIVERY...")
+    from src.robot.cruzr_simulator import poll_and_simulate_once
+    poll_and_simulate_once(config)
+    print("Robot action status transitioned to DELIVERED.")
+    
+    # Simulate Operator ACK
+    print("SIMULATING OPERATOR ACKNOWLEDGEMENT...")
+    from src.common.logging_utils import append_jsonl
+    timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    ack_entry = {
+        "demo_run_id": demo_run_id,
+        "timestamp": timestamp,
+        "scenario_id": "SCN_CRITICAL_001",
+        "zone_id": config.get("default_zone_id", "DNTU_ROOM_A101"),
+        "operator_ack_id": "OperatorAck:SCN_CRITICAL_001",
+        "operator_id": "demo_operator",
+        "alert_id": "AlertEvent:SCN_CRITICAL_001",
+        "robot_action_id": "RobotAction:SCN_CRITICAL_001",
+        "operator_decision": "ACK",
+        "result": "ACK",
+        "note": "Operator confirmed Cruzr guidance delivered.",
+        "orion_upsert_status": "SKIPPED_OFFLINE"
+    }
+    ack_log_path = os.path.join(config["log_dir"], "operator_ack.jsonl")
+    append_jsonl(ack_log_path, ack_entry)
+    print("Operator acknowledgement logged.")
+    print()
         
     # Write evidence files
     summary_path = os.path.join(config["evidence_dir"], "task_5_6_test_summary.json")

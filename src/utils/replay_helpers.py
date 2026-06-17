@@ -94,14 +94,17 @@ def extract_device_values_from_reading(reading: dict) -> dict:
         reading: 1 dict chứa dữ liệu tại 1 thời điểm
     
     Returns:
-        dict: Giá trị của 5 cảm biến
+        dict: Giá trị của 5 cảm biến (khớp với Device:TEMP_A101 và Device:ENERGY_E101)
     """
     return {
+        # Thiết bị nhiệt độ (Device:TEMP_A101)
         "temp_sensor_a101": reading.get("temperature") or reading.get("temp") or 0,
         "humid_sensor_a101": reading.get("humidity") or 0,
         "air_sensor_a101": reading.get("co2") or reading.get("air_quality_or_co2") or 0,
         "smoke_sensor_a101": reading.get("smoke_status") or reading.get("smoke") or 0,
-        "smart_plug_a101": reading.get("energy_consumption") or reading.get("energy") or 0,
+        
+        # Thiết bị đo điện năng tiêu thụ (Device:ENERGY_E101)
+        "energy_sensor_e101": reading.get("energy_consumption") or reading.get("energy") or 0,
     }
 
 

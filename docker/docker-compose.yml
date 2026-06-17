@@ -118,23 +118,6 @@ services:
       - fiware-net
 
   # ============================================================
-  # DASHBOARD WEB - Node.js 3D View
-  # ============================================================
-  dashboard-web:
-    build:
-      context: ..
-      dockerfile: Dockerfile
-    container_name: dashboard-web
-    restart: always
-    ports:
-      - "8000:8000"
-    environment:
-      - MONGO_URI=mongodb://mongo:27017
-    networks:
-      - fiware-net
-    depends_on:
-      - mongo
-
   # TUYA BRIDGE - Kết nối ổ cắm thông minh Tuya vào MQTT
   # ============================================================
   tuya-bridge:

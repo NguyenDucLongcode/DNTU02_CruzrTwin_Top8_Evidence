@@ -1,17 +1,20 @@
-FROM node:18-alpine
+FROM python:3.10-slim
 
 # Cài đặt thư mục làm việc
 WORKDIR /app
 
-# Copy file package.json và cài đặt dependencies
-COPY package*.json ./
-RUN npm install
+# Copy file requirements và cài đặt
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy toàn bộ source code vào container
+# Cài đặt Docker CLI để gọi lệnh restart simulator
+RUN apt-get update && apt-get install -y docker.io && rm -rf /var/lib/apt/lists/*
+
+# Copy toàn bộ source code
 COPY . .
 
-# Expose port cho Dashboard
-EXPOSE 8000
+# Expose port cho Dashboard Backend (Flask)
+EXPOSE 5000
 
-# Chạy server Node.js
-CMD ["npm", "start"]
+# Chạy server
+CMD ["python", "src/fiware/webhook_receiver.py"]

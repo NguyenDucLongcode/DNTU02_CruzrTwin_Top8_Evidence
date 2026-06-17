@@ -223,10 +223,8 @@ def register_all_devices():
 
     for device in DEVICES_TO_REGISTER:
         print(
-            f"      • "
-            f"{device['device_id']} "
-            f"→ "
-            f"{device['entity_name']} "
+            f"      - {device['device_id']:<20} "
+            f"{device['entity_name']:<20} "
             f"({device['entity_type']})"
         )
 

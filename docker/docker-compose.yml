@@ -135,6 +135,42 @@ services:
       - LOG_LEVEL=INFO
     networks:
       - fiware-net
+  # ============================================================
+  # DNTU DIGITAL TWIN BACKEND (Flask + AI + Webhook + Dashboard)
+  # ============================================================
+  backend:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: dntu-backend
+    restart: always
+    depends_on:
+      - orion
+      - mosquitto
+    ports:
+      - "5000:5000"
+    environment:
+      - ORION_URL=http://orion:1026
+      - MQTT_BROKER=mosquitto
+      - MONGO_HOST=mongo
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./simulator/config:/app/docker/simulator/config
+    networks:
+      - fiware-net
+
+  frontend:
+    container_name: dntu-frontend
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    networks:
+      - fiware-net
+
 volumes:
   cruzrtwin_mongo_data:
 networks:

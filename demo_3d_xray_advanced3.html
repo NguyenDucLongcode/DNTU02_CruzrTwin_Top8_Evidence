@@ -193,6 +193,7 @@
             // Tường phòng (Sẽ đổi màu đỏ chói khi có cháy)
             const roomWallMat = new THREE.MeshBasicMaterial({ color: 0x001122, transparent: true, opacity: 0.4, depthWrite: false, blending: THREE.AdditiveBlending });
             const solid = new THREE.Mesh(geom, roomWallMat);
+            solid.name = "Arch:WALL_" + roomId;
             solid.position.y = height / 2;
             roomGroup.add(solid);
 
@@ -257,11 +258,13 @@
             // Cửa trái
             const door1 = new THREE.LineSegments(new THREE.EdgesGeometry(doorGeom), doorMat);
             door1.position.set(-width/3, 1.25, doorWallZ);
+            door1.name = "Arch:DOOR_" + roomId;
             roomGroup.add(door1);
 
             // Cửa phải
             const door2 = new THREE.LineSegments(new THREE.EdgesGeometry(doorGeom), doorMat);
             door2.position.set(width/3, 1.25, doorWallZ);
+            door2.name = "Arch:DOOR_" + roomId;
             roomGroup.add(door2);
 
             // 5. Thêm 2 Máy lạnh âm trần
@@ -323,6 +326,10 @@
         function createRestroom(targetGroup, width, height, depth, x, z) {
             const roomGroup = new THREE.Group();
             const geom = new THREE.BoxGeometry(width, height, depth);
+            const solid = new THREE.Mesh(geom, new THREE.MeshBasicMaterial({color: 0x001122, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending}));
+            solid.position.y = height / 2;
+            solid.name = "Arch:RESTROOM";
+            roomGroup.add(solid);
             const frame = new THREE.LineSegments(new THREE.EdgesGeometry(geom), new THREE.LineBasicMaterial({color: 0x0055ff, transparent: true, opacity: 0.5}));
             frame.position.y = height / 2;
             roomGroup.add(frame);
@@ -352,6 +359,7 @@
                 const zPos = directionZ === 1 ? (i * stepD) - depth/2 + stepD/2 : -(i * stepD) + depth/2 - stepD/2;
                 const xPos = -width/2 + halfWidth/2; 
                 frame.position.set(xPos, yPos, zPos); solid.position.copy(frame.position);
+                solid.name = "Arch:STAIRS";
                 stairGroup.add(frame); stairGroup.add(solid);
             }
 
@@ -362,6 +370,7 @@
             const landingZ = directionZ === 1 ? depth/2 : -depth/2;
             landingFrame.position.set(0, landingY, landingZ);
             landingSolid.position.copy(landingFrame.position);
+            landingSolid.name = "Arch:STAIRS";
             stairGroup.add(landingFrame); stairGroup.add(landingSolid);
 
             for(let i=0; i<halfSteps; i++) {
@@ -372,6 +381,7 @@
                 const zPos = directionZ === 1 ? depth/2 - stepD - (i * stepD) : -depth/2 + stepD + (i * stepD);
                 const xPos = width/2 - halfWidth/2; 
                 frame.position.set(xPos, yPos, zPos); solid.position.copy(frame.position);
+                solid.name = "Arch:STAIRS";
                 stairGroup.add(frame); stairGroup.add(solid);
             }
             stairGroup.position.set(x, 0, z);
@@ -392,9 +402,14 @@
 
             const floorBase = new THREE.Mesh(new THREE.PlaneGeometry(buildingWidth, buildingDepth), floorMaterial);
             floorBase.rotation.x = -Math.PI / 2;
+            floorBase.name = "Arch:FLOOR";
             floorGroup.add(floorBase);
 
             const corridorGeom = new THREE.BoxGeometry(buildingWidth - 4, floorHeight, 6);
+            const corridorSolid = new THREE.Mesh(corridorGeom, new THREE.MeshBasicMaterial({color: 0x001122, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending}));
+            corridorSolid.position.y = floorHeight/2;
+            corridorSolid.name = "Arch:CORRIDOR";
+            floorGroup.add(corridorSolid);
             const corridorFrame = new THREE.LineSegments(new THREE.EdgesGeometry(corridorGeom), lineMaterial);
             corridorFrame.position.y = floorHeight/2;
             floorGroup.add(corridorFrame);
@@ -433,6 +448,7 @@
         const extGeom = new THREE.BoxGeometry(buildingWidth, buildingHeight, buildingDepth);
         const extFrame = new THREE.LineSegments(new THREE.EdgesGeometry(extGeom), exteriorEdgeMat);
         const extSolid = new THREE.Mesh(extGeom, exteriorGlassMat);
+        extSolid.name = "Arch:BUILDING_SHELL";
         extFrame.position.y = buildingHeight / 2;
         extSolid.position.y = buildingHeight / 2;
         campusGroup.add(extFrame); campusGroup.add(extSolid);
@@ -634,25 +650,35 @@
 
         // XUẤT FILE GLB TỪ MÔ HÌNH THREE.JS
         btnExport.addEventListener('click', () => {
+            btnExport.innerText = "ĐANG XUẤT...";
+            btnExport.style.background = "#ffaa00";
+            btnExport.disabled = true;
+            
             const exporter = new GLTFExporter();
             exporter.parse(
-                campusGroup, // Xuất toàn bộ tòa nhà
+                campusGroup,
                 function ( gltf ) {
-                    const blob = new Blob( [ gltf ], { type: 'application/octet-stream' } );
-                    const url = URL.createObjectURL( blob );
-                    const link = document.createElement( 'a' );
-                    link.style.display = 'none';
-                    link.href = url;
-                    link.download = 'DNTU_NhaF_Generated.glb';
-                    document.body.appendChild( link );
-                    link.click();
-                    document.body.removeChild( link );
-                    URL.revokeObjectURL( url );
-                    alert("Đã tải xuống file GLB thành công!");
+                    fetch('http://localhost:8000/api/save_model?name=building_f_campus.glb', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/octet-stream' },
+                        body: gltf
+                    })
+                    .then(res => res.text())
+                    .then(txt => {
+                        console.log("Xuất thành công:", txt);
+                        btnExport.innerText = "XUẤT XONG!";
+                        btnExport.style.background = "#00ff00";
+                    })
+                    .catch(err => {
+                        console.error("Lỗi xuất:", err);
+                        btnExport.innerText = "LỖI XUẤT FILE";
+                        btnExport.style.background = "red";
+                    });
                 },
                 function ( error ) {
                     console.error( 'Lỗi khi xuất file:', error );
-                    alert("Có lỗi xảy ra khi xuất file!");
+                    btnExport.innerText = "LỖI EXPORTER";
+                    btnExport.style.background = "red";
                 },
                 { binary: true } // Định dạng GLB (nhị phân) thay vì GLTF
             );
@@ -668,18 +694,6 @@
             requestAnimationFrame(animate);
             controls.update(); // Trọng tâm camera được update liên tục
             renderer.render(scene, camera);
-        }
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        animate();
-    </script>
-</body>
-</html>      renderer.render(scene, camera);
         }
 
         window.addEventListener('resize', () => {

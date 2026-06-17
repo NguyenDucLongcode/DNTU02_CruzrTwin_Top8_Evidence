@@ -44,13 +44,13 @@ ORION_SYNC_LOG = os.path.join("logs", "SensorReading.jsonl")
 # MAP DEVICE ID → OBJECT ID
 # ======================================================
 
-OBJECT_ID_MAP = {
-    "temp_sensor_a101": "t",
-    "humid_sensor_a101": "h",
-    "air_sensor_a101": "co2",
-    "smoke_sensor_a101": "smoke",
-    "smart_plug_a101": "energy"
-}
+def get_object_id(device_id: str) -> str:
+    if device_id.startswith("temp_sensor"): return "t"
+    if device_id.startswith("humid_sensor"): return "h"
+    if device_id.startswith("air_sensor"): return "co2"
+    if device_id.startswith("smoke_sensor"): return "smoke"
+    if device_id.startswith("smart_plug"): return "energy"
+    return "value"
 
 
 # ======================================================
@@ -94,21 +94,10 @@ def build_mqtt_payload(
     value,
     timestamp: Optional[str] = None
 ) -> dict:
-    """
-    Tạo payload MQTT cho 1 device
-    
-    Args:
-        device_id: ID của thiết bị (vd: temp_sensor_a101)
-        value: Giá trị cảm biến
-        timestamp: Thời gian (tự tạo nếu None)
-    
-    Returns:
-        dict: Payload MQTT
-    """
     if timestamp is None:
        timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
     
-    obj_id = OBJECT_ID_MAP.get(device_id, "value")
+    obj_id = get_object_id(device_id)
     
     return {
         obj_id: value,
@@ -150,7 +139,7 @@ def publish_device_data(
     payload_text = json.dumps(payload, ensure_ascii=False)
     
     if verbose:
-        print(f"   {device_id} → {value}")
+        print(f"   {device_id} -> {value}")
     
     result = client.publish(topic, payload_text, qos=1)
     return result.rc == mqtt.MQTT_ERR_SUCCESS

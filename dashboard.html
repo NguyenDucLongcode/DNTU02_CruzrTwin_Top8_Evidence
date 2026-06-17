@@ -10,18 +10,18 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        body { 
-            background-color: #000; 
-            color: #d4d4d8; 
-            font-family: 'Inter', sans-serif; 
-            overflow: hidden; 
+        body {
+            background-color: #000;
+            color: #d4d4d8;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
             margin: 0;
             padding: 0;
             display: flex;
             height: 100vh;
         }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
-        
+
         .log-container::-webkit-scrollbar { width: 4px; }
         .log-container::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
     </style>
@@ -29,13 +29,14 @@
 <body>
 
     <main class="flex-1 relative bg-black">
-        <div id="three-container" class="w-full h-full cursor-crosshair"></div>
-        
+        <div id="three-container" class="w-full h-[67%] cursor-crosshair border-b border-blue-500/20"></div>
+
         <!-- Nút Back -->
-        <button id="btn-back" onclick="restoreOverallModel()" class="absolute top-4 left-4 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold font-mono text-xs rounded uppercase tracking-wider hidden shadow-lg shadow-blue-500/20 transition-all border border-blue-400 z-10">
-            ⬅️ Back to Overall Campus
+        <button id="btn-back" onclick="restoreOverallModel()" class="absolute top-6 left-6 px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-bold font-mono text-sm rounded shadow-2xl shadow-red-500/50 transition-all border border-red-400 z-50 cursor-pointer hidden pointer-events-auto flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            QUAY LẠI TÒA NHÀ (ESC)
         </button>
-        
+
         <!-- Context & Sensor Panel -->
         <div id="context-panel" class="absolute top-16 left-4 w-64 bg-[#0c0c0e]/90 border border-blue-500/30 rounded p-4 font-mono text-xs shadow-lg shadow-blue-500/10 hidden transition-all z-10">
             <h3 id="ctx-title" class="text-blue-400 font-bold text-sm mb-2 border-b border-white/10 pb-2">OVERALL CAMPUS</h3>
@@ -45,7 +46,7 @@
                 <div class="flex justify-between"><span class="text-zinc-400">Mức CO2:</span> <span id="ctx-co2" class="font-bold">-- ppm</span></div>
             </div>
         </div>
-        
+
         <!-- Floating Info -->
         <div class="absolute bottom-4 left-4 text-[10px] font-mono text-zinc-500 pointer-events-none">
             <div id="click-info" class="text-blue-400 mb-1">Click vào Toà nhà để bóc tách...</div>
@@ -72,39 +73,39 @@
     <!-- RIGHT PANEL: LOGS (5 luồng song song) -->
     <aside class="w-[350px] flex flex-col border-l border-white/10 bg-[#0c0c0e] h-screen overflow-hidden">
         <!-- AI DETECTION -->
-        <div class="h-1/5 border-b border-white/10 flex flex-col">
+        <div id="panel-ai" class="h-1/5 border-b border-white/10 flex flex-col transition-all">
             <div class="bg-blue-500/10 text-blue-400 font-bold text-[10px] px-3 py-1.5 uppercase border-b border-white/5 flex justify-between">
                 <span>AI_DETECTION</span> <span class="text-zinc-500">Live</span>
             </div>
             <div id="log-ai" class="flex-1 overflow-y-auto p-2 space-y-1 log-container font-mono text-[9px]"></div>
         </div>
-        
+
         <!-- ALERTS -->
-        <div class="h-1/5 border-b border-white/10 flex flex-col">
+        <div id="panel-alerts" class="h-1/5 border-b border-white/10 flex flex-col transition-all">
             <div class="bg-red-500/10 text-red-400 font-bold text-[10px] px-3 py-1.5 uppercase border-b border-white/5 flex justify-between">
                 <span>ALERT_EVENTS</span> <span class="text-zinc-500">Live</span>
             </div>
             <div id="log-alerts" class="flex-1 overflow-y-auto p-2 space-y-1 log-container font-mono text-[9px]"></div>
         </div>
-        
+
         <!-- ROBOT ACTIONS -->
-        <div class="h-1/5 border-b border-white/10 flex flex-col">
+        <div id="panel-robot" class="h-1/5 border-b border-white/10 flex flex-col transition-all">
             <div class="bg-yellow-500/10 text-yellow-400 font-bold text-[10px] px-3 py-1.5 uppercase border-b border-white/5 flex justify-between">
                 <span>ROBOT_ACTIONS</span> <span class="text-zinc-500">Live</span>
             </div>
             <div id="log-robot" class="flex-1 overflow-y-auto p-2 space-y-1 log-container font-mono text-[9px]"></div>
         </div>
-        
+
         <!-- SYS STATE -->
-        <div class="h-1/5 border-b border-white/10 flex flex-col">
+        <div id="panel-state" class="h-1/5 border-b border-white/10 flex flex-col transition-all">
             <div class="bg-purple-500/10 text-purple-400 font-bold text-[10px] px-3 py-1.5 uppercase border-b border-white/5 flex justify-between">
                 <span>ORION_STATE</span> <span class="text-zinc-500">Live</span>
             </div>
             <div id="log-state" class="flex-1 overflow-y-auto p-2 space-y-1 log-container font-mono text-[9px]"></div>
         </div>
-        
+
         <!-- SENSORS -->
-        <div class="h-1/5 flex flex-col">
+        <div id="panel-sensors" class="h-1/5 flex flex-col transition-all">
             <div class="bg-emerald-500/10 text-emerald-400 font-bold text-[10px] px-3 py-1.5 uppercase border-b border-white/5 flex justify-between">
                 <span>RAW_SENSORS</span> <span class="text-zinc-500">Live</span>
             </div>
@@ -113,6 +114,17 @@
     </aside>
 
     <script>
+        // API Kích hoạt phòng
+        async function activateRoom(roomId) {
+            try {
+                document.getElementById('ctx-temp').innerText = `Đang kích hoạt...`;
+                await fetch(`http://localhost:8000/api/db/sensors/activate?roomId=${roomId}`, { method: 'POST' });
+            } catch(e) { console.error(e); }
+        }
+        // Biến trạng thái toàn cục
+        let activeRoomId = null;
+        let activeFloorIdx = 0; // Tầng đang xem (0: Trệt, 1: Tầng 1, ...)
+
         // --- LOGS LOGIC (Gọi NPM API cho 5 bảng song song) ---
         const logTypes = ['ai', 'alerts', 'robot', 'state', 'sensors'];
 
@@ -122,10 +134,10 @@
                     const res = await fetch(`http://localhost:8000/api/logs/${type}`);
                     if (!res.ok) return;
                     const logs = await res.json();
-                    
+
                     const display = document.getElementById('log-' + type);
                     display.innerHTML = '';
-                    
+
                     if (logs.length === 0) {
                         display.innerHTML = '<div class="text-zinc-600 italic">Chưa có dữ liệu.</div>';
                         return;
@@ -154,25 +166,39 @@
 
                     filteredLogs.forEach(log => {
                         const div = document.createElement('div');
-                        div.className = 'border-l-2 border-white/5 pl-2 py-0.5 hover:bg-white/5 transition-all text-ellipsis overflow-hidden whitespace-nowrap';
-                        
+                        let isWarningOrCritical = false;
+
                         const time = log.timestamp?.split('T')[1]?.split('Z')[0] || log.TimeInstant || '--:--:--';
                         let content = `<span class="text-zinc-600 mr-1">[${time}]</span>`;
-                        
+
                         if (type === 'ai') {
                             const lvl = log.predicted_level || log.level || 'INFO';
-                            const color = lvl.toUpperCase() === 'CRITICAL' ? 'text-red-500' : 'text-blue-400';
+                            const color = lvl.toUpperCase() === 'CRITICAL' ? 'text-red-500 font-bold' : (lvl.toUpperCase() === 'WARNING' ? 'text-yellow-500 font-bold' : 'text-blue-400');
                             content += `<span class="${color}">${lvl.toUpperCase()}</span> ${log.rationale || log.message || ''}`;
+                            if(lvl.toUpperCase() === 'CRITICAL' || lvl.toUpperCase() === 'WARNING') isWarningOrCritical = true;
                         } else if (type === 'alerts') {
-                            content += `<span class="text-red-400">${log.event || 'ALERT'}</span> ${log.description || ''}`;
+                            content += `<span class="text-red-400 font-bold">${log.event || 'ALERT'}</span> ${log.description || ''}`;
+                            isWarningOrCritical = true;
                         } else if (type === 'robot') {
-                            content += `<span class="text-yellow-400">${log.action || 'MOVE'}</span> ${log.destination || ''}`;
+                            content += `<span class="text-yellow-400 font-bold">${log.action || 'MOVE'}</span> ${log.destination || ''}`;
                         } else if (type === 'sensors') {
-                            content += `<span class="text-emerald-500">Z_${log.zone_id?.replace('DNTU_ROOM_','') || 'SYS'}</span> T:${log.temperature||'--'}°C S:${log.smoke||'--'}`;
+                            const temp = log.temperature || 0;
+                            const smoke = log.smoke || 0;
+                            const co2 = log.co2 || 0;
+                            const isDanger = temp >= 40 || smoke >= 50 || co2 >= 1000;
+                            const isWarn = temp >= 35 || smoke >= 20 || co2 >= 800;
+                            
+                            if (isDanger || isWarn) isWarningOrCritical = true;
+                            const titleColor = isDanger ? 'text-red-500 font-bold' : (isWarn ? 'text-yellow-500 font-bold' : 'text-emerald-500');
+                            
+                            content += `<span class="${titleColor}">Z_${log.zone_id?.replace('DNTU_ROOM_','') || 'SYS'}</span> <span class="${temp >= 40 ? 'text-red-400 font-bold' : ''}">T:${temp}°C</span> <span class="${smoke >= 50 ? 'text-red-400 font-bold' : ''}">S:${smoke}%</span> <span class="${co2 >= 1000 ? 'text-red-400 font-bold' : ''}">CO2:${co2}</span>`;
                         } else {
                             content += `<span class="text-zinc-400">${JSON.stringify(log).substring(0, 50)}...</span>`;
                         }
-                        
+
+                        // Đổi màu nền dòng log nếu có cảnh báo
+                        div.className = `border-l-2 border-white/5 pl-2 py-0.5 transition-all text-ellipsis overflow-hidden whitespace-nowrap ${isWarningOrCritical ? 'bg-red-900/30 border-red-500/50' : 'hover:bg-white/5'}`;
+
                         div.innerHTML = content;
                         display.appendChild(div);
                     });
@@ -183,22 +209,23 @@
         }
         let currentRobotDest = null;
         let targetRobotPos = new THREE.Vector3(0, 0, 0); // Trạm sạc
+        let current2DRobotPos = new THREE.Vector3(0, 0, 0); // Vị trí 2D mượt
 
         function updateRobotTarget(dest) {
             if (dest.includes('CHARGING')) {
                 targetRobotPos.set(0, 0, 0);
                 return;
             }
-            
+
             let y = 0, x = 0, z = 0;
-            
+
             // Xử lý tầng (Y)
             if (dest.includes('L2')) y = 4;
             else if (dest.includes('L3')) y = 8;
             else if (dest.includes('L4')) y = 12;
             else if (dest.includes('L5')) y = 16;
             else y = 0; // A101 hoặc L1
-            
+
             // Xử lý X và Z (Giả lập vị trí các phòng)
             if (dest === 'A101') { x = -24; z = -7; } // Phòng A101
             else if (dest.includes('T')) { z = -7; x = -24 + (parseInt(dest.split('T')[1]||1)-1)*12; } // Dãy Trái
@@ -213,63 +240,160 @@
 
         // --- 3D REAL-TIME SENSOR SYNC ---
         let latestSensorData = {}; // Cache to draw 2D map
+        let isAutoPopsUpBlocked = false; // Tránh popup liên tục
+
         async function syncSensors3D() {
             try {
                 const res = await fetch('http://localhost:8000/api/db/sensors');
                 if (!res.ok) return;
                 const data = await res.json();
-                latestSensorData = data;
                 
+                // Mặc định: Tầng trệt (A101-A1015) luôn Active, các tầng khác offline nếu chưa có data
+                for (let i = 1; i <= 15; i++) {
+                    const rId = `A10${i}`;
+                    if (!data[rId]) {
+                        data[rId] = { temp: 26, smoke: 0, co2: 400 };
+                    }
+                }
+                latestSensorData = data;
+
                 // Update 2D Map if visible
                 if (activeRoomId) {
                     const floorIdx = Math.round(targetRobotPos.y/4); // rough guess of active floor
                     render2DMap(0, activeRoomId); // We'll improve floor tracking
+
+                    if (latestSensorData[activeRoomId]) {
+                        document.getElementById('ctx-temp').innerText = `${latestSensorData[activeRoomId].temp.toFixed(1)} °C`;
+                        document.getElementById('ctx-smoke').innerText = `${latestSensorData[activeRoomId].smoke.toFixed(1)} %`;
+                        document.getElementById('ctx-co2').innerText = `${latestSensorData[activeRoomId].co2.toFixed(1)} ppm`;
+                        if (latestSensorData[activeRoomId].temp >= 40) document.getElementById('ctx-temp').className = "font-bold text-red-500";
+                        else document.getElementById('ctx-temp').className = "font-bold text-emerald-400";
+                    } else {
+                        document.getElementById('ctx-temp').innerHTML = `<span class="cursor-pointer underline hover:text-white" onclick="activateRoom('${activeRoomId}')">Offline (Click để Bật)</span>`;
+                        document.getElementById('ctx-temp').className = "font-bold text-zinc-500";
+                        document.getElementById('ctx-smoke').innerText = `Offline`;
+                        document.getElementById('ctx-co2').innerText = `Offline`;
+                    }
+                }
+
+                // Ẩn các Panel log khác nếu đang trong một phòng (chỉ hiện Sensor)
+                if (activeRoomId) {
+                    document.getElementById('panel-ai').classList.add('hidden');
+                    document.getElementById('panel-alerts').classList.add('hidden');
+                    document.getElementById('panel-robot').classList.add('hidden');
+                    document.getElementById('panel-state').classList.add('hidden');
+                    document.getElementById('panel-sensors').classList.replace('h-1/5', 'h-full');
+                } else {
+                    document.getElementById('panel-ai').classList.remove('hidden');
+                    document.getElementById('panel-alerts').classList.remove('hidden');
+                    document.getElementById('panel-robot').classList.remove('hidden');
+                    document.getElementById('panel-state').classList.remove('hidden');
+                    document.getElementById('panel-sensors').classList.replace('h-full', 'h-1/5');
                 }
 
                 // Cập nhật màu sắc lên Mesh (Cho phép thay đổi màu mà không cần reload mô hình)
-                if (overallModel) {
-                    overallModel.traverse(child => {
+                let hasCriticalAlert = false;
+                let criticalRoomId = null;
+                let criticalRoomPos = null;
+
+                const models = [overallModel, activeSubModel].filter(Boolean);
+                models.forEach(model => {
+                    model.traverse(child => {
                         if (child.isMesh) {
-                            // Lấy toạ độ tuyệt đối để đoán ID phòng
+                            let roomId = "";
                             const pos = new THREE.Vector3();
                             child.getWorldPosition(pos);
-                            
-                            const floorIdx = Math.round(pos.y / 4);
-                            const isTopRow = pos.z < 0;
-                            const idx = Math.floor((pos.x + 44) / 12);
-                            
-                            let roomId = "";
-                            if (floorIdx === 0) roomId = `A10${idx}`;
-                            else roomId = `L${floorIdx + 1}-${isTopRow ? 'T' : 'B'}${idx}`;
+
+                            // Nếu đang xem chi tiết một phòng dùng chung, gán thẳng activeRoomId
+                            if (model === activeSubModel && activeRoomId) {
+                                roomId = activeRoomId;
+                            } else {
+                                // Mặc định tính ID theo toạ độ
+                                const floorIdx = Math.round(pos.y / 4);
+                                const isTopRow = pos.z < 0;
+                                const idx = Math.round(pos.x / 12) + 3;
+                                if (floorIdx === 0) roomId = `A10${idx}`;
+                                else roomId = `L${floorIdx + 1}-${isTopRow ? 'T' : 'B'}${idx}`;
+                            }
+
+                            // Nếu có định nghĩa tên trong Blender, ưu tiên trích xuất
+                            let objName = (child.userData && child.userData.name) ? child.userData.name : child.name;
+                            if (objName) {
+                                const match = objName.match(/(A10\d|L\d-[TB]\d)/i);
+                                if (match) roomId = match[1].toUpperCase();
+                            }
 
                             const sensor = data[roomId];
                             if (sensor) {
-                                // Lưu màu gốc
-                                if (!child.userData.originalColor) child.userData.originalColor = child.material.color.getHex();
-                                
-                                if (sensor.temp > 50 || sensor.co2 > 1000) {
-                                    child.material.color.setHex(0xff0000); // Đỏ báo cháy/độc
-                                } else if (sensor.smoke > 20) {
-                                    child.material.color.setHex(0xffff00); // Vàng báo khói
-                                } else {
-                                    child.material.color.setHex(child.userData.originalColor); // Xanh bình thường
+                                let materials = Array.isArray(child.material) ? child.material : [child.material];
+
+                                materials.forEach((mat, idx) => {
+                                    if (mat && mat.color) {
+                                        let cKey = `originalColor_${idx}`;
+                                        if (child.userData[cKey] === undefined) child.userData[cKey] = mat.color.getHex();
+                                    }
+                                });
+
+                                if (sensor.temp >= 40 || sensor.smoke > 50 || sensor.co2 >= 1000) {
+                                    hasCriticalAlert = true;
+                                    criticalRoomId = roomId;
+                                    criticalRoomPos = pos;
                                 }
                             }
                         }
                     });
+                });
+
+                // TỰ ĐỘNG BẬT POPUP MÔ HÌNH PHÒNG NẾU CÓ CẢNH BÁO
+                    if (hasCriticalAlert && criticalRoomId && !isAutoPopsUpBlocked) {
+                        // Nếu chưa ở trong chế độ xem phòng đó
+                        if (activeRoomId !== criticalRoomId) {
+                            isAutoPopsUpBlocked = true;
+                            // Tính toán file cần load
+                            const floorIdx = Math.round(criticalRoomPos.y / 4);
+                            const isTopRow = criticalRoomPos.z < 0;
+                            let fileToLoad = "";
+                            if (floorIdx === 0) fileToLoad = isTopRow ? 'mohinh/RoomType1_Left.glb' : 'mohinh/RoomType1_Right.glb';
+                            else if (floorIdx === 1 || floorIdx === 2) fileToLoad = isTopRow ? 'mohinh/RoomType2_Left.glb' : 'mohinh/RoomType2_Right.glb';
+                            else fileToLoad = isTopRow ? 'mohinh/RoomType3_Left.glb' : 'mohinh/RoomType3_Right.glb';
+
+                            activeRoomId = criticalRoomId;
+                            document.getElementById('context-panel').classList.remove('hidden');
+                            document.getElementById('ctx-title').innerText = `🚨 PHÒNG ${activeRoomId} (CẢNH BÁO)`;
+                            document.getElementById('ctx-title').className = 'text-red-500 font-bold text-sm mb-2 border-b border-white/10 pb-2 animate-pulse';
+                            document.getElementById('ctx-sensors').classList.remove('hidden');
+                            document.getElementById('click-info').innerText = "TỰ ĐỘNG POP-UP DO PHÁT HIỆN SỰ CỐ!";
+                            document.getElementById('click-info').style.color = '#ff0000';
+
+                            loadSubModel(fileToLoad, criticalRoomPos);
+
+                            setTimeout(() => { isAutoPopsUpBlocked = false; }, 15000); // Cho phép auto popup lại sau 15s nếu đã thoát ra
+                        }
+                    }
+
+                // Nếu đang trong chế độ xem 1 phòng, cập nhật bảng panel
+                if (activeRoomId && latestSensorData[activeRoomId]) {
+                    document.getElementById('ctx-temp').innerText = `${latestSensorData[activeRoomId].temp.toFixed(1)} °C`;
+                    document.getElementById('ctx-smoke').innerText = `${latestSensorData[activeRoomId].smoke.toFixed(1)} %`;
+                    document.getElementById('ctx-co2').innerText = `${latestSensorData[activeRoomId].co2.toFixed(1)} ppm`;
+                    if (latestSensorData[activeRoomId].temp >= 40) document.getElementById('ctx-temp').className = "font-bold text-red-500";
+                    else document.getElementById('ctx-temp').className = "font-bold";
                 }
             } catch (e) {
                 // ignore
             }
         }
-        setInterval(syncSensors3D, 2000);
+          
+        setInterval(syncSensors3D, 2000); // Tự động sync 3D mỗi 2 giây
+        // Gọi sync ban đầu
+        syncSensors3D();
 
         // --- THREE.JS LOGIC & RAYCASTER ---
         const container = document.getElementById('three-container');
         let scene, camera, renderer, controls;
         let overallModel = null;
         let activeSubModel = null;
-        
+
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
 
@@ -301,19 +425,9 @@
             // Lắp ráp mô hình tổng từ các file Tầng trong thư mục mohinh/
             overallModel = new THREE.Group();
             scene.add(overallModel);
-            
-            // --- THÊM CHẤM ROBOT CRUZR ---
-            robotPoint = new THREE.Mesh(
-                new THREE.SphereGeometry(2.0, 16, 16), // To hơn 1 chút để dễ thấy
-                new THREE.MeshPhongMaterial({ color: 0x00aaff, emissive: 0x00aaff, emissiveIntensity: 1 })
-            );
-            robotPoint.position.set(0, 2, 0);
-            scene.add(robotPoint);
 
-            // Đèn rọi cho Robot để tạo hiệu ứng hào quang
-            const robotLight = new THREE.PointLight(0x00aaff, 5, 30);
-            robotPoint.add(robotLight);
-            
+            // Đã xoá khối cầu Robot 3D khổng lồ theo yêu cầu
+
             const loader = new THREE.GLTFLoader();
             const floorsToLoad = [
                 { file: 'mohinh/FloorType1_Ground.glb', y: 0 },
@@ -329,7 +443,7 @@
                     const floorMesh = gltf.scene;
                     floorMesh.position.y = floor.y;
                     overallModel.add(floorMesh);
-                    
+
                     loadedCount++;
                     if (loadedCount === floorsToLoad.length) {
                         document.getElementById('click-info').innerText = "Đã lắp ráp xong 5 Tầng. Click để bóc tách...";
@@ -341,6 +455,16 @@
 
             // Sự kiện Click (Raycaster Drill-down)
             renderer.domElement.addEventListener('click', onMouseClick);
+            
+            // Hỗ trợ chuột phải hoặc ESC để quay lại
+            renderer.domElement.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                restoreOverallModel();
+            });
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') restoreOverallModel();
+            });
+            
             window.addEventListener('resize', onWindowResize);
 
             animate();
@@ -362,10 +486,10 @@
                 const point = intersects[0].point;
                 // Scale lại nếu lúc xuất model bị scale. Tạm coi scale = 1.
                 // Mô hình tổng: Tầng cao 4m. Hành lang ở Z từ -3 đến 3.
-                
+
                 const floorIdx = Math.max(0, Math.min(4, Math.floor(point.y / 4)));
                 const isHallway = Math.abs(point.z) < 3.5;
-                
+
                 let fileToLoad = "";
                 let msg = "";
 
@@ -375,12 +499,14 @@
                     else if (floorIdx === 1 || floorIdx === 2) fileToLoad = 'mohinh/FloorType2_Middle.glb';
                     else fileToLoad = 'mohinh/FloorType3_Top.glb';
                     msg = `Đang load chi tiết toàn Tầng ${floorIdx}...`;
-                    
+
                     activeRoomId = null;
+                    activeFloorIdx = floorIdx;
                     document.getElementById('context-panel').classList.remove('hidden');
                     document.getElementById('ctx-title').innerText = `TẦNG ${floorIdx === 0 ? 'TRỆT' : floorIdx}`;
                     document.getElementById('ctx-sensors').classList.add('hidden'); // Tầng thì tạm ẩn Sensor của 1 phòng
-                    
+
+                    document.getElementById('map-2d-container').classList.remove('hidden');
                     render2DMap(floorIdx, null);
                 } else {
                     // Click ra 2 bên -> Tải Phòng
@@ -388,20 +514,34 @@
                     if (floorIdx === 0) fileToLoad = isTopRow ? 'mohinh/RoomType1_Left.glb' : 'mohinh/RoomType1_Right.glb';
                     else if (floorIdx === 1 || floorIdx === 2) fileToLoad = isTopRow ? 'mohinh/RoomType2_Left.glb' : 'mohinh/RoomType2_Right.glb';
                     else fileToLoad = isTopRow ? 'mohinh/RoomType3_Left.glb' : 'mohinh/RoomType3_Right.glb';
-                    
+
                     // Tính toán gần đúng ID phòng dựa trên toạ độ x của raycast
-                    const idx = Math.floor((point.x + 44) / 12);
+                    const idx = Math.round(point.x / 12) + 3;
+
+                    let objName = (intersects[0].object.userData && intersects[0].object.userData.name) ? intersects[0].object.userData.name : intersects[0].object.name;
+                    let extractedId = null;
+                    if (objName) {
+                        const match = objName.match(/(A10\d|L\d-[TB]\d)/i);
+                        if (match) extractedId = match[1].toUpperCase();
+                    }
+
+                    activeRoomId = extractedId || (floorIdx === 0 ? `A10${idx}` : `L${floorIdx + 1}-${isTopRow ? 'T' : 'B'}${idx}`);
+                    activeFloorIdx = floorIdx;
+
                     document.getElementById('context-panel').classList.remove('hidden');
                     document.getElementById('ctx-title').innerText = `PHÒNG ${activeRoomId} (Tầng ${floorIdx})`;
                     document.getElementById('ctx-sensors').classList.remove('hidden');
                     document.getElementById('ctx-temp').innerText = 'Loading...';
                     document.getElementById('ctx-smoke').innerText = 'Loading...';
                     document.getElementById('ctx-co2').innerText = 'Loading...';
+
+                    // Ẩn 2D map khi vào chi tiết phòng
+                    document.getElementById('map-2d-container').classList.add('hidden');
                 }
 
                 document.getElementById('click-info').innerText = msg;
                 document.getElementById('click-info').style.color = '#00ff88';
-                
+
                 loadSubModel(fileToLoad, point);
             }
         }
@@ -409,11 +549,11 @@
         function loadSubModel(filename, focusPoint) {
             // Xóa model tổng
             scene.remove(overallModel);
-            
+
             const loader = new THREE.GLTFLoader();
             loader.load('/' + filename, (gltf) => {
                 activeSubModel = gltf.scene;
-                
+
                 // Tô màu chuẩn cho Model con để nhìn rõ nội thất
                 activeSubModel.traverse(child => {
                     if (child.isMesh) {
@@ -433,6 +573,13 @@
                 // Hiện nút Back
                 document.getElementById('btn-back').classList.remove('hidden');
                 document.getElementById('click-info').innerText = "Đã load thành công: " + filename;
+
+                // Kích hoạt render 2D map nếu là phòng (hiện tại ẩn map đi)
+                if (activeRoomId) {
+                    document.getElementById('map-2d-container').classList.add('hidden');
+                } else {
+                    document.getElementById('map-2d-container').classList.remove('hidden');
+                }
             }, undefined, (error) => {
                 console.error("Không tìm thấy file:", filename);
                 document.getElementById('click-info').innerText = "Lỗi: File " + filename + " không tồn tại!";
@@ -453,9 +600,9 @@
             raycaster.setFromCamera(mouse, camera);
             let objectsToCheck = overallModel ? overallModel.children : [];
             if (activeSubModel) objectsToCheck = [activeSubModel];
-            
+
             // Check intersection with robot
-            if (robotPoint) objectsToCheck.push(robotPoint);
+            // (Đã xoá robotPoint 3D)
 
             const intersects = raycaster.intersectObjects(objectsToCheck, true);
             const tooltip = document.getElementById('hover-tooltip');
@@ -463,42 +610,104 @@
             if (intersects.length > 0) {
                 const point = intersects[0].point;
                 const object = intersects[0].object;
-                
+
                 let info = "";
-                
-                if (object === robotPoint) {
-                    info = "🤖 Robot Cruzr\nID: CRZ-01\nTrạng thái: " + (currentRobotDest || "Standby");
-                } else {
-                    // Tính ID phòng dựa trên toạ độ
-                    const y = Math.max(0, point.y);
+
+                // Tính ID phòng dựa trên toạ độ
+                const y = Math.max(0, point.y);
                     const floorIdx = Math.round(y / 4);
                     const isTopRow = point.z < 0;
-                    const idx = Math.floor((point.x + 44) / 12);
-                    
+                    const idx = Math.round(point.x / 12) + 3;
+
                     let roomId = "";
-                    if (floorIdx === 0) {
-                        roomId = `A10${idx}`;
+                    if (activeSubModel && activeRoomId) {
+                        roomId = activeRoomId;
                     } else {
-                        const floorName = `L${floorIdx + 1}`;
-                        const prefix = isTopRow ? 'T' : 'B';
-                        roomId = `${floorName}-${prefix}${idx}`;
+                        if (floorIdx === 0) {
+                            roomId = `A10${idx}`;
+                        } else {
+                            const floorName = `L${floorIdx + 1}`;
+                            const prefix = isTopRow ? 'T' : 'B';
+                            roomId = `${floorName}-${prefix}${idx}`;
+                        }
                     }
 
-                    // Check nếu là cảm biến
-                    if (object.geometry.type === "BoxGeometry" && object.scale.x < 1) {
-                        info = `📟 Thiết bị: Cảm biến\nID: SENSOR_${roomId}\nLoại: Khói/Nhiệt`;
-                    } else if (Math.abs(point.z) < 3) {
+                    // Chỉ nhận diện cảm biến nếu tên có chứa từ khóa
+                    let isSensor = false;
+                    let objName = "";
+                    if (object.userData && object.userData.name) objName = object.userData.name;
+                    else if (object.name) objName = object.name;
+
+                    if (objName) {
+                        const match = objName.match(/(A10\d|L\d-[TB]\d)/i);
+                        if (match) roomId = match[1].toUpperCase();
+
+                        const nameUpper = objName.toUpperCase();
+                        if (nameUpper.includes('TEMP') || nameUpper.includes('SMOKE') || nameUpper.includes('CO2') || nameUpper.includes('AIR') || nameUpper.includes('SENSOR') || nameUpper.includes('PLUG') || nameUpper.includes('AC') || nameUpper.includes('CAM') || nameUpper.includes('LIGHT') || nameUpper.includes('CB')) {
+                            isSensor = true;
+                        }
+                    }
+
+                    // Lấy dữ liệu cảm biến nếu có
+                    let extraData = "";
+                    let deviceType = "Thiết bị";
+                    
+                    if (latestSensorData[roomId]) {
+                        if (objName && objName.toUpperCase().includes('TEMP')) {
+                            deviceType = "Cảm biến Nhiệt độ";
+                            extraData = `\n🌡 Nhiệt độ: ${latestSensorData[roomId].temp.toFixed(1)}°C`;
+                        } else if (objName && objName.toUpperCase().includes('SMOKE')) {
+                            deviceType = "Cảm biến Khói";
+                            extraData = `\n💨 Khói: ${latestSensorData[roomId].smoke.toFixed(1)}%`;
+                        } else if (objName && objName.toUpperCase().includes('CO2')) {
+                            deviceType = "Cảm biến CO2";
+                            extraData = `\n☁️ CO2: ${latestSensorData[roomId].co2.toFixed(1)} ppm`;
+                        } else if (objName && objName.toUpperCase().includes('AC')) {
+                            deviceType = "Điều hòa (AC)";
+                            extraData = `\n❄️ Trạng thái: Bình thường (24°C)`; 
+                        } else if (objName && objName.toUpperCase().includes('CAM')) {
+                            deviceType = "Camera An ninh";
+                            extraData = `\n📹 Trạng thái: Đang ghi hình`; 
+                        } else if (objName && objName.toUpperCase().includes('LIGHT')) {
+                            deviceType = "Đèn chiếu sáng";
+                            extraData = `\n💡 Trạng thái: Đang bật`; 
+                        } else if (objName && objName.toUpperCase().includes('CB')) {
+                            deviceType = "Tủ điện (CB)";
+                            extraData = `\n⚡ Trạng thái: Đóng điện an toàn`; 
+                        } else {
+                            extraData = `\n🌡 Nhiệt độ: ${latestSensorData[roomId].temp.toFixed(1)}°C\n💨 Khói: ${latestSensorData[roomId].smoke.toFixed(1)}%\n☁️ CO2: ${latestSensorData[roomId].co2.toFixed(1)} ppm`;
+                        }
+                    } else {
+                        extraData = `\n(Phòng trống / Offline)`;
+                    }
+
+                    if (isSensor) {
+                        info = `📟 Thiết bị: ${deviceType}\nID: ${objName || 'Không rõ'} (Phòng ${roomId})${extraData}`;
+                    } else if (objName && objName.toUpperCase().includes('ARCH:DOOR')) {
+                        info = `🚪 Cửa ra vào\nKhu vực: Phòng ${roomId}`;
+                    } else if (objName && objName.toUpperCase().includes('ARCH:WALL')) {
+                        info = `🧱 Tường\nKhu vực: Phòng ${roomId}${extraData}`;
+                    } else if (objName && objName.toUpperCase().includes('ARCH:STAIRS')) {
+                        info = `🪜 Cầu thang bộ\nTầng: ${floorIdx === 0 ? 'Trệt' : floorIdx + 1}`;
+                    } else if (objName && objName.toUpperCase().includes('ARCH:RESTROOM')) {
+                        info = `🚻 Nhà vệ sinh chung\nTầng: ${floorIdx === 0 ? 'Trệt' : floorIdx + 1}`;
+                    } else if (objName && objName.toUpperCase().includes('ARCH:FLOOR')) {
+                        info = `🔲 Sàn nhà\nTầng: ${floorIdx === 0 ? 'Trệt' : floorIdx + 1}`;
+                    } else if (objName && objName.toUpperCase().includes('ARCH:CORRIDOR')) {
+                        info = `🏢 Hành lang chính\nTầng: ${floorIdx === 0 ? 'Trệt' : floorIdx + 1}`;
+                    } else if (objName && objName.toUpperCase().includes('ARCH:BUILDING_SHELL')) {
+                        info = `🏫 Lớp vỏ Tòa nhà F\nCampus DNTU`;
+                    } else if (Math.abs(point.z) < 3 && (!objName || !objName.includes('ROOM'))) {
                         info = `🏢 Khu vực: Hành lang\nTầng: ${floorIdx === 0 ? 'Trệt' : floorIdx + 1}`;
                     } else {
-                        info = `🚪 Phòng: ${roomId}\nTầng: ${floorIdx === 0 ? 'Trệt' : floorIdx + 1}`;
+                        info = `🚪 Phòng: ${roomId}\nTầng: ${floorIdx === 0 ? 'Trệt' : floorIdx + 1}${extraData}`;
                     }
-                }
 
                 tooltip.innerText = info;
                 tooltip.style.left = (e.clientX + 15) + 'px';
                 tooltip.style.top = (e.clientY + 15) + 'px';
                 tooltip.classList.remove('hidden');
-                
+
                 clearTimeout(tooltipTimeout);
                 tooltipTimeout = setTimeout(() => { tooltip.classList.add('hidden'); }, 3000); // Ẩn sau 3s nếu đứng yên
             } else {
@@ -508,18 +717,30 @@
 
         // 2D Map Rendering logic
         function render2DMap(floorIdx, activeRoom) {
+            const container2D = document.getElementById('map-2d-container');
+            if (activeRoom) {
+                // Khi xem một phòng cụ thể thì ẩn map 2D
+                if (container2D) container2D.classList.add('hidden');
+                return;
+            } else {
+                if (container2D) container2D.classList.remove('hidden');
+            }
+
             const canvas = document.getElementById('map-2d-canvas');
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
-            const W = canvas.clientWidth;
-            const H = canvas.clientHeight;
+            const W = canvas.clientWidth || 300;
+            const H = canvas.clientHeight || 150;
+            if(W === 0 || H === 0) return; // Canvas chưa hiện hình
+
             canvas.width = W;
             canvas.height = H;
 
-            document.getElementById('map-floor-name').innerText = `TẦNG ${floorIdx === 0 ? 'TRỆT' : floorIdx + 1}`;
+            const floorTitle = document.getElementById('map-floor-name');
+            if(floorTitle) floorTitle.innerText = `TẦNG ${floorIdx === 0 ? 'TRỆT' : floorIdx}`;
 
             ctx.clearRect(0, 0, W, H);
-            
+
             // Vẽ bản đồ 2D đơn giản
             const scale = Math.min(W / 100, H / 40); // 100x40 là kích thước ảo của toà nhà
             const cx = W / 2;
@@ -532,7 +753,7 @@
             // Vẽ hành lang (Giữa)
             ctx.fillStyle = '#1a1a2e';
             ctx.fillRect(-40, -4, 80, 8);
-            
+
             // Hàm vẽ phòng
             function drawRoom(rx, rz, id, color) {
                 ctx.fillStyle = color;
@@ -540,7 +761,7 @@
                 ctx.lineWidth = 0.5;
                 ctx.fillRect(rx - 5, rz - 6, 10, 12);
                 ctx.strokeRect(rx - 5, rz - 6, 10, 12);
-                
+
                 ctx.fillStyle = '#fff';
                 ctx.font = '3px monospace';
                 ctx.textAlign = 'center';
@@ -550,30 +771,34 @@
             // Lặp vẽ các phòng trên và dưới
             for(let i=0; i<7; i++) {
                 let rx = -36 + i*12;
-                
+
                 // Dãy trên (Z = -12)
-                if (i > 0 && i < 6) { 
+                if (i > 0 && i < 6) {
                     let id = floorIdx === 0 ? `A10${i}` : `L${floorIdx+1}-T${i}`;
-                    let isDanger = (latestSensorData && latestSensorData[id] && (latestSensorData[id].temp > 40 || latestSensorData[id].co2 > 1000));
-                    drawRoom(rx, -12, id, isDanger ? '#aa0000' : (activeRoom === id ? '#0055aa' : '#0c0c0e'));
+                    let isDanger = (latestSensorData && latestSensorData[id] && (latestSensorData[id].temp >= 40 || latestSensorData[id].smoke > 50 || latestSensorData[id].co2 >= 1000));
+                    let isActive = (latestSensorData && latestSensorData[id] && (latestSensorData[id].temp >= 26 && !isDanger));
+                    let color = isDanger ? '#aa0000' : (isActive ? '#008844' : (activeRoom === id ? '#0055aa' : '#0c0c0e'));
+                    drawRoom(rx, -12, id, color);
                 }
-                
+
                 // Dãy dưới (Z = 12)
                 let idB = floorIdx === 0 ? `A10${i+7}` : `L${floorIdx+1}-B${i+1}`; // Ví dụ
-                let isDangerB = (latestSensorData && latestSensorData[idB] && (latestSensorData[idB].temp > 40 || latestSensorData[idB].co2 > 1000));
-                drawRoom(rx, 12, idB, isDangerB ? '#aa0000' : (activeRoom === idB ? '#0055aa' : '#0c0c0e'));
+                let isDangerB = (latestSensorData && latestSensorData[idB] && (latestSensorData[idB].temp >= 40 || latestSensorData[idB].smoke > 50 || latestSensorData[idB].co2 >= 1000));
+                let isActiveB = (latestSensorData && latestSensorData[idB] && (latestSensorData[idB].temp >= 26 && !isDangerB));
+                let colorB = isDangerB ? '#aa0000' : (isActiveB ? '#008844' : (activeRoom === idB ? '#0055aa' : '#0c0c0e'));
+                drawRoom(rx, 12, idB, colorB);
             }
 
-            // Vẽ robot trên 2D map nếu có
-            if (targetRobotPos && Math.round(targetRobotPos.y/4) === floorIdx) {
+            // Vẽ robot trên 2D map bằng toạ độ Lerp
+            if (current2DRobotPos && Math.round(current2DRobotPos.y/4) === floorIdx) {
                 ctx.fillStyle = '#00ffff';
                 ctx.beginPath();
-                ctx.arc(targetRobotPos.x, targetRobotPos.z, 2, 0, Math.PI*2);
+                ctx.arc(current2DRobotPos.x, current2DRobotPos.z, 2, 0, Math.PI*2);
                 ctx.fill();
                 // Toả sáng
                 ctx.fillStyle = 'rgba(0, 255, 255, 0.3)';
                 ctx.beginPath();
-                ctx.arc(targetRobotPos.x, targetRobotPos.z, 4, 0, Math.PI*2);
+                ctx.arc(current2DRobotPos.x, current2DRobotPos.z, 4, 0, Math.PI*2);
                 ctx.fill();
             }
 
@@ -589,15 +814,17 @@
             if (overallModel) {
                 scene.add(overallModel);
             }
-            
+
             // Zoom camera ra xa
             camera.position.set(0, 100, 120);
             controls.target.set(0, 10, 0);
-            
+
             document.getElementById('btn-back').classList.add('hidden');
             document.getElementById('context-panel').classList.add('hidden');
             document.getElementById('click-info').innerText = "Click vào Toà nhà để bóc tách...";
             document.getElementById('click-info').style.color = '#3b82f6';
+            document.getElementById('map-2d-container').classList.remove('hidden');
+            activeFloorIdx = 0; // Quay về Tầng Trệt mặc định trên map 2D
         }
 
         function onWindowResize() {
@@ -609,10 +836,58 @@
         function animate() {
             requestAnimationFrame(animate);
             controls.update();
-            
-            // Di chuyển Robot Point mượt mà (Lerp)
-            if (typeof robotPoint !== 'undefined') {
-                robotPoint.position.lerp(targetRobotPos, 0.05);
+
+            // Nền 2D mượt mà
+            current2DRobotPos.lerp(targetRobotPos, 0.05);
+
+            // Cập nhật hiệu ứng đổi màu nhấp nháy 3D (60 FPS)
+            let modelToAnimate = activeSubModel || overallModel;
+            if (modelToAnimate && latestSensorData) {
+                let blink = (Math.sin(Date.now() * 0.005) + 1) / 2; // 0 -> 1
+                modelToAnimate.traverse((child) => {
+                    if (child.isMesh && child.material) {
+                        let roomId = "";
+                        let objName = (child.userData && child.userData.name) ? child.userData.name : child.name;
+                        if (objName) {
+                            const match = objName.match(/(A10\d|L\d-[TB]\d)/i);
+                            if (match) roomId = match[1].toUpperCase();
+                        }
+                        
+                        if (roomId && latestSensorData[roomId]) {
+                            const sensor = latestSensorData[roomId];
+                            let materials = Array.isArray(child.material) ? child.material : [child.material];
+                            materials.forEach((mat, idx) => {
+                                let cKey = `originalColor_${idx}`;
+                                if (child.userData[cKey] !== undefined) {
+                                    let baseColor = new THREE.Color(child.userData[cKey]);
+                                    let targetColor = new THREE.Color();
+                                    
+                                    if (sensor.smoke > 50 || sensor.temp >= 60) {
+                                        targetColor.setHex(0xff0000); // Đỏ cháy
+                                        mat.color.copy(baseColor).lerp(targetColor, 0.6 + 0.4 * blink); // Nhấp nháy mạnh
+                                    } else if (sensor.temp >= 40) {
+                                        targetColor.setHex(0xffaa00); // Cam
+                                        mat.color.copy(baseColor).lerp(targetColor, 0.6 + 0.2 * blink); // Nhấp nháy nhẹ
+                                    } else if (sensor.smoke > 20) {
+                                        targetColor.setHex(0xffff00); // Vàng
+                                        mat.color.copy(baseColor).lerp(targetColor, 0.5); // Vàng đều
+                                    } else if (sensor.temp >= 26) {
+                                        targetColor.setHex(0x00ff66); // Xanh lá
+                                        mat.color.copy(baseColor).lerp(targetColor, 0.2); // Sáng nhẹ
+                                    } else {
+                                        mat.color.copy(baseColor);
+                                    }
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+
+            // Render map liên tục để thấy chuyển động 60fps
+            if (!activeRoomId) {
+                // Nếu chưa vào phòng nào, ta render tầng hiện tại (activeFloorIdx)
+                render2DMap(activeFloorIdx, null);
             }
 
             renderer.render(scene, camera);

@@ -40,6 +40,7 @@
             }
         }
     </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
     <div class="grid-overlay"></div>
@@ -395,6 +396,7 @@
         // Dãy dưới có 7 phòng (Rộng 12 x 7 = 84). Hoàn toàn lấp đầy không gian.
         const buildingWidth = 88; // Bao gồm viền
         const buildingDepth = 24;
+        const floorsList = [];
 
         for (let floorIdx = 0; floorIdx < totalFloors; floorIdx++) {
             const floorGroup = new THREE.Group();
@@ -441,6 +443,7 @@
             });
 
             campusGroup.add(floorGroup);
+            floorsList.push({ idx: floorIdx, group: floorGroup });
         }
 
         // 4. EXTERIOR SHELL
@@ -649,39 +652,66 @@
         setInterval(syncWithDatabase, 2000);
 
         // XUẤT FILE GLB TỪ MÔ HÌNH THREE.JS
-        btnExport.addEventListener('click', () => {
-            btnExport.innerText = "ĐANG XUẤT...";
+        btnExport.innerText = "⬇️ Export All Models (Batch)";
+        btnExport.addEventListener('click', async () => {
+            btnExport.innerText = "ĐANG XUẤT (Vui lòng đợi)...";
             btnExport.style.background = "#ffaa00";
             btnExport.disabled = true;
             
             const exporter = new GLTFExporter();
-            exporter.parse(
-                campusGroup,
-                function ( gltf ) {
-                    fetch('http://localhost:8000/api/save_model?name=building_f_campus.glb', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/octet-stream' },
-                        body: gltf
-                    })
-                    .then(res => res.text())
-                    .then(txt => {
-                        console.log("Xuất thành công:", txt);
-                        btnExport.innerText = "XUẤT XONG!";
-                        btnExport.style.background = "#00ff00";
-                    })
-                    .catch(err => {
-                        console.error("Lỗi xuất:", err);
-                        btnExport.innerText = "LỖI XUẤT FILE";
-                        btnExport.style.background = "red";
-                    });
-                },
-                function ( error ) {
-                    console.error( 'Lỗi khi xuất file:', error );
-                    btnExport.innerText = "LỖI EXPORTER";
-                    btnExport.style.background = "red";
-                },
-                { binary: true } // Định dạng GLB (nhị phân) thay vì GLTF
-            );
+            const zip = new JSZip();
+            
+            const exportGLB = (object, filename, folder) => {
+                return new Promise((resolve, reject) => {
+                    exporter.parse(
+                        object,
+                        function ( gltf ) {
+                            zip.folder(folder).file(filename, gltf);
+                            resolve();
+                        },
+                        function ( error ) {
+                            reject(error);
+                        },
+                        { binary: true } // Định dạng GLB (nhị phân) thay vì GLTF
+                    );
+                });
+            };
+
+            try {
+                // 1. Xuất 60 phòng
+                const roomIds = Object.keys(roomRegistry);
+                for (let i = 0; i < roomIds.length; i++) {
+                    const rId = roomIds[i];
+                    btnExport.innerText = `ĐANG XUẤT PHÒNG ${rId} (${i+1}/${roomIds.length})...`;
+                    await exportGLB(roomRegistry[rId].group, `Phong_${rId}.glb`, 'Phong');
+                }
+
+                // 2. Xuất 5 Tầng
+                for (let i = 0; i < floorsList.length; i++) {
+                    btnExport.innerText = `ĐANG XUẤT TẦNG ${i}...`;
+                    await exportGLB(floorsList[i].group, `Tang_${i}.glb`, 'Tang');
+                }
+
+                // 3. Xuất Tòa Nhà
+                btnExport.innerText = `ĐANG XUẤT TÒA NHÀ...`;
+                await exportGLB(campusGroup, `Building_Campus.glb`, 'Toanha');
+
+                btnExport.innerText = `ĐANG NÉN FILE ZIP...`;
+                const content = await zip.generateAsync({type:"blob"});
+                
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(content);
+                link.download = "DNTU_Models_Export.zip";
+                link.click();
+
+                btnExport.innerText = "XUẤT XONG (Đã tải file Zip)!";
+                btnExport.style.background = "#00ff00";
+                btnExport.style.color = "#000";
+            } catch (err) {
+                console.error("Lỗi xuất:", err);
+                btnExport.innerText = "LỖI XUẤT FILE";
+                btnExport.style.background = "red";
+            }
         });
 
         // Set trạng thái ban đầu: Tất cả bình thường, chưa có báo động

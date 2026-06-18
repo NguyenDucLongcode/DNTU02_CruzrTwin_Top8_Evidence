@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 const ROOMS = ['L1-A1', 'L1-A2', 'L1-A3', 'L1-A4', 'L1-A5'];
 
@@ -7,7 +6,6 @@ export default function AdminControl() {
   const [status, setStatus] = useState('Sẵn sàng điều chỉnh dữ liệu thiết bị...');
   const [activeRoom, setActiveRoom] = useState(null);
   const [activeAction, setActiveAction] = useState(null);
-  const navigate = useNavigate();
 
   const triggerAction = async (action, roomId) => {
     setActiveRoom(roomId);
@@ -85,13 +83,6 @@ export default function AdminControl() {
         <div className="bg-black p-4 rounded-md font-mono text-green-500 min-h-[50px] text-center mb-8 whitespace-pre-line">
           {status}
         </div>
-
-        <button 
-          onClick={() => navigate('/')} 
-          className="w-full bg-transparent border border-[#03a9f4] text-[#03a9f4] hover:bg-[#03a9f4]/10 font-bold py-4 text-lg rounded transition-all cursor-pointer"
-        >
-          Trở về trang Dashboard chính 3D
-        </button>
       </div>
     </div>
   );

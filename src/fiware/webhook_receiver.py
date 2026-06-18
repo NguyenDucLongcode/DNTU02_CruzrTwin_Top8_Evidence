@@ -16,6 +16,7 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 sys.path.insert(0, ROOT_DIR)
 
 from src.fiware import update_room_sensors,get_room_state,upsert_entity
+from src.iot.devices import BUILDING_ID, DEMO_RUN_ID
 from src.common.config import get_config
 from src.common.logging_utils import append_jsonl
 from src.fiware.client import update_entity_attrs
@@ -29,44 +30,189 @@ CORS(app)
 try:
     from src.robot.cruzr_client import CruzrRobotClient
     from src.iot.devices import DEVICES_TO_REGISTER
-    robot_client = CruzrRobotClient()
-    threading.Thread(target=robot_client.connect, daemon=True).start()
-    print("[SYSTEM] Init Cruzr Robot Client")
+    if os.getenv("CRUZR_IP"):
+        robot_client = CruzrRobotClient()
+        threading.Thread(target=robot_client.connect, daemon=True).start()
+        print("[SYSTEM] Init Cruzr Robot Client")
+    else:
+        robot_client = None
+        print("[SYSTEM] Cruzr Robot Client skipped because CRUZR_IP is not set")
 except Exception as e:
+    robot_client = None
     print(f"[SYSTEM WARNING] Robot Init Error: {e}")
 
 ZONE_ID = os.getenv("ZONE_ID", "DNTU_ROOM_A101")
 
+ROOM_DISPLAY_TO_CODE = {
+    f"L1-A{index}": f"A{100 + index}"
+    for index in range(1, 13)
+}
+
+def normalize_zone_id(entity_id: str) -> str:
+    token = (entity_id or "").split(":")[-1].split("_")[-1]
+    token = token.removeprefix("DNTU_ROOM_")
+    token = ROOM_DISPLAY_TO_CODE.get(token, token)
+    return f"DNTU_ROOM_{token}" if token else ZONE_ID
+
+def ensure_room_entity(zone_id: str, timestamp: str) -> bool:
+    room_code = zone_id.replace("DNTU_ROOM_", "")
+    attrs = {
+        "demo_run_id": {"type": "Text", "value": DEMO_RUN_ID},
+        "zone_id": {"type": "Text", "value": zone_id},
+        "room_id": {"type": "Text", "value": room_code},
+        "building_id": {"type": "Text", "value": BUILDING_ID},
+        "floor": {"type": "Number", "value": 1},
+        "room_name": {"type": "Text", "value": room_code},
+        "room_type": {"type": "Text", "value": "Classroom"},
+        "capacity": {"type": "Number", "value": 50},
+        "scenario_id": {"type": "Text", "value": "SCN_CRITICAL_001"},
+        "device_status": {"type": "Text", "value": "ON"},
+        "device_ids": {"type": "Array", "value": []},
+        "anomaly_detected": {"type": "Boolean", "value": False},
+        "robot_response_required": {"type": "Boolean", "value": False},
+        "robot_status": {"type": "Text", "value": "idle"},
+        "evacuation_status": {"type": "Text", "value": "normal"},
+        "emergency_level": {"type": "Text", "value": "normal"},
+        "timestamp": {"type": "DateTime", "value": timestamp},
+        "last_updated": {"type": "DateTime", "value": timestamp},
+    }
+    return upsert_entity(f"Room:{zone_id}", "Room", attrs)
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def read_jsonl_file(relative_path: str, limit: int = 20) -> list:
+    logs = []
+    file_path = os.path.join(ROOT_DIR, relative_path)
+    if not os.path.exists(file_path):
+        return logs
+    with open(file_path, "r", encoding="utf-8") as f:
+        for line in f.readlines()[-limit:]:
+            try:
+                logs.append(json.loads(line.strip()))
+            except json.JSONDecodeError:
+                continue
+    return logs
+
+
+def mongo_timestamp_to_iso(value) -> str:
+    if isinstance(value, (int, float)):
+        return datetime.fromtimestamp(value, tz=timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    if isinstance(value, str):
+        return value
+    return utc_now()
+
+
+def get_sensor_readings_from_mongo(limit: int = 20) -> list:
+    try:
+        import pymongo
+        client = pymongo.MongoClient(
+            f"mongodb://{os.getenv('MONGO_HOST', 'localhost')}:27017/",
+            serverSelectionTimeoutMS=2000
+        )
+        db = client["orion-cruzrtwin"]
+        entities = list(db["entities"].find({"_id.id": {"$regex": "^Device:"}}, {"_id": 1, "attrs": 1}).limit(limit * 2))
+    except Exception:
+        return read_jsonl_file("logs/sensorReading.jsonl", limit)
+
+    readings = []
+    for entity in entities:
+        entity_id = entity.get("_id", {}).get("id", "")
+        attrs = entity.get("attrs", {}) or {}
+        zone_id = normalize_zone_id(entity_id)
+        room_code = zone_id.replace("DNTU_ROOM_", "")
+        timestamp_value = attrs.get("TimeInstant", {}).get("value") if isinstance(attrs.get("TimeInstant"), dict) else attrs.get("TimeInstant")
+
+        if "TEMP" in entity_id:
+            attr = attrs.get("temperature", {})
+            value = attr.get("value", 0) if isinstance(attr, dict) else attr
+            status = "CRITICAL" if float(value or 0) >= 37 else "WARNING" if float(value or 0) >= 32 else "NORMAL"
+            readings.append({
+                "timestamp": mongo_timestamp_to_iso(timestamp_value),
+                "demo_run_id": DEMO_RUN_ID,
+                "zone_id": zone_id,
+                "room": room_code,
+                "device_id": entity_id,
+                "sensor_type": "TEMPERATURE",
+                "temperature": value,
+                "temp": value,
+                "device_status": status,
+            })
+        elif "SMOKE" in entity_id:
+            attr = attrs.get("smoke_status", {})
+            value = attr.get("value", 0) if isinstance(attr, dict) else attr
+            status = "CRITICAL" if float(value or 0) >= 1 else "NORMAL"
+            readings.append({
+                "timestamp": mongo_timestamp_to_iso(timestamp_value),
+                "demo_run_id": DEMO_RUN_ID,
+                "zone_id": zone_id,
+                "room": room_code,
+                "device_id": entity_id,
+                "sensor_type": "SMOKE",
+                "smoke_status": value,
+                "smoke": value,
+                "device_status": status,
+            })
+        elif "AIR" in entity_id:
+            attr = attrs.get("co2", {})
+            value = attr.get("value", 400) if isinstance(attr, dict) else attr
+            status = "CRITICAL" if float(value or 0) >= 920 else "WARNING" if float(value or 0) >= 631 else "NORMAL"
+            readings.append({
+                "timestamp": mongo_timestamp_to_iso(timestamp_value),
+                "demo_run_id": DEMO_RUN_ID,
+                "zone_id": zone_id,
+                "room": room_code,
+                "device_id": entity_id,
+                "sensor_type": "AIR_QUALITY",
+                "co2": value,
+                "air_quality_or_co2": value,
+                "device_status": status,
+            })
+        elif "PRESENCE" in entity_id:
+            attr = attrs.get("presence", {})
+            value = attr.get("value", 0) if isinstance(attr, dict) else attr
+            readings.append({
+                "timestamp": mongo_timestamp_to_iso(timestamp_value),
+                "demo_run_id": DEMO_RUN_ID,
+                "zone_id": zone_id,
+                "room": room_code,
+                "device_id": entity_id,
+                "sensor_type": "PRESENCE",
+                "presence": value,
+                "device_status": "OCCUPIED" if float(value or 0) > 0 else "EMPTY",
+            })
+
+    readings.sort(key=lambda item: item.get("timestamp", ""), reverse=True)
+    return readings[:limit]
+
 _processed_acks = {}
-# Cache để lưu dữ liệu tạm thời
+# Cache để lưu dữ liệu tạm thời theo từng phòng
 _sensor_cache = {}
 _cache_time = {}
 
-def aggregate_sensor_data(device_data: dict) -> dict:
+def aggregate_sensor_data(room_code: str, device_data: dict) -> dict:
     """
-    Gộp dữ liệu từ nhiều notification vào 1 dict
+    Gộp dữ liệu từ nhiều notification vào 1 dict theo từng phòng
     """
     global _sensor_cache, _cache_time
+
+    if room_code not in _sensor_cache:
+        _sensor_cache[room_code] = {
+            "humidity": 50.0,
+            "energy_consumption": 0.0
+        }
 
     # Cập nhật cache
     for key, value in device_data.items():
         if value is not None:
-            _sensor_cache[key] = value
+            _sensor_cache[room_code][key] = value
 
     # Cập nhật thời gian
-    _cache_time = time.time()
+    _cache_time[room_code] = time.time()
 
-    # Kiểm tra xem đã có đủ 5 attributes chưa
-    required_attrs = ["temperature", "humidity", "co2", "smoke_status", "energy_consumption"]
-    has_all = all(attr in _sensor_cache for attr in required_attrs)
-
-    if has_all:
-        # Có đủ dữ liệu, trả về và reset cache
-        result = _sensor_cache.copy()
-        _sensor_cache = {}
-        return result
-
-    return {}  # Chưa đủ dữ liệu
+    return _sensor_cache[room_code].copy()
 
 
 def _extract_value(value):
@@ -74,8 +220,6 @@ def _extract_value(value):
         return value["value"]
     return value
 
-
-# (Removed duplicate aggregate_sensor_data function)
 
 @app.route('/webhook/notify', methods=['POST'])
 def webhook_notify():
@@ -85,32 +229,32 @@ def webhook_notify():
     data = request.get_json(silent=True) or {}
     entity = data.get("data", [{}])[0] if data.get("data") else {}
 
+    entity_id = entity.get("id", "")
+    zone_id = normalize_zone_id(entity_id)
+
     # Lấy dữ liệu từ notification
     device_data = {}
     for attr in ["temperature", "humidity", "co2", "smoke_status", "energy_consumption"]:
         if attr in entity:
             device_data[attr] = entity[attr].get("value") if isinstance(entity[attr], dict) else entity[attr]
 
-    print(f"Received: {device_data}")
-
     # Gộp dữ liệu
-    aggregated = aggregate_sensor_data(device_data)
+    aggregated = aggregate_sensor_data(zone_id.replace("DNTU_ROOM_", ""), device_data)
 
     if aggregated:
-        # Đã có đủ dữ liệu, tiến hành AI detection
-        print(f"Aggregated: {aggregated}")
-
+        timestamp = utc_now()
+        ensure_room_entity(zone_id, timestamp)
         # Cập nhật Room entity
-        update_room_sensors(aggregated)
+        update_room_sensors(aggregated, zone_id=zone_id)
 
-       # Ghi log trạng thái hiện tại của Room vào file
-        write_orion_state_log(ZONE_ID)
+        # Ghi log trạng thái hiện tại của Room vào file
+        write_orion_state_log(zone_id)
 
         # Chạy AI detection
-        room_state = get_room_state(ZONE_ID)
+        room_state = get_room_state(zone_id)
         if room_state:
             scenario_id = room_state.get("scenario_id", {}).get("value", "SCN_CRITICAL_001")
-            process_ai_detector_event(room_state, scenario_id)
+            res = process_ai_detector_event(room_state, scenario_id)
 
     return jsonify({"status": "ok"}), 200
 
@@ -299,6 +443,7 @@ def operator_ack():
         "robot_action_id": robot_action_id,
         "operator_decision": operator_decision,
         "result": result,
+        "zone_id": zone_id,
         "note": note
     }
 
@@ -356,7 +501,7 @@ def api_robot_command():
     print(f"[ROBOT] Command: {action}")
     
     result = {"success": False, "message": "Robot not connected"}
-    if 'robot_client' in globals() and robot_client.is_connected():
+    if robot_client and robot_client.is_connected():
         if action == 'move_forward': result = robot_client.move_forward()
         elif action == 'move_backward': result = robot_client.move_backward()
         elif action == 'turn_left': result = robot_client.turn_left()
@@ -414,24 +559,22 @@ def api_get_logs(log_type):
         'alerts': 'logs/alert_events.jsonl',
         'state': 'logs/orion_state.jsonl',
         'robot': 'logs/robot_actions.jsonl',
-        'sensors': 'logs/sensorReading.jsonl'
+        'sensors': 'logs/sensorReading.jsonl',
+        'ack': 'logs/operator_ack.jsonl'
     }
     file_path = log_map.get(log_type)
-    logs = []
-    if file_path and os.path.exists(os.path.join(ROOT_DIR, file_path)):
-        with open(os.path.join(ROOT_DIR, file_path), 'r', encoding='utf-8') as f:
-            lines = f.readlines()
-            for line in lines[-20:]:
-                try:
-                    logs.append(json.loads(line.strip()))
-                except:
-                    pass
+
+    if log_type == 'sensors':
+        logs = get_sensor_readings_from_mongo(limit=20)
+        return jsonify(logs), 200
+
+    logs = read_jsonl_file(file_path) if file_path else []
     return jsonify(logs), 200
 
 @app.route('/api/robot/status', methods=['GET'])
 def api_robot_status():
     status = {"connected": False, "battery": 0, "location": {"x": 0, "y": 0}}
-    if 'robot_client' in globals():
+    if robot_client:
         rs = robot_client.get_status()
         status = {
             "connected": robot_client.is_connected(),
@@ -485,5 +628,27 @@ if __name__ == "__main__":
     print("=" * 50)
     print("   Dashboard: http://0.0.0.0:5000/dashboard.html")
     print("=" * 50 + "\n")
+
+    def auto_register_subscription():
+        import time
+        from src.fiware.subscription import ensure_subscription_for_devices, get_all_subscriptions
+        print("[SYSTEM] Waiting for Orion to start to auto-register subscriptions...")
+        
+        for _ in range(12): # Thử tối đa 12 lần (60 giây)
+            time.sleep(5)
+            try:
+                subs = get_all_subscriptions()
+                if subs:
+                    print("[SYSTEM] Subscription already exists.")
+                    ensure_subscription_for_devices()
+                    break
+                subscription_id = ensure_subscription_for_devices()
+                if subscription_id:
+                    print("[SYSTEM] Subscription created.")
+                    break
+            except Exception as e:
+                print(f"[SYSTEM] Orion not ready yet, retrying... ({e})")
+                
+    threading.Thread(target=auto_register_subscription, daemon=True).start()
 
     app.run(host='0.0.0.0', port=5000, debug=False)

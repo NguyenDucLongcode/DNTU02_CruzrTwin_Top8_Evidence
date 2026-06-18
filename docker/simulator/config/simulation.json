@@ -23,7 +23,7 @@
         {
           "name": "temperature",
           "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: Math.random() * (85 - 60) + 60 };)"
+          "value": "attribute-function-interpolator(module.exports = { result: Math.random() * (28 - 25) + 25 };)"
         },
         {
           "name": "TimeInstant",
@@ -40,7 +40,7 @@
         {
           "name": "smoke_status",
           "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: 1 };)"
+          "value": "attribute-function-interpolator(module.exports = { result: 0 };)"
         },
         {
           "name": "TimeInstant",
@@ -57,7 +57,7 @@
         {
           "name": "co2",
           "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: Math.random() * (4000 - 1500) + 1500 };)"
+          "value": "attribute-function-interpolator(module.exports = { result: Math.random() * (450 - 400) + 400 };)"
         },
         {
           "name": "TimeInstant",
@@ -159,7 +159,7 @@
         {
           "name": "temperature",
           "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: Math.random() * (26 - 24) + 24 };)"
+          "value": "attribute-function-interpolator(module.exports = { result: Math.random() * (85 - 60) + 60 };)"
         },
         {
           "name": "TimeInstant",
@@ -176,7 +176,7 @@
         {
           "name": "smoke_status",
           "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: 0 };)"
+          "value": "attribute-function-interpolator(module.exports = { result: 1 };)"
         },
         {
           "name": "TimeInstant",
@@ -193,7 +193,7 @@
         {
           "name": "co2",
           "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: Math.random() * (450 - 400) + 400 };)"
+          "value": "attribute-function-interpolator(module.exports = { result: Math.random() * (4000 - 1500) + 1500 };)"
         },
         {
           "name": "TimeInstant",
@@ -210,7 +210,7 @@
         {
           "name": "presence",
           "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: 0 };)"
+          "value": "attribute-function-interpolator(module.exports = { result: 1 };)"
         },
         {
           "name": "TimeInstant",

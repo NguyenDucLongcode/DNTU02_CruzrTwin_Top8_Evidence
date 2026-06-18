@@ -47,9 +47,9 @@ def create_room(room_config: dict, extra_attributes: dict | None = None) -> bool
     return upsert_entity(room_config["id"], room_config["type"], attributes)
 
 
-def update_room_sensors(sensor_data: dict) -> bool:
+def update_room_sensors(sensor_data: dict, zone_id: str = None) -> bool:
     """Cập nhật giá trị cảm biến cho Room"""
-    entity_id = f"Room:{ZONE_ID}"
+    entity_id = f"Room:{zone_id or ZONE_ID}"
     
     attrs = {}
     for key, value in sensor_data.items():

@@ -156,6 +156,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./simulator/config:/app/docker/simulator/config
+      - ../logs:/app/logs
     networks:
       - fiware-net
 

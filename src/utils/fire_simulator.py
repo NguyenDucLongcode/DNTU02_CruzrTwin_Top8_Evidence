@@ -8,6 +8,15 @@ SIMULATION_JSON_PATH = os.path.join(ROOT_DIR, "docker", "simulator", "config", "
 STATE_FILE_PATH = os.path.join(ROOT_DIR, "docker", "simulator", "config", "room_states.json")
 
 ROOMS = ["L1-A1", "L1-A2", "L1-A3", "L1-A4", "L1-A5"]
+ROOM_TO_CODE = {f"L1-A{index}": f"A{100 + index}" for index in range(1, 13)}
+CODE_TO_ROOM = {code: room for room, code in ROOM_TO_CODE.items()}
+
+def normalize_room_id(room_id: str) -> str:
+    return ROOM_TO_CODE.get(room_id, CODE_TO_ROOM.get(room_id, room_id))
+
+def resolve_room_state(room_id: str) -> str:
+    states = get_room_states()
+    return states.get(room_id, states.get(normalize_room_id(room_id), "empty"))
 
 def get_room_states():
     if os.path.exists(STATE_FILE_PATH):
@@ -45,7 +54,7 @@ def generate_simulation_json():
     }
     
     for room in ROOMS:
-        state = states.get(room, "empty")
+        state = resolve_room_state(room)
         
         # Mặc định (Empty / Phòng Trống)
         temp_func = "attribute-function-interpolator(module.exports = { result: Math.random() * (26 - 24) + 24 };)"

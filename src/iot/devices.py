@@ -113,7 +113,7 @@ ROOM_CONFIG = {
 # ======================================================
 
 DEVICES_TO_REGISTER = []
-_ROOMS = ["L1-A1", "L1-A2", "L1-A3", "L1-A4", "L1-A5"]
+_ROOMS = [f"A{100+i}" for i in range(1, 13)]
 
 for _room in _ROOMS:
     DEVICES_TO_REGISTER.extend([

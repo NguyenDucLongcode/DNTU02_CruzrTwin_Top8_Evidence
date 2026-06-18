@@ -1,7 +1,5 @@
 import { useEffect, useRef } from 'react';
 
-const ROOM_IDS = ['L1-A1', 'L1-A2', 'L1-A3', 'L1-A4', 'L1-A5'];
-
 export default function Map2D({ activeFloorIdx, activeRoomId, sensorData }) {
   const canvasRef = useRef(null);
 
@@ -34,8 +32,8 @@ export default function Map2D({ activeFloorIdx, activeRoomId, sensorData }) {
         ctx.fillStyle = color;
         ctx.strokeStyle = '#00aaff';
         ctx.lineWidth = 0.5;
-        ctx.fillRect(rx - 7, rz - 8, 14, 16);
-        ctx.strokeRect(rx - 7, rz - 8, 14, 16);
+        ctx.fillRect(rx - 10, rz - 8, 20, 16);
+        ctx.strokeRect(rx - 10, rz - 8, 20, 16);
 
         ctx.fillStyle = '#fff';
         ctx.font = '3px monospace';
@@ -43,16 +41,32 @@ export default function Map2D({ activeFloorIdx, activeRoomId, sensorData }) {
         ctx.fillText(id, rx, rz + 1);
       };
 
-      // Vẽ 5 phòng
-      for(let i=0; i<5; i++) {
-        let rx = -30 + i*15;
-        let id = ROOM_IDS[i];
-        
+      const floorNum = activeFloorIdx || 1;
+      
+      const ROOMS = [
+        // Bottom Row (7 rooms)
+        { id: `L${floorNum}-A1`, rx: -75, rz: 16 },
+        { id: `L${floorNum}-A3`, rx: -50, rz: 16 },
+        { id: `L${floorNum}-A5`, rx: -25, rz: 16 },
+        { id: `L${floorNum}-A7`, rx: 0, rz: 16 },
+        { id: `L${floorNum}-A9`, rx: 25, rz: 16 },
+        { id: `L${floorNum}-A11`, rx: 50, rz: 16 },
+        { id: `L${floorNum}-A12`, rx: 75, rz: 16 },
+        // Top Row (5 rooms)
+        { id: `L${floorNum}-A2`, rx: -50, rz: -16 },
+        { id: `L${floorNum}-A4`, rx: -25, rz: -16 },
+        { id: `L${floorNum}-A6`, rx: 0, rz: -16 },
+        { id: `L${floorNum}-A8`, rx: 25, rz: -16 },
+        { id: `L${floorNum}-A10`, rx: 50, rz: -16 },
+      ];
+
+      ROOMS.forEach((room) => {
+        const id = room.id;
         let sensor = sensorData[id];
         let color = '#0c0c0e';
         
         if (sensor) {
-          if (sensor.temp >= 40 || sensor.smoke > 50 || sensor.co2 >= 1000) {
+          if (sensor.temp >= 40 || sensor.smoke >= 1 || sensor.co2 >= 1000) {
             color = '#aa0000'; // Đỏ cháy
           } else if (sensor.presence === 1) {
             color = '#008844'; // Xanh lá
@@ -63,8 +77,8 @@ export default function Map2D({ activeFloorIdx, activeRoomId, sensorData }) {
           color = '#0055aa'; // Đang chọn
         }
 
-        drawRoom(rx, -16, id, color);
-      }
+        drawRoom(room.rx, room.rz, id, color);
+      });
 
       ctx.restore();
     };
@@ -73,7 +87,7 @@ export default function Map2D({ activeFloorIdx, activeRoomId, sensorData }) {
   }, [activeFloorIdx, activeRoomId, sensorData]);
 
   return (
-    <div className={`w-full bg-black/50 border-t border-zinc-800 ${activeRoomId ? 'hidden' : 'block'}`}>
+    <div className={`w-full bg-transparent ${activeRoomId ? 'hidden' : 'block'}`}>
       <div className="px-4 py-2 text-xs font-bold text-blue-400 font-mono tracking-widest border-b border-zinc-800">
         SƠ ĐỒ 2D
       </div>

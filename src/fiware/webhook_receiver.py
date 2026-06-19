@@ -66,12 +66,6 @@ def aggregate_sensor_data(device_data: dict) -> dict:
     return {}  # Chưa đủ dữ liệu
 
 
-def _extract_value(value):
-    if isinstance(value, dict) and "value" in value:
-        return value["value"]
-    return value
-
-
 # Trong webhook_receiver.py, thêm logic gộp dữ liệu
 
 # Cache để lưu dữ liệu tạm thời
@@ -119,14 +113,11 @@ def webhook_notify():
         if attr in entity:
             device_data[attr] = entity[attr].get("value") if isinstance(entity[attr], dict) else entity[attr]
     
-    print(f"Received: {device_data}")
     
     # Gộp dữ liệu
     aggregated = aggregate_sensor_data(device_data)
     
     if aggregated:
-        # Đã có đủ dữ liệu, tiến hành AI detection
-        print(f"Aggregated: {aggregated}")
         
         # Cập nhật Room entity
         update_room_sensors(aggregated)
@@ -143,116 +134,221 @@ def webhook_notify():
     return jsonify({"status": "ok"}), 200
 
 
+# ==========================================
+# API: Operator ACK / ERROR
+# http://127.0.0.1:5000/api/operator/ack
+# Payload body ví dụ:
+#
+# {
+#   "decision": "ACK",
+#   "alert_id": "AlertEvent:SCN_CRITICAL_001",
+#   "robot_action_id": "RobotAction:CRUZR_ACTION_001",
+#   "operator_id": "demo_operator",
+#   "demo_run_id": "DNTU02_TOP8_RUN_2026_001",
+#   "scenario_id": "SCN_CRITICAL_001",
+#   "zone_id": "DNTU_ROOM_A101",
+#   "note": "Operator confirmed Cruzr guidance delivered."
+# }
+#
+# decision chỉ nhận:
+# - ACK
+# - ERROR
+# ==========================================
+
+_processed_acks = {}
+
 @app.route('/api/operator/ack', methods=['POST'])
 def operator_ack():
     """Nhận xác nhận từ Operator, cập nhật Orion và ghi nhận audit log"""
+
     req_data = request.get_json(silent=True) or {}
-    
     cfg = get_config()
-    decision = req_data.get("decision")
+
+    decision = req_data.get("decision", "").upper()
+
     if decision not in ["ACK", "ERROR"]:
-        return jsonify({"error": "Invalid decision. Must be ACK or ERROR"}), 400
-        
+        return jsonify({
+            "error": "Invalid decision. Must be ACK or ERROR"
+        }), 400
+
     alert_id = req_data.get("alert_id") or "AlertEvent:SCN_CRITICAL_001"
-    robot_action_id = req_data.get("robot_action_id") or "RobotAction:SCN_CRITICAL_001"
+    robot_action_id = req_data.get("robot_action_id") or "RobotAction:CRUZR_ACTION_001"
     operator_id = req_data.get("operator_id") or "demo_operator"
     demo_run_id = req_data.get("demo_run_id") or cfg["demo_run_id"]
     scenario_id = req_data.get("scenario_id") or "SCN_CRITICAL_001"
     zone_id = req_data.get("zone_id") or cfg["default_zone_id"]
-    note = req_data.get("note") or ("Operator confirmed Cruzr guidance delivered." if decision == "ACK" else "Operator reported error.")
-    
-    operator_ack_id = f"OperatorAck:{scenario_id}"
-    
-    # Kiểm tra Idempotency cache
+
+    note = req_data.get("note") or (
+        "Operator confirmed Cruzr guidance delivered."
+        if decision == "ACK"
+        else "Operator reported error."
+    )
+
+    # Dùng alert_id để tránh trùng
+    operator_ack_id = f"OperatorAck:{alert_id}"
+
+    # Idempotency cho demo
     if operator_ack_id in _processed_acks:
         return jsonify(_processed_acks[operator_ack_id]), 200
-        
+
+    timestamp = (
+        datetime.now(timezone.utc)
+        .isoformat(timespec="seconds")
+        .replace("+00:00", "Z")
+    )
+
     orion_upsert_status = "SKIPPED_OFFLINE"
     error_message = None
-    
+
     if cfg["orion_enabled"]:
         try:
+
             if decision == "ACK":
                 alert_status = "RESOLVED"
                 robot_status = "COMPLETED"
                 result = "ACK"
+                operator_decision = "ACKNOWLEDGED"
+
             else:
                 alert_status = "NEEDS_REVIEW"
                 robot_status = "ERROR"
                 result = "ERROR"
-                
-            # Cập nhật AlertEvent
-            alert_success = update_entity_attrs(alert_id, {
-                "status": {"type": "Text", "value": alert_status}
-            })
-            
-            # Cập nhật RobotAction
-            robot_success = update_entity_attrs(robot_action_id, {
-                "status": {"type": "Text", "value": robot_status}
-            })
-            
+                operator_decision = "ERROR_REPORTED"
+
+            # Update AlertEvent
+            alert_success = update_entity_attrs(
+                alert_id,
+                {
+                    "status": {
+                        "type": "Text",
+                        "value": alert_status
+                    }
+                }
+            )
+
+            # Update RobotAction
+            robot_success = update_entity_attrs(
+                robot_action_id,
+                {
+                    "status": {
+                        "type": "Text",
+                        "value": robot_status
+                    }
+                }
+            )
+
             # Upsert OperatorAck entity
-            timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
             ack_attrs = {
-                "demo_run_id": {"type": "Text", "value": demo_run_id},
-                "scenario_id": {"type": "Text", "value": scenario_id},
-                "zone_id": {"type": "Text", "value": zone_id},
-                "operator_id": {"type": "Text", "value": operator_id},
-                "alert_id": {"type": "Text", "value": alert_id},
-                "robot_action_id": {"type": "Text", "value": robot_action_id},
-                "operator_decision": {"type": "Text", "value": decision},
-                "result": {"type": "Text", "value": result},
-                "note": {"type": "Text", "value": note},
-                "created_at": {"type": "DateTime", "value": timestamp}
+                "demo_run_id": {
+                    "type": "Text",
+                    "value": demo_run_id
+                },
+                "scenario_id": {
+                    "type": "Text",
+                    "value": scenario_id
+                },
+                "zone_id": {
+                    "type": "Text",
+                    "value": zone_id
+                },
+                "operator_id": {
+                    "type": "Text",
+                    "value": operator_id
+                },
+                "alert_id": {
+                    "type": "Text",
+                    "value": alert_id
+                },
+                "robot_action_id": {
+                    "type": "Text",
+                    "value": robot_action_id
+                },
+                "operator_decision": {
+                    "type": "Text",
+                    "value": operator_decision
+                },
+                "result": {
+                    "type": "Text",
+                    "value": result
+                },
+                "note": {
+                    "type": "Text",
+                    "value": note
+                },
+                "created_at": {
+                    "type": "DateTime",
+                    "value": timestamp
+                }
             }
-            ack_success = upsert_entity(operator_ack_id, "OperatorAck", ack_attrs)
-            
+
+            ack_success = upsert_entity(
+                operator_ack_id,
+                "OperatorAck",
+                ack_attrs
+            )
+
             if alert_success and robot_success and ack_success:
                 orion_upsert_status = "SUCCESS"
             else:
                 orion_upsert_status = "FAILED"
-                error_message = "One or more Orion updates returned False"
+                error_message = (
+                    "One or more Orion updates returned False"
+                )
+
         except Exception as e:
             orion_upsert_status = "FAILED"
             error_message = str(e)
-            
-    # Ghi log operator_ack.jsonl
-    timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+    else:
+        operator_decision = (
+            "ACKNOWLEDGED"
+            if decision == "ACK"
+            else "ERROR_REPORTED"
+        )
+
+        result = decision
+
+    # ==========================================
+    # Log theo đúng yêu cầu 4.5
+    # ==========================================
+
     log_entry = {
         "demo_run_id": demo_run_id,
         "timestamp": timestamp,
-        "scenario_id": scenario_id,
-        "zone_id": zone_id,
-        "operator_ack_id": operator_ack_id,
         "operator_id": operator_id,
         "alert_id": alert_id,
         "robot_action_id": robot_action_id,
-        "operator_decision": decision,
-        "result": "ACK" if decision == "ACK" else "ERROR",
-        "note": note,
-        "orion_upsert_status": orion_upsert_status
+        "operator_decision": operator_decision,
+        "result": result,
+        "note": note
     }
-    if error_message:
-        log_entry["error_message"] = error_message
-        
-    ack_log_path = os.path.join(cfg["log_dir"], "operator_ack.jsonl")
+
+    ack_log_path = os.path.join(
+        cfg["log_dir"],
+        "operator_ack.jsonl"
+    )
+
     append_jsonl(ack_log_path, log_entry)
-    
-    # Trả response
-    response_status = "acknowledged" if decision == "ACK" else "error_reported"
+
+    response_status = (
+        "acknowledged"
+        if decision == "ACK"
+        else "error_reported"
+    )
+
     res = {
         "status": response_status,
-        "operator_decision": decision,
+        "operator_ack_id": operator_ack_id,
         "alert_id": alert_id,
         "robot_action_id": robot_action_id,
-        "operator_ack_id": operator_ack_id,
         "orion_upsert_status": orion_upsert_status
     }
+
     if error_message:
         res["error_message"] = error_message
-        
+
     _processed_acks[operator_ack_id] = res
-    
+
     return jsonify(res), 200
 
 

@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from src.common import config
 from src.common.logging_utils import append_jsonl
 from src.common.time_utils import now_iso
+from src.robot import create_robot_action
 
 # In-memory sets to prevent duplicate creations/triggers of alerts and robot actions
 _created_alerts = set()
@@ -144,106 +145,8 @@ def create_alert_event(ai_result: dict, demo_run_id: str = None, scenario_id: st
 
         # Trigger RobotAction if critical
         if level == "critical":
-            create_robot_action_from_alert(event)
+            create_robot_action(event)
             
     return event
 
-def create_robot_action_from_alert(alert_event: dict) -> dict:
-    """
-    Trigger RobotAction for Cruzr simulator or Orion broker.
-    """
-    cfg = config.get_config()
-    demo_run_id = alert_event["demo_run_id"]
-    alert_id = alert_event["alert_id"]
-    scenario_id = alert_event["scenario_id"]
-    zone_id = alert_event["zone_id"]
-    timestamp = alert_event["timestamp"]
-    
-    robot_action_id = f"RobotAction:{scenario_id}"
-    
-    # Idempotency: skip if already created
-    if robot_action_id in _created_robot_actions:
-        room_name = zone_id.split(":")[-1] if ":" in zone_id else zone_id
-        room_name = room_name.split("_")[-1] if "_" in room_name else room_name
-        clean_room = room_name.strip()
-        while clean_room.upper().startswith("ROOM"):
-            clean_room = clean_room[4:].strip()
-            clean_room = clean_room.lstrip("-_ ")
-        guided_message = f"Critical indoor-environment anomaly detected in Room {clean_room}. Please follow staff guidance and move calmly to the safe waiting area."
-        return {
-            "demo_run_id": demo_run_id,
-            "timestamp": timestamp,
-            "robot_action_id": robot_action_id,
-            "alert_id": alert_id,
-            "scenario_id": scenario_id,
-            "zone_id": zone_id,
-            "robot_id": "CRUZR_01",
-            "action_type": "VOICE_DISPLAY_GUIDANCE",
-            "navigation_mode": "PREDEFINED_RESPONSE_POINT",
-            "message": guided_message,
-            "status": "PENDING"
-        }
-        
-    _created_robot_actions.add(robot_action_id)
-    
-    room_name = zone_id.split(":")[-1] if ":" in zone_id else zone_id
-    room_name = room_name.split("_")[-1] if "_" in room_name else room_name
-    clean_room = room_name.strip()
-    while clean_room.upper().startswith("ROOM"):
-        clean_room = clean_room[4:].strip()
-        clean_room = clean_room.lstrip("-_ ")
-    
-    guided_message = f"Critical indoor-environment anomaly detected in Room {clean_room}. Please follow staff guidance and move calmly to the safe waiting area."
-    
-    action = {
-        "demo_run_id": demo_run_id,
-        "timestamp": timestamp,
-        "robot_action_id": robot_action_id,
-        "alert_id": alert_id,
-        "scenario_id": scenario_id,
-        "zone_id": zone_id,
-        "robot_id": "CRUZR_01",
-        "action_type": "VOICE_DISPLAY_GUIDANCE",
-        "navigation_mode": "PREDEFINED_RESPONSE_POINT",
-        "message": guided_message,
-        "status": "PENDING"
-    }
-    
-    orion_upsert_status = "SKIPPED_OFFLINE"
-    error_message = None
-    
-    if cfg["orion_enabled"]:
-        try:
-            from src.fiware.entities.entities_manager import upsert_entity
-            attrs = {
-                "demo_run_id": {"type": "Text", "value": demo_run_id},
-                "alert_id": {"type": "Text", "value": alert_id},
-                "scenario_id": {"type": "Text", "value": scenario_id},
-                "zone_id": {"type": "Text", "value": zone_id},
-                "robot_id": {"type": "Text", "value": "CRUZR_01"},
-                "action_type": {"type": "Text", "value": "VOICE_DISPLAY_GUIDANCE"},
-                "navigation_mode": {"type": "Text", "value": "PREDEFINED_RESPONSE_POINT"},
-                "message": {"type": "Text", "value": guided_message},
-                "status": {"type": "Text", "value": "PENDING"},
-                "created_at": {"type": "DateTime", "value": timestamp}
-            }
-            success = upsert_entity(robot_action_id, "RobotAction", attrs)
-            if success:
-                orion_upsert_status = "SUCCESS"
-            else:
-                orion_upsert_status = "FAILED"
-                error_message = "Orion client returned False"
-        except Exception as e:
-            orion_upsert_status = "FAILED"
-            error_message = str(e)
-            
-    # Log RobotAction to logs/robot_actions.jsonl
-    log_entry = dict(action)
-    log_entry["orion_upsert_status"] = orion_upsert_status
-    if error_message:
-        log_entry["error_message"] = error_message
-        
-    robot_log_path = os.path.join(cfg["log_dir"], "robot_actions.jsonl")
-    append_jsonl(robot_log_path, log_entry)
-    
-    return action
+

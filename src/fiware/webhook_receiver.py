@@ -66,6 +66,39 @@ def aggregate_sensor_data(device_data: dict) -> dict:
     return {}  # Chưa đủ dữ liệu
 
 
+# Trong webhook_receiver.py, thêm logic gộp dữ liệu
+
+# Cache để lưu dữ liệu tạm thời
+_sensor_cache = {}
+_cache_time = {}
+
+def aggregate_sensor_data(device_data: dict) -> dict:
+    """
+    Gộp dữ liệu từ nhiều notification vào 1 dict
+    """
+    global _sensor_cache, _cache_time
+
+    # Cập nhật cache
+    for key, value in device_data.items():
+        if value is not None:
+            _sensor_cache[key] = value
+
+    # Cập nhật thời gian
+    _cache_time = time.time()
+
+    # Kiểm tra xem đã có đủ 5 attributes chưa
+    required_attrs = ["temperature", "humidity", "co2", "smoke_status", "energy_consumption"]
+    has_all = all(attr in _sensor_cache for attr in required_attrs)
+
+    if has_all:
+        # Có đủ dữ liệu, trả về và reset cache
+        result = _sensor_cache.copy()
+        _sensor_cache = {}
+        return result
+
+    return {}  # Chưa đủ dữ liệu
+
+
 @app.route('/webhook/notify', methods=['POST'])
 def webhook_notify():
     """Nhận notification từ Orion"""

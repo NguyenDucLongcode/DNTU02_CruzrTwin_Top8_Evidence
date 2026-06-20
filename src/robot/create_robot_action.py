@@ -111,9 +111,9 @@ def main(alert_event: dict) -> dict:
     isConnected =  RobotClient.connect()
 
     # Kết nối nếu chưa kết nối
-    if not isConnected:
-        print("   🤖 Robot not connected. Trying to connect...")
-        return False
+    # if not isConnected:
+    #     print("   🤖 Robot not connected. Trying to connect...")
+    #     return False
 
      # Robot log
     log_entry = {

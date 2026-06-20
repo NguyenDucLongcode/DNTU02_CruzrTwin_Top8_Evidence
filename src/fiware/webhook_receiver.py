@@ -350,6 +350,71 @@ def operator_ack():
     return jsonify(res), 200
 
 
+def _read_jsonl(filepath: str) -> list:
+    """Read a JSONL file and return a list of dicts in chronological order (oldest first)."""
+    if not os.path.exists(filepath):
+        return []
+    records = []
+    with open(filepath, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                try:
+                    records.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+    return records
+
+
+LOG_ROUTES = {
+    "sensors": "sensorReading.jsonl",
+    "state": "orion_state.jsonl",
+    "ai": "ai_detection.jsonl",
+    "robot": "robot_actions.jsonl",
+    "ack": "operator_ack.jsonl",
+}
+
+
+@app.route('/api/logs/<log_type>', methods=['GET'])
+def api_logs(log_type):
+    """Return log entries for the given log type."""
+    filename = LOG_ROUTES.get(log_type)
+    if not filename:
+        return jsonify({"error": f"Unknown log type: {log_type}"}), 404
+    cfg = get_config()
+    filepath = os.path.join(cfg["log_dir"], filename)
+    return jsonify(_read_jsonl(filepath)), 200
+
+
+@app.route('/api/db/sensors', methods=['GET'])
+def api_db_sensors():
+    """Return the latest sensor reading per zone_id grouped as {room_id: {temp, smoke, co2, device_status}}.
+    Keys are in L1-A{n} format (e.g. L1-A1, L1-A12) for frontend 3D/map lookup.
+    """
+    import re
+    cfg = get_config()
+    filepath = os.path.join(cfg["log_dir"], "sensorReading.jsonl")
+    records = _read_jsonl(filepath)
+    latest_per_zone = {}
+    for rec in records:
+        zone = rec.get("zone_id") or rec.get("room")
+        if not zone:
+            continue
+        match = re.search(r'A(\d+)', zone)
+        if match:
+            room_num = int(match.group(1)) - 100
+            room_key = f"L1-A{room_num}"
+        else:
+            room_key = zone.replace("DNTU_ROOM_", "")
+        latest_per_zone[room_key] = {
+            "temp": rec.get("temperature"),
+            "smoke": rec.get("smoke_status"),
+            "co2": rec.get("air_quality_or_co2"),
+            "device_status": rec.get("device_status"),
+        }
+    return jsonify(latest_per_zone), 200
+
+
 @app.route('/webhook/health', methods=['GET'])
 def health_check():
     return {"status": "healthy"}, 200

@@ -37,4 +37,3 @@ def write_orion_state_log(zone_id: str,):
     with open(log_file, "a", encoding="utf-8") as f:
         f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
     
-    print(f"   📝 Orion state logged: {log_file}")

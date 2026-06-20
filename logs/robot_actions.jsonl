@@ -1,1 +1,0 @@
-{"demo_run_id": "DNTU02_TOP8_RUN_2026_001", "timestamp": "2026-06-20T18:55:02Z", "robot_id": "CRUZR_01", "alert_id": "AlertEvent:SCN_CRITICAL_001", "zone_id": "DNTU_ROOM_A101", "action_type": "VOICE_DISPLAY_GUIDANCE", "navigation_mode": "PREDEFINED_RESPONSE_POINT", "message": "Critical anomaly detected in Room A101. Please evacuate.", "status": "PENDING"}

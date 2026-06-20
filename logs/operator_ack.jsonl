@@ -1,1 +1,0 @@
-{"demo_run_id": "DNTU02_TOP8_RUN_2026_001", "timestamp": "2026-06-20T19:06:20Z", "operator_id": "demo_operator", "alert_id": "AlertEvent:SCN_CRITICAL_001", "robot_action_id": "RobotAction:SCN_CRITICAL_001", "operator_decision": "ACKNOWLEDGED", "result": "ACK", "note": "Operator confirmed Cruzr guidance delivered."}

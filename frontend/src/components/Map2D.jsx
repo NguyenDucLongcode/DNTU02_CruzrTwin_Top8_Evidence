@@ -16,7 +16,7 @@ export default function Map2D({ activeFloorIdx, activeRoomId, sensorData }) {
     const render = () => {
       ctx.clearRect(0, 0, W, H);
 
-      const scale = Math.min(W / 120, H / 50); // 120x50 ảo
+      const scale = Math.min(W / 120, H / 50); // 120x50 virtual
       const cx = W / 2;
       const cy = H / 2;
 
@@ -24,7 +24,7 @@ export default function Map2D({ activeFloorIdx, activeRoomId, sensorData }) {
       ctx.translate(cx, cy);
       ctx.scale(scale, scale);
 
-      // Hành lang
+      // Corridor
       ctx.fillStyle = '#1a1a2e';
       ctx.fillRect(-50, -6, 100, 12);
 
@@ -62,19 +62,24 @@ export default function Map2D({ activeFloorIdx, activeRoomId, sensorData }) {
 
       ROOMS.forEach((room) => {
         const id = room.id;
-        let sensor = sensorData[id];
+        const sensor = sensorData[id];
+        const ds = String(sensor?.device_status || sensor?.status || '').toUpperCase();
         let color = '#0c0c0e';
-        
-        if (sensor) {
-          if (sensor.temp >= 40 || sensor.smoke >= 1 || sensor.co2 >= 1000) {
-            color = '#aa0000'; // Đỏ cháy
-          } else if (sensor.presence === 1) {
-            color = '#008844'; // Xanh lá
-          }
+
+        if (ds === 'CRITICAL' || ds === 'ERROR' || ds === 'FIRE') {
+          color = '#ff0000';
+        } else if (ds === 'WARNING') {
+          color = '#ffaa00';
+        } else if (sensor?.temp >= 40 || sensor?.smoke >= 1 || sensor?.co2 >= 1000) {
+          color = '#ff0000';
+        } else if (sensor?.temp >= 32 || sensor?.smoke >= 0.5 || sensor?.co2 >= 631) {
+          color = '#ffaa00';
+        } else if (sensor) {
+          color = '#00aa00';
         }
-        
+
         if (activeRoomId === id) {
-          color = '#0055aa'; // Đang chọn
+          color = '#0055aa';
         }
 
         drawRoom(room.rx, room.rz, id, color);
@@ -89,7 +94,7 @@ export default function Map2D({ activeFloorIdx, activeRoomId, sensorData }) {
   return (
     <div className={`w-full bg-transparent ${activeRoomId ? 'hidden' : 'block'}`}>
       <div className="px-4 py-2 text-xs font-bold text-blue-400 font-mono tracking-widest border-b border-zinc-800">
-        SƠ ĐỒ 2D
+        2D MAP
       </div>
       <canvas ref={canvasRef} className="w-full h-[200px]"></canvas>
     </div>

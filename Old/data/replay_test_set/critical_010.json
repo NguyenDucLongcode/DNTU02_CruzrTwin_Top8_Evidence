@@ -1,0 +1,40 @@
+{
+  "scenario_id": "critical_010",
+  "expected_label": "critical",
+  "zone_id": "DNTU_ROOM_A101",
+  "demo_run_id": "DNTU02_TOP8_RUN_2026_001",
+  "readings": [
+    {
+      "t": 0,
+      "temperature": 32.2,
+      "humidity": 64.6,
+      "co2": 804,
+      "smoke_status": 0,
+      "energy_consumption": 491
+    },
+    {
+      "t": 10,
+      "temperature": 33.8,
+      "humidity": 68.7,
+      "co2": 915,
+      "smoke_status": 0,
+      "energy_consumption": 611
+    },
+    {
+      "t": 20,
+      "temperature": 35.7,
+      "humidity": 71.4,
+      "co2": 1020,
+      "smoke_status": 0,
+      "energy_consumption": 718
+    },
+    {
+      "t": 30,
+      "temperature": 37.6,
+      "humidity": 74.5,
+      "co2": 1134,
+      "smoke_status": 1,
+      "energy_consumption": 807
+    }
+  ]
+}

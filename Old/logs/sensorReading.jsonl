@@ -1,0 +1,9 @@
+<<<<<<< HEAD
+{"demo_run_id": "DNTU02_TOP8_RUN_2026_001", "timestamp": "2026-06-19T01:57:35Z", "scenario_id": "SCN_NORMAL_001", "zone_id": "DNTU_ROOM_A101", "temperature": 24.1, "humidity": 53.4, "air_quality_or_co2": 403, "smoke_status": 0, "energy_consumption": 338, "device_status": "NORMAL"}
+{"demo_run_id": "DNTU02_TOP8_RUN_2026_001", "timestamp": "2026-06-19T01:57:48Z", "scenario_id": "SCN_NORMAL_001", "zone_id": "DNTU_ROOM_A101", "temperature": 24.1, "humidity": 53.4, "air_quality_or_co2": 403, "smoke_status": 0, "energy_consumption": 338, "device_status": "NORMAL"}
+{"demo_run_id": "DNTU02_TOP8_RUN_2026_001", "timestamp": "2026-06-19T01:58:05Z", "scenario_id": "SCN_WARNING_001", "zone_id": "DNTU_ROOM_A101", "temperature": 27.7, "humidity": 58.1, "air_quality_or_co2": 808, "smoke_status": 0, "energy_consumption": 501, "device_status": "WARNING"}
+=======
+{"demo_run_id": "DNTU02_TOP8_RUN_2026_001", "timestamp": "2026-06-19T01:55:04Z", "scenario_id": "SCN_NORMAL_001", "zone_id": "DNTU_ROOM_A101", "temperature": 24.1, "humidity": 53.4, "air_quality_or_co2": 403, "smoke_status": 0, "energy_consumption": 338, "device_status": "NORMAL"}
+>>>>>>> origin/main
+{"demo_run_id": "DNTU02_TOP8_RUN_2026_001", "timestamp": "2026-06-19T02:29:41Z", "scenario_id": "SCN_NORMAL_001", "zone_id": "DNTU_ROOM_A101", "temperature": 24.1, "humidity": 53.4, "air_quality_or_co2": 403, "smoke_status": 0, "energy_consumption": 338, "device_status": "NORMAL"}
+{"demo_run_id": "DNTU02_TOP8_RUN_2026_001", "timestamp": "2026-06-19T02:30:29Z", "scenario_id": "SCN_NORMAL_001", "zone_id": "DNTU_ROOM_A101", "temperature": 24.1, "humidity": 53.4, "air_quality_or_co2": 403, "smoke_status": 0, "energy_consumption": 338, "device_status": "NORMAL"}

@@ -1,20 +1,14 @@
-FROM python:3.10-slim
-
-# Cài đặt thư mục làm việc
+FROM python:3.11-slim as builder
 WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir --prefix /install -r requirements.txt
 
-# Copy file requirements và cài đặt
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Cài đặt Docker CLI để gọi lệnh restart simulator
-RUN apt-get update && apt-get install -y docker.io && rm -rf /var/lib/apt/lists/*
-
-# Copy toàn bộ source code
-COPY . .
-
-# Expose port cho Dashboard Backend (Flask)
+FROM python:3.11-slim
+WORKDIR /app
+COPY --from=builder /install /usr/local
+COPY src ./src
+ENV PYTHONPATH=/app
+ENV LOG_DIR=/app/logs
+RUN mkdir -p /app/logs
 EXPOSE 5000
-
-# Chạy server
-CMD ["python", "src/fiware/webhook_receiver.py"]
+CMD ["python", "-m", "src.fiware.webhook_receiver"]

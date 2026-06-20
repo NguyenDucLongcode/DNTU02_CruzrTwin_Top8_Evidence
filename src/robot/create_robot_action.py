@@ -60,12 +60,12 @@ def main(alert_event: dict) -> dict:
     zone_id = alert_event["zone_id"]
     severity = alert_event.get("severity", "critical")
     # message cảnh báo của ai
-     
+
     room_name = zone_id.split("_")[-1]
     # messageCitical = alert_event.get("message", "")
     messageCitical = (
         f"Critical indoor-environment anomaly detected in "
-        f"Room {room_name}. Please follow staff guidance "
+        f"Room {room_name}. Please follow staff guidance and move calmly to the safe waiting area. "
     )
     vi_messageCitical = translate_to_vietnamese(messageCitical)
 
@@ -75,10 +75,10 @@ def main(alert_event: dict) -> dict:
 
     messageAlarm = "activate the alarm.."
     vi_messageAlarm = translate_to_vietnamese(messageAlarm)
-    
+
     languages = ["vi", "en"]
     robot_action_id = f"RobotAction:{scenario_id}"
-   
+
 
     # Không tạo lại action
     if robot_action_id in _created_robot_actions:
@@ -96,15 +96,15 @@ def main(alert_event: dict) -> dict:
             "reason": f"severity={severity}",
             "zone_id": zone_id
         }
-    
+
     # Đánh dấu đã xử lý
     _created_robot_actions.add(robot_action_id)
 
     # ============================================
-    # TẠO MESSAGE VÀ DỊCH SANG TIẾNG VIỆT
+# TẠO MESSAGE VÀ DỊCH SANG TIẾNG VIỆT
     # ============================================
     room_name = zone_id.split("_")[-1]
- 
+
     # Khởi tạo robot client
     RobotClient = CruzrRobotClient()
 
@@ -114,7 +114,7 @@ def main(alert_event: dict) -> dict:
     if not isConnected:
         print("   🤖 Robot not connected. Trying to connect...")
         return False
-    
+
      # Robot log
     log_entry = {
         "demo_run_id": demo_run_id,
@@ -131,35 +131,44 @@ def main(alert_event: dict) -> dict:
     log_path = ROOT_DIR / "logs" / "robot_actions.jsonl"
     append_jsonl(str(log_path), log_entry)
 
-    
+
     # Hiển thị emotion khẩn cấp
     result = RobotClient.play_emotion("emotion://va/techface_upset")
     print(f"   😫 Emotion result: {result}")
-     
+
+
     RobotClient.move_forward(speed=1)
-    time.sleep(2)  
+    time.sleep(5)
     RobotClient.stop()
+
 
     # ============================================
     # Speak sequence (nhiều message)
     # ============================================
     # Dịch sang tiếng Việt và chuẩn bị message cảnh báo cho người dùng
-    messageCitical = [vi_messageCitical, messageCitical]
-    speak_sequence(RobotClient, messageCitical, languages, wait_between=1.0)
+    # messageCitical = [vi_messageCitical, messageCitical]
+    # speak_sequence(RobotClient, messageCitical, languages, wait_between=1.0)
+
+
+    RobotClient.speak(vi_messageCitical, language="vi")
+    time.sleep(12)  # Đợi message tiếng Việt kết thúc trước khi nói tiếng Anh
+
+    RobotClient.speak(messageCitical, language="en")
+    time.sleep(10)  # Đợi message tiếng Anh kết thúc
+
+
 
     # Lấy danh sách smart plug và alarm trong phòng
     smart_plugs = get_smart_plugs_in_room(zone_id)
     alarms = get_alarms_in_room(zone_id)
 
 
-    RobotClient.move_forward(speed=1)
-    time.sleep(6)  
-    RobotClient.stop()
+    RobotClient.speak(vi_messageSmartPlug, language="vi")
+    time.sleep(4)  # Đợi message tiếng Việt kết thúc trước khi nói tiếng Anh
 
-    # Dịch sang tiếng Việt và chuẩn bị message tắt smart plug cho người dùng
-    messageSmartPlug = [vi_messageSmartPlug, messageSmartPlug]
-    speak_sequence(RobotClient, messageSmartPlug, languages, wait_between=1.0)
-    
+    RobotClient.speak(messageSmartPlug, language="en")
+    time.sleep(4)  # Đợi message tiếng Anh kết thúc ( )
+
     # Tắt Smart Plug
     if smart_plugs:
         control_multiple_by_fiware_ids(
@@ -170,26 +179,30 @@ def main(alert_event: dict) -> dict:
     )
 
 
-    RobotClient.move_forward(speed=1)
-    time.sleep(4)  
-    RobotClient.stop()
+
 
     # Dịch sang tiếng Việt và chuẩn bị message bật alarm cho người dùng
-    messageAlarm = [vi_messageAlarm, messageAlarm]
-    speak_sequence(RobotClient, messageAlarm, languages, wait_between=1.0)
+    # messageAlarm = [vi_messageAlarm, messageAlarm]
+    # speak_sequence(RobotClient, messageAlarm, languages, wait_between=1.0)
+    # ----------
+    RobotClient.speak(vi_messageAlarm, language="vi")
+    time.sleep(4)  # Đợi message tiếng Việt kết thúc trước khi nói tiếng Anh
+
+    RobotClient.speak(messageAlarm, language="en")
+    time.sleep(4)  # Đợi message tiếng Anh kết thúc
 
     # Bật Alarm
     if alarms:
         control_multiple_by_fiware_ids(
-            fiware_ids=alarms,
+fiware_ids=alarms,
             action="on",
             device_type="alarm",
             alarm_type=10,
             duration=60,
             max_workers=len(alarms)
     )
-  
-   
+
+
     return {
         "status": "success",
         "demo_run_id": demo_run_id,

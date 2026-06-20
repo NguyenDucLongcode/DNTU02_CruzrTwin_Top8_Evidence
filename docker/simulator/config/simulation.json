@@ -16,14 +16,14 @@
   },
   "entities": [
     {
-      "entity_name": "Device:TEMP_L1-A1",
+      "entity_name": "Device:TEMP_A101",
       "entity_type": "TemperatureSensor",
       "schedule": "*/5 * * * * *",
       "active": [
         {
           "name": "temperature",
           "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: Math.random() * (26 - 24) + 24 };)"
+          "value": "attribute-function-interpolator(module.exports = { result: Math.random() * (28 - 24) + 24 };)"
         },
         {
           "name": "TimeInstant",
@@ -33,14 +33,14 @@
       ]
     },
     {
-      "entity_name": "Device:SMOKE_L1-A1",
-      "entity_type": "SmokeDetector",
+      "entity_name": "Device:HUMID_A101",
+      "entity_type": "HumiditySensor",
       "schedule": "*/5 * * * * *",
       "active": [
         {
-          "name": "smoke_status",
+          "name": "humidity",
           "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: 0 };)"
+          "value": "attribute-function-interpolator(module.exports = { result: Math.random() * (70 - 40) + 40 };)"
         },
         {
           "name": "TimeInstant",
@@ -50,7 +50,7 @@
       ]
     },
     {
-      "entity_name": "Device:AIR_L1-A1",
+      "entity_name": "Device:AIR_A101",
       "entity_type": "AirQualitySensor",
       "schedule": "*/5 * * * * *",
       "active": [
@@ -67,14 +67,14 @@
       ]
     },
     {
-      "entity_name": "Device:PRESENCE_L1-A1",
-      "entity_type": "PresenceSensor",
+      "entity_name": "Device:ENERGY_E101",
+      "entity_type": "EnergyMeter",
       "schedule": "*/5 * * * * *",
       "active": [
         {
-          "name": "presence",
+          "name": "energy_consumption",
           "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: 0 };)"
+          "value": "attribute-function-interpolator(module.exports = { result: Math.random() * (400 - 300) + 300 };)"
         },
         {
           "name": "TimeInstant",
@@ -84,269 +84,14 @@
       ]
     },
     {
-      "entity_name": "Device:TEMP_L1-A2",
-      "entity_type": "TemperatureSensor",
-      "schedule": "*/5 * * * * *",
-      "active": [
-        {
-          "name": "temperature",
-          "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: Math.random() * (26 - 24) + 24 };)"
-        },
-        {
-          "name": "TimeInstant",
-          "type": "DateTime",
-          "value": "date-increment-interpolator({\"origin\": \"now\", \"increment\": 0})"
-        }
-      ]
-    },
-    {
-      "entity_name": "Device:SMOKE_L1-A2",
+      "entity_name": "Device:SMOKE_A101",
       "entity_type": "SmokeDetector",
       "schedule": "*/5 * * * * *",
       "active": [
         {
           "name": "smoke_status",
           "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: 0 };)"
-        },
-        {
-          "name": "TimeInstant",
-          "type": "DateTime",
-          "value": "date-increment-interpolator({\"origin\": \"now\", \"increment\": 0})"
-        }
-      ]
-    },
-    {
-      "entity_name": "Device:AIR_L1-A2",
-      "entity_type": "AirQualitySensor",
-      "schedule": "*/5 * * * * *",
-      "active": [
-        {
-          "name": "co2",
-          "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: Math.random() * (450 - 400) + 400 };)"
-        },
-        {
-          "name": "TimeInstant",
-          "type": "DateTime",
-          "value": "date-increment-interpolator({\"origin\": \"now\", \"increment\": 0})"
-        }
-      ]
-    },
-    {
-      "entity_name": "Device:PRESENCE_L1-A2",
-      "entity_type": "PresenceSensor",
-      "schedule": "*/5 * * * * *",
-      "active": [
-        {
-          "name": "presence",
-          "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: 0 };)"
-        },
-        {
-          "name": "TimeInstant",
-          "type": "DateTime",
-          "value": "date-increment-interpolator({\"origin\": \"now\", \"increment\": 0})"
-        }
-      ]
-    },
-    {
-      "entity_name": "Device:TEMP_L1-A3",
-      "entity_type": "TemperatureSensor",
-      "schedule": "*/5 * * * * *",
-      "active": [
-        {
-          "name": "temperature",
-          "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: Math.random() * (26 - 24) + 24 };)"
-        },
-        {
-          "name": "TimeInstant",
-          "type": "DateTime",
-          "value": "date-increment-interpolator({\"origin\": \"now\", \"increment\": 0})"
-        }
-      ]
-    },
-    {
-      "entity_name": "Device:SMOKE_L1-A3",
-      "entity_type": "SmokeDetector",
-      "schedule": "*/5 * * * * *",
-      "active": [
-        {
-          "name": "smoke_status",
-          "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: 0 };)"
-        },
-        {
-          "name": "TimeInstant",
-          "type": "DateTime",
-          "value": "date-increment-interpolator({\"origin\": \"now\", \"increment\": 0})"
-        }
-      ]
-    },
-    {
-      "entity_name": "Device:AIR_L1-A3",
-      "entity_type": "AirQualitySensor",
-      "schedule": "*/5 * * * * *",
-      "active": [
-        {
-          "name": "co2",
-          "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: Math.random() * (450 - 400) + 400 };)"
-        },
-        {
-          "name": "TimeInstant",
-          "type": "DateTime",
-          "value": "date-increment-interpolator({\"origin\": \"now\", \"increment\": 0})"
-        }
-      ]
-    },
-    {
-      "entity_name": "Device:PRESENCE_L1-A3",
-      "entity_type": "PresenceSensor",
-      "schedule": "*/5 * * * * *",
-      "active": [
-        {
-          "name": "presence",
-          "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: 0 };)"
-        },
-        {
-          "name": "TimeInstant",
-          "type": "DateTime",
-          "value": "date-increment-interpolator({\"origin\": \"now\", \"increment\": 0})"
-        }
-      ]
-    },
-    {
-      "entity_name": "Device:TEMP_L1-A4",
-      "entity_type": "TemperatureSensor",
-      "schedule": "*/5 * * * * *",
-      "active": [
-        {
-          "name": "temperature",
-          "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: Math.random() * (26 - 24) + 24 };)"
-        },
-        {
-          "name": "TimeInstant",
-          "type": "DateTime",
-          "value": "date-increment-interpolator({\"origin\": \"now\", \"increment\": 0})"
-        }
-      ]
-    },
-    {
-      "entity_name": "Device:SMOKE_L1-A4",
-      "entity_type": "SmokeDetector",
-      "schedule": "*/5 * * * * *",
-      "active": [
-        {
-          "name": "smoke_status",
-          "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: 0 };)"
-        },
-        {
-          "name": "TimeInstant",
-          "type": "DateTime",
-          "value": "date-increment-interpolator({\"origin\": \"now\", \"increment\": 0})"
-        }
-      ]
-    },
-    {
-      "entity_name": "Device:AIR_L1-A4",
-      "entity_type": "AirQualitySensor",
-      "schedule": "*/5 * * * * *",
-      "active": [
-        {
-          "name": "co2",
-          "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: Math.random() * (450 - 400) + 400 };)"
-        },
-        {
-          "name": "TimeInstant",
-          "type": "DateTime",
-          "value": "date-increment-interpolator({\"origin\": \"now\", \"increment\": 0})"
-        }
-      ]
-    },
-    {
-      "entity_name": "Device:PRESENCE_L1-A4",
-      "entity_type": "PresenceSensor",
-      "schedule": "*/5 * * * * *",
-      "active": [
-        {
-          "name": "presence",
-          "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: 0 };)"
-        },
-        {
-          "name": "TimeInstant",
-          "type": "DateTime",
-          "value": "date-increment-interpolator({\"origin\": \"now\", \"increment\": 0})"
-        }
-      ]
-    },
-    {
-      "entity_name": "Device:TEMP_L1-A5",
-      "entity_type": "TemperatureSensor",
-      "schedule": "*/5 * * * * *",
-      "active": [
-        {
-          "name": "temperature",
-          "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: Math.random() * (26 - 24) + 24 };)"
-        },
-        {
-          "name": "TimeInstant",
-          "type": "DateTime",
-          "value": "date-increment-interpolator({\"origin\": \"now\", \"increment\": 0})"
-        }
-      ]
-    },
-    {
-      "entity_name": "Device:SMOKE_L1-A5",
-      "entity_type": "SmokeDetector",
-      "schedule": "*/5 * * * * *",
-      "active": [
-        {
-          "name": "smoke_status",
-          "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: 0 };)"
-        },
-        {
-          "name": "TimeInstant",
-          "type": "DateTime",
-          "value": "date-increment-interpolator({\"origin\": \"now\", \"increment\": 0})"
-        }
-      ]
-    },
-    {
-      "entity_name": "Device:AIR_L1-A5",
-      "entity_type": "AirQualitySensor",
-      "schedule": "*/5 * * * * *",
-      "active": [
-        {
-          "name": "co2",
-          "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: Math.random() * (450 - 400) + 400 };)"
-        },
-        {
-          "name": "TimeInstant",
-          "type": "DateTime",
-          "value": "date-increment-interpolator({\"origin\": \"now\", \"increment\": 0})"
-        }
-      ]
-    },
-    {
-      "entity_name": "Device:PRESENCE_L1-A5",
-      "entity_type": "PresenceSensor",
-      "schedule": "*/5 * * * * *",
-      "active": [
-        {
-          "name": "presence",
-          "type": "Number",
-          "value": "attribute-function-interpolator(module.exports = { result: 0 };)"
+          "value": "attribute-function-interpolator(module.exports = { result: Math.random() > 0.95 ? 1 : 0 };)"
         },
         {
           "name": "TimeInstant",

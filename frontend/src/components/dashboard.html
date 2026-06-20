@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -33,7 +33,7 @@
 
         <!-- Nút Back -->
         <button id="btn-back" onclick="restoreOverallModel()" class="absolute top-6 left-6 px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-bold font-mono text-sm rounded shadow-2xl shadow-red-500/50 transition-all border border-red-400 z-50 cursor-pointer hidden pointer-events-auto flex items-center gap-2">
-            QUAY LẠI TÒA NHÀ (ESC)
+            BACK TO BUILDING (ESC)
         </button>
 
         <!-- Context & Sensor Panel (Ẩn lối tắt) -->
@@ -62,7 +62,7 @@
         <!-- 2D Map Area (Bottom 1/3) -->
         <div id="map-2d-container" class="absolute bottom-0 left-0 w-full h-[33%] bg-[#0c0c0e] border-t border-blue-500/30 flex flex-col z-20 transition-all">
             <div class="bg-blue-500/20 text-blue-400 font-bold text-[10px] px-2 py-1 uppercase border-b border-white/10 flex justify-between">
-                <span>2D FLOOR PLAN</span> <span id="map-floor-name" class="text-zinc-400">TẦNG TRỆT</span>
+                <span>2D FLOOR PLAN</span> <span id="map-floor-name" class="text-zinc-400">GROUND FLOOR</span>
             </div>
             <div class="logo" style="padding: 5px 10px; color: #fff; font-family: monospace;">
                 DNTU CruzrTwin Top 8
@@ -77,7 +77,7 @@
     <!-- RIGHT PANEL: LOGS (5 luồng song song) -->
     <aside class="w-[350px] flex flex-col border-l border-white/10 bg-[#0c0c0e] h-screen overflow-hidden">
         <!-- AI DETECTION -->
-        <div id="panel-ai" class="h-1/5 border-b border-white/10 flex flex-col transition-all">
+        <div id="panel-ai" class="h-1/4 border-b border-white/10 flex flex-col transition-all">
             <div class="bg-blue-500/10 text-blue-400 font-bold text-[10px] px-3 py-1.5 uppercase border-b border-white/5 flex justify-between">
                 <span>AI_DETECTION</span> <span class="text-zinc-500">Live</span>
             </div>
@@ -85,7 +85,7 @@
         </div>
 
         <!-- ALERTS -->
-        <div id="panel-alerts" class="h-1/5 border-b border-white/10 flex flex-col transition-all">
+        <div id="panel-alerts" class="h-1/4 border-b border-white/10 flex flex-col transition-all">
             <div class="bg-red-500/10 text-red-400 font-bold text-[10px] px-3 py-1.5 uppercase border-b border-white/5 flex justify-between">
                 <span>ALERT_EVENTS</span> <span class="text-zinc-500">Live</span>
             </div>
@@ -93,7 +93,7 @@
         </div>
 
         <!-- ROBOT ACTIONS -->
-        <div id="panel-robot" class="h-1/5 border-b border-white/10 flex flex-col transition-all">
+        <div id="panel-robot" class="h-1/4 border-b border-white/10 flex flex-col transition-all">
             <div class="bg-yellow-500/10 text-yellow-400 font-bold text-[10px] px-3 py-1.5 uppercase border-b border-white/5 flex justify-between">
                 <span>ROBOT_ACTIONS</span> <span class="text-zinc-500">Live</span>
             </div>
@@ -101,7 +101,7 @@
         </div>
 
         <!-- SYS STATE -->
-        <div id="panel-state" class="h-1/5 border-b border-white/10 flex flex-col transition-all">
+        <div id="panel-state" class="h-1/4 border-b border-white/10 flex flex-col transition-all">
             <div class="bg-purple-500/10 text-purple-400 font-bold text-[10px] px-3 py-1.5 uppercase border-b border-white/5 flex justify-between">
                 <span>ORION_STATE</span> <span class="text-zinc-500">Live</span>
             </div>
@@ -109,7 +109,7 @@
         </div>
 
         <!-- SENSORS -->
-        <div id="panel-sensors" class="h-1/5 flex flex-col transition-all">
+        <div id="panel-sensors" class="h-1/4 flex flex-col transition-all">
             <div class="bg-emerald-500/10 text-emerald-400 font-bold text-[10px] px-3 py-1.5 uppercase border-b border-white/5 flex justify-between">
                 <span>RAW_SENSORS</span> <span class="text-zinc-500">Live</span>
             </div>
@@ -133,7 +133,7 @@
         // API Operator ACK
         async function sendOperatorAck(decision) {
             const statusDiv = document.getElementById('operator-status');
-            statusDiv.innerText = "Đang gửi...";
+            statusDiv.innerText = "Sending...";
             statusDiv.style.color = "#ffaa00";
             
             const payload = {
@@ -217,30 +217,18 @@
                         const time = log.timestamp?.split('T')[1]?.split('Z')[0] || log.TimeInstant || '--:--:--';
                         let content = `<span class="text-zinc-600 mr-1">[${time}]</span>`;
 
-                        if (type === 'ai') {
-                            const lvl = log.predicted_level || log.level || 'INFO';
-                            const color = lvl.toUpperCase() === 'CRITICAL' ? 'text-red-500 font-bold' : (lvl.toUpperCase() === 'WARNING' ? 'text-yellow-500 font-bold' : 'text-blue-400');
-                            content += `<span class="${color}">${lvl.toUpperCase()}</span> ${log.rationale || log.message || ''}`;
-                            if(lvl.toUpperCase() === 'CRITICAL' || lvl.toUpperCase() === 'WARNING') isWarningOrCritical = true;
-                        } else if (type === 'alerts') {
-                            content += `<span class="text-red-400 font-bold">${log.event || 'ALERT'}</span> ${log.description || ''}`;
-                            isWarningOrCritical = true;
-                        } else if (type === 'robot') {
-                            content += `<span class="text-yellow-400 font-bold">${log.action || 'MOVE'}</span> ${log.destination || ''}`;
-                        } else if (type === 'sensors') {
-                            const temp = log.temperature || 0;
-                            const smoke = log.smoke || 0;
-                            const co2 = log.co2 || 0;
-                            const isDanger = temp >= 40 || smoke >= 50 || co2 >= 1000;
-                            const isWarn = temp >= 35 || smoke >= 20 || co2 >= 800;
-                            
-                            if (isDanger || isWarn) isWarningOrCritical = true;
-                            const titleColor = isDanger ? 'text-red-500 font-bold' : (isWarn ? 'text-yellow-500 font-bold' : 'text-emerald-500');
-                            
-                            content += `<span class="${titleColor}">Z_${log.zone_id?.replace('DNTU_ROOM_','') || 'SYS'}</span> <span class="${temp >= 40 ? 'text-red-400 font-bold' : ''}">T:${temp}°C</span> <span class="${smoke >= 50 ? 'text-red-400 font-bold' : ''}">S:${smoke}%</span> <span class="${co2 >= 1000 ? 'text-red-400 font-bold' : ''}">CO2:${co2}</span>`;
-                        } else {
-                            content += `<span class="text-zinc-400">${JSON.stringify(log).substring(0, 50)}...</span>`;
-                        }
+if (type === 'ai') {
+                             const lvl = log.predicted_level || log.level || 'INFO';
+                             const color = lvl.toUpperCase() === 'CRITICAL' ? 'text-red-500 font-bold' : (lvl.toUpperCase() === 'WARNING' ? 'text-yellow-500 font-bold' : 'text-blue-400');
+                             const sv = log.sensor_values || {};
+                             let extraInfo = '';
+                             if (log.zone_id) extraInfo += ` zone:${log.zone_id}`;
+                             if (sv.temperature !== undefined) extraInfo += ` temp:${sv.temperature?.toFixed(1)}`;
+                             if (sv.air_quality_or_co2 !== undefined) extraInfo += ` co2:${sv.air_quality_or_co2}`;
+                             if (sv.smoke_status !== undefined) extraInfo += ` smoke:${sv.smoke_status}`;
+                             content += `<span class="${color}">${lvl.toUpperCase()}</span> ${log.rationale || log.message || ''}${extraInfo}`;
+                             if(lvl.toUpperCase() === 'CRITICAL' || lvl.toUpperCase() === 'WARNING') isWarningOrCritical = true;
+                         }
 
                         // Đổi màu nền dòng log nếu có cảnh báo
                         div.className = `border-l-2 border-white/5 pl-2 py-0.5 transition-all text-ellipsis overflow-hidden whitespace-nowrap ${isWarningOrCritical ? 'bg-red-900/30 border-red-500/50' : 'hover:bg-white/5'}`;
@@ -288,20 +276,31 @@
         let latestSensorData = {}; // Cache to draw 2D map
         let isAutoPopsUpBlocked = false; // Tránh popup liên tục
 
-        async function syncSensors3D() {
-            try {
-                const res = await fetch('/api/db/sensors');
-                if (!res.ok) return;
-                const data = await res.json();
-                
-                // Mặc định: Tầng trệt (A101-A1015) luôn Active, các tầng khác offline nếu chưa có data
-                for (let i = 1; i <= 15; i++) {
-                    const rId = `A10${i}`;
-                    if (!data[rId]) {
-                        data[rId] = { temp: 26, smoke: 0, co2: 400 };
-                    }
-                }
-                latestSensorData = data;
+async function syncSensors3D() {
+             try {
+                 const res = await fetch('/api/db/sensors');
+                 if (!res.ok) return;
+                 const data = await res.json();
+                 
+                 // Mapping room_id: L1-A1 -> A101, L1-T1 -> L1-T1 (dành cho tầng trên)
+                 const normalizedData = {};
+                 for (const [key, value] of Object.entries(data)) {
+                     if (key.startsWith('L1-A')) {
+                         const num = key.split('-A')[1];
+                         normalizedData[`A10${num}`] = value;
+                         normalizedData[key] = value;
+                     }
+                     normalizedData[key] = value;
+                 }
+                 
+                 // Mặc định: Tầng trệt (A101-A1015) luôn Active, các tầng khác offline nếu chưa có data
+                 for (let i = 1; i <= 15; i++) {
+                     const rId = `A10${i}`;
+                     if (!normalizedData[rId]) {
+                         normalizedData[rId] = { temp: 26, smoke: 0, co2: 400 };
+                     }
+                 }
+                 latestSensorData = normalizedData;
 
                 // Update 2D Map if visible
                 if (activeRoomId) {
@@ -566,8 +565,15 @@
                         if (match) extractedId = match[1].toUpperCase();
                     }
 
-                    activeRoomId = extractedId || (floorIdx === 0 ? `A10${idx}` : `L${floorIdx + 1}-${isTopRow ? 'T' : 'B'}${idx}`);
-                    activeFloorIdx = floorIdx;
+                    // Xác định roomId và floorIdx
+                    // A101-A1015 luôn là tầng 0 (trệt), các phòng khác tính theo vị trí
+                    if (extractedId && extractedId.startsWith('A10')) {
+                        activeRoomId = extractedId;
+                        activeFloorIdx = 0;
+                    } else {
+                        activeRoomId = extractedId || (floorIdx === 0 ? `A10${idx}` : `L${floorIdx + 1}-${isTopRow ? 'T' : 'B'}${idx}`);
+                        activeFloorIdx = floorIdx;
+                    }
                     
                     fileToLoad = `mohinh/Phong/Phong_${activeRoomId}.glb`;
 
@@ -827,16 +833,27 @@
                 // Dãy trên (Z = -12)
                 if (i > 0 && i < 6) {
                     let id = floorIdx === 0 ? `A10${i}` : `L${floorIdx+1}-T${i}`;
-                    let isDanger = (latestSensorData && latestSensorData[id] && (latestSensorData[id].temp >= 40 || latestSensorData[id].smoke > 50 || latestSensorData[id].co2 >= 1000));
-                    let isActive = (latestSensorData && latestSensorData[id] && (latestSensorData[id].temp >= 26 && !isDanger));
+                    let sensor = latestSensorData && latestSensorData[id];
+                    // Thử L1-A format nếu không tìm thấy
+                    if (!sensor && id.startsWith('A10')) {
+                        sensor = latestSensorData && latestSensorData['L1-A' + id.replace('A10', '')];
+                    }
+                    let smoke = sensor ? (sensor.smoke_status !== undefined ? sensor.smoke_status : (sensor.smoke || 0)) : 0;
+                    let isDanger = sensor && (sensor.temp >= 38 || smoke >= 1.0 || sensor.co2 >= 900);
+                    let isActive = sensor && sensor.temp >= 26 && !isDanger;
                     let color = isDanger ? '#aa0000' : (isActive ? '#008844' : (activeRoom === id ? '#0055aa' : '#0c0c0e'));
                     drawRoom(rx, -12, id, color);
                 }
 
                 // Dãy dưới (Z = 12)
-                let idB = floorIdx === 0 ? `A10${i+7}` : `L${floorIdx+1}-B${i+1}`; // Ví dụ
-                let isDangerB = (latestSensorData && latestSensorData[idB] && (latestSensorData[idB].temp >= 40 || latestSensorData[idB].smoke > 50 || latestSensorData[idB].co2 >= 1000));
-                let isActiveB = (latestSensorData && latestSensorData[idB] && (latestSensorData[idB].temp >= 26 && !isDangerB));
+                let idB = floorIdx === 0 ? `A10${i+7}` : `L${floorIdx+1}-B${i+1}`;
+                let sensorB = latestSensorData && latestSensorData[idB];
+                if (!sensorB && idB.startsWith('A10')) {
+                    sensorB = latestSensorData && latestSensorData['L1-A' + idB.replace('A10', '')];
+                }
+                let smokeB = sensorB ? (sensorB.smoke_status !== undefined ? sensorB.smoke_status : (sensorB.smoke || 0)) : 0;
+                let isDangerB = sensorB && (sensorB.temp >= 38 || smokeB >= 1.0 || sensorB.co2 >= 900);
+                let isActiveB = sensorB && sensorB.temp >= 26 && !isDangerB;
                 let colorB = isDangerB ? '#aa0000' : (isActiveB ? '#008844' : (activeRoom === idB ? '#0055aa' : '#0c0c0e'));
                 drawRoom(rx, 12, idB, colorB);
             }
@@ -892,43 +909,76 @@
             // Nền 2D mượt mà
             current2DRobotPos.lerp(targetRobotPos, 0.05);
 
-            // Cập nhật hiệu ứng đổi màu nhấp nháy 3D (60 FPS)
-            let modelToAnimate = activeSubModel || overallModel;
-            if (modelToAnimate && latestSensorData) {
-                let blink = (Math.sin(Date.now() * 0.005) + 1) / 2; // 0 -> 1
-                modelToAnimate.traverse((child) => {
-                    if (child.isMesh && child.material) {
-                        let roomId = "";
-                        let objName = (child.userData && child.userData.name) ? child.userData.name : child.name;
-                        if (objName) {
-                            const match = objName.match(/(A10\d|L\d-[TB]\d)/i);
-                            if (match) roomId = match[1].toUpperCase();
-                        }
-                        
-                        if (roomId && latestSensorData[roomId]) {
-                            const sensor = latestSensorData[roomId];
-                            let materials = Array.isArray(child.material) ? child.material : [child.material];
-                            materials.forEach((mat, idx) => {
-                                let cKey = `originalColor_${idx}`;
-                                if (child.userData[cKey] !== undefined) {
-                                    let baseColor = new THREE.Color(child.userData[cKey]);
-                                    let targetColor = new THREE.Color();
-                                    
-                                    if (sensor.smoke > 0 || sensor.temp >= 60) {
-                                        targetColor.setHex(0xff0000); // Đỏ cháy
-                                        mat.color.copy(baseColor).lerp(targetColor, 0.6 + 0.4 * blink); // Nhấp nháy mạnh
-                                    } else if (sensor.presence === 1) {
-                                        targetColor.setHex(0x00ff00); // Xanh lá (Có người)
-                                        mat.color.copy(baseColor).lerp(targetColor, 0.5); // Sáng xanh rõ ràng
-                                    } else {
-                                        mat.color.copy(baseColor); // Trống (Xám/Mặc định gốc)
-                                    }
-                                }
-                            });
-                        }
-                    }
-                });
-            }
+// Cập nhật hiệu ứng đổi màu nhấp nháy 3D (60 FPS)
+             let modelToAnimate = activeSubModel || overallModel;
+             if (modelToAnimate && latestSensorData) {
+                 let blink = (Math.sin(Date.now() * 0.005) + 1) / 2; // 0 -> 1
+                 modelToAnimate.traverse((child) => {
+                     if (child.isMesh && child.material) {
+                         let roomId = "";
+                         // Khi đang xem phòng chi tiết, dùng activeRoomId
+                         if (activeSubModel && activeRoomId) {
+                             roomId = activeRoomId;
+                         } else {
+                             let objName = (child.userData && child.userData.name) ? child.userData.name : child.name;
+                             if (objName) {
+                                 const match = objName.match(/(A10\d|L\d-[TB]\d)/i);
+                                 if (match) roomId = match[1].toUpperCase();
+                             }
+                         }
+                         
+                         let materials = Array.isArray(child.material) ? child.material : [child.material];
+                         materials.forEach((mat, idx) => {
+                             let cKey = `originalColor_${idx}`;
+                             if (child.userData[cKey] === undefined) child.userData[cKey] = mat.color.getHex();
+                         });
+                         
+let sensor = roomId ? latestSensorData[roomId] : null;
+                          if (!sensor && activeSubModel) {
+                              sensor = latestSensorData[activeRoomId];
+                          }
+                          
+                          // Chuẩn hoá smoke_status/smoke
+                          let smokeVal = sensor ? (sensor.smoke_status !== undefined ? sensor.smoke_status : (sensor.smoke || 0)) : 0;
+                          
+                          materials.forEach((mat, idx) => {
+                              let cKey = `originalColor_${idx}`;
+                              if (child.userData[cKey] !== undefined) {
+                                  let baseColor = new THREE.Color(child.userData[cKey]);
+                                  let targetColor = new THREE.Color();
+                                  
+if (sensor) {
+                                      // Chuẩn hoá smoke_status/smoke
+                                      let smokeVal = sensor.smoke_status !== undefined ? sensor.smoke_status : (sensor.smoke || 0);
+                                      
+                                      if (smokeVal >= 1.0 || sensor.temp >= 38 || sensor.co2 >= 900) {
+                                          targetColor.setHex(0xff0000); // Đỏ cháy (CRITICAL)
+                                          mat.color.copy(baseColor).lerp(targetColor, 0.6 + 0.4 * blink);
+                                      } else if (smokeVal >= 0.5 || sensor.temp >= 32 || sensor.co2 >= 631) {
+                                          targetColor.setHex(0xffaa00); // Vàng (WARNING)
+                                          mat.color.copy(baseColor).lerp(targetColor, 0.5);
+                                      } else {
+                                          targetColor.setHex(0x00ff00); // Xanh lá (Bình thường)
+                                          mat.color.copy(baseColor).lerp(targetColor, 0.5);
+                                      }
+                                  } else if (activeSubModel) {
+                                      // Mặc định xanh lá cho phòng chi tiết khi không có sensor
+                                      targetColor.setHex(0x00ff00);
+                                      mat.color.copy(baseColor).lerp(targetColor, 0.5);
+                                  } else {
+                                      // Mô hình tòa nhà: chỉ L1-A1 (A101) là xanh lá, phòng khác giữ màu gốc
+                                      if (roomId === 'A101' || roomId === 'L1-A1') {
+                                          targetColor.setHex(0x00ff00);
+                                          mat.color.copy(baseColor).lerp(targetColor, 0.5);
+                                      } else {
+                                          mat.color.copy(baseColor);
+                                      }
+                                  }
+                              }
+                          });
+                     }
+                 });
+             }
 
             // Render map liên tục để thấy chuyển động 60fps
             if (!activeRoomId) {

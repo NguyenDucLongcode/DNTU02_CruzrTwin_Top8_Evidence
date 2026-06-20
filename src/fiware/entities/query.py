@@ -16,20 +16,17 @@ def get_all_devices() -> list:
     entities = get_entities()
     # Lấy tất cả entity có id bắt đầu bằng "Device:"
     return [e for e in entities if e.get("id", "").startswith("Device:")]
+
+
 def get_entity_by_type(entity_type: str) -> list:
     """Lấy entities theo type"""
     entities = get_entities(params={"type": entity_type})
     return entities
 
-def get_alert_events() -> list:
-    """Lấy tất cả AlertEvent entities (theo file Word 4.2)"""
-    entities = get_entities(params={"type": "AlertEvent"})
-    return entities
 
-
-def get_robot_actions() -> list:
-    """Lấy tất cả RobotAction entities (theo file Word 4.2)"""
-    entities = get_entities(params={"type": "RobotAction"})
+def get_entity_by_type(entity_type: str) -> list:
+    """Lấy entities theo type"""
+    entities = get_entities(params={"type": entity_type})
     return entities
 
 

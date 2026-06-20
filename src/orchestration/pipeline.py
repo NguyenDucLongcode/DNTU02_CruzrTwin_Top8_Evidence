@@ -192,6 +192,21 @@ def process_ai_detector_event(orion_payload: dict, scenario_id: str = None,) -> 
     ai_log_path = os.path.join(cfg["log_dir"], "ai_detection.jsonl")
     append_jsonl(ai_log_path, ai_log_entry)
     
+    sensor_log_entry = {
+        "demo_run_id": demo_run_id,
+        "timestamp": ts,
+        "scenario_id": scenario_id,
+        "zone_id": zone_id,
+        "temperature": float(temp),
+        "humidity": float(hum),
+        "air_quality_or_co2": float(co2),
+        "smoke_status": 1 if float(smoke) >= 1.0 else 0,
+        "energy_consumption": float(power),
+        "device_status": lvl.upper() if lvl else "NORMAL",
+    }
+    sensor_log_path = os.path.join(cfg["log_dir"], "sensorReading.jsonl")
+    append_jsonl(sensor_log_path, sensor_log_entry)
+    
     alert_event = None
     if lvl in ["warning", "critical"]:
         # Pass necessary attributes for create_alert_event

@@ -20,10 +20,11 @@ const ROOM_MAPPING = {
 
 function normalizeRoomId(rawId) {
   if (!rawId) return null;
-  const match = String(rawId).match(/(L1-[TB]\d|A10\d)/i);
+  const match = String(rawId).match(/(L1-[TB]\d|A1\d{2})/i);
   if (!match) return null;
   const id = match[1].toUpperCase();
-  return id.startsWith('A') ? id : (ROOM_MAPPING[id] || id);
+  if (id.startsWith('A')) return `L1-A${parseInt(id.slice(1)) - 100}`;
+  return ROOM_MAPPING[id] || id;
 }
 
 function getFloorIndex(object) {
@@ -46,19 +47,25 @@ function getRoomIdFromObject(object, fallbackRoomId) {
 }
 
 function getSensorText(sensor) {
-  if (!sensor) return 'Chưa có dữ liệu cảm biến';
+  if (!sensor) return 'No sensor data';
   const parts = [];
   if (sensor.temp !== undefined) parts.push(`Temp: ${Number(sensor.temp).toFixed(1)}°C`);
-  if (sensor.smoke !== undefined) parts.push(`Smoke: ${Number(sensor.smoke).toFixed(1)}%`);
+  if (sensor.humidity !== undefined) parts.push(`Hum: ${Number(sensor.humidity).toFixed(1)}%`);
   if (sensor.co2 !== undefined) parts.push(`CO2: ${Number(sensor.co2).toFixed(0)}ppm`);
-  if (sensor.presence !== undefined) parts.push(`Presence: ${sensor.presence ? 'Có người' : 'Trống'}`);
-  return parts.length ? parts.join(' | ') : 'Chưa có dữ liệu cảm biến';
+  if (sensor.smoke !== undefined) parts.push(`Smoke: ${Number(sensor.smoke).toFixed(1)}%`);
+  if (sensor.energy !== undefined) parts.push(`Energy: ${sensor.energy}`);
+  if (sensor.device_status) parts.push(`Status: ${sensor.device_status}`);
+  return parts.length ? parts.join(' | ') : 'No sensor data';
 }
 
 function getSensorStatus(sensor) {
   if (!sensor) return 'NORMAL';
-  if (sensor.temp >= 40 || sensor.smoke >= 1 || sensor.co2 >= 1000) return 'CRITICAL';
-  if (sensor.temp >= 32 || sensor.co2 >= 631) return 'WARNING';
+  const smoke = sensor.smoke_status !== undefined ? sensor.smoke_status : (sensor.smoke || 0);
+  const status = String(sensor.device_status || sensor.status || '').toUpperCase();
+  if (status === 'CRITICAL' || status === 'ERROR' || status === 'FIRE') return 'CRITICAL';
+  if (status === 'WARNING') return 'WARNING';
+  if (sensor.temp >= 40 || smoke >= 1 || sensor.co2 >= 1000) return 'CRITICAL';
+  if (sensor.temp >= 32 || smoke >= 0.5 || sensor.co2 >= 631) return 'WARNING';
   return 'NORMAL';
 }
 
@@ -94,6 +101,7 @@ export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
     // --- Init Scene ---
     const scene = new THREE.Scene();
     sceneRef.current = scene;
+    scene.background = new THREE.Color(0x111827);
     
     const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
     cameraRef.current = camera;
@@ -101,7 +109,7 @@ export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(container.clientWidth, container.clientHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.2;
     container.appendChild(renderer.domElement);
@@ -210,7 +218,7 @@ export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
           }
 
           let rawRoom = extractedId || `L1-${isTopRow ? 'T' : 'B'}${idx}`;
-          let actualRoomId = ROOM_MAPPING[rawRoom] || 'L1-A1'; // Fallback to L1-A1
+          let actualRoomId = ROOM_MAPPING[rawRoom] || 'L1-A1';
           actualRoomId = actualRoomId.replace('L1', `L${floorIdx}`);
 
           onRoomClickRef.current(actualRoomId, floorIdx);
@@ -323,54 +331,66 @@ export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
   useEffect(() => {
     if (!overallModelRef.current && !activeSubModelRef.current) return;
     
-    const applyColor = (model, checkUserData = true) => {
+    const applyColor = (model) => {
       let blink = (Math.sin(Date.now() * 0.005) + 1) / 2; // 0 -> 1
 
       model.traverse((child) => {
         if (child.isMesh && child.material) {
           let roomId = null;
           
-          if (checkUserData && child.userData.name) {
-            const match = child.userData.name.match(/(L1-[TB]\d|A10\d)/i);
+          // Khi ở chế độ phòng chi tiết, dùng activeRoomId
+          if (activeSubModelRef.current && activeRoomId) {
+            roomId = activeRoomId;
+          } else if (child.userData.name) {
+            const match = child.userData.name.match(/(L1-[TB]\d|A1\d{2})/i);
             if (match) {
               const raw = match[1].toUpperCase();
-              roomId = ROOM_MAPPING[raw] || raw;
-              
-              // Get floor index from object ancestry
+              roomId = raw.startsWith('A') ? `L1-A${parseInt(raw.slice(1)) - 100}` : (ROOM_MAPPING[raw] || raw);
               let cur = child;
               let fIdx = 1;
-              while(cur) {
-                if(cur.userData && cur.userData.floorIndex) { fIdx = cur.userData.floorIndex; break; }
+              while (cur) {
+                if (cur.userData && cur.userData.floorIndex) { fIdx = cur.userData.floorIndex; break; }
                 cur = cur.parent;
               }
               roomId = roomId.replace('L1', `L${fIdx}`);
             }
-          } else if (!checkUserData) {
-            roomId = activeRoomId;
           }
 
-          if (roomId && sensorData[roomId]) {
-            const sensor = sensorData[roomId];
-            let materials = Array.isArray(child.material) ? child.material : [child.material];
+          let sensor = roomId && sensorData[roomId] ? sensorData[roomId] : null;
+          let materials = Array.isArray(child.material) ? child.material : [child.material];
+          
+          materials.forEach((mat, idx) => {
+            let cKey = `originalColor_${idx}`;
+            if (child.userData[cKey] === undefined) child.userData[cKey] = mat.color.getHex();
+          });
 
-            materials.forEach((mat, idx) => {
-              let cKey = `originalColor_${idx}`;
-              if (child.userData[cKey] !== undefined) {
-                let baseColor = new THREE.Color(child.userData[cKey]);
-                let targetColor = new THREE.Color();
-
-                if (sensor.temp >= 40 || sensor.smoke >= 1 || sensor.co2 >= 1000) {
-                  targetColor.setHex(0xff0000); // Đỏ cháy
-                  mat.color.copy(baseColor).lerp(targetColor, 0.6 + 0.4 * blink); // Nhấp nháy mạnh
-                } else if (sensor.presence === 1) {
-                  targetColor.setHex(0x00ff00); // Xanh lá
-                  mat.color.copy(baseColor).lerp(targetColor, 0.5); 
+          materials.forEach((mat, idx) => {
+            let cKey = `originalColor_${idx}`;
+            if (child.userData[cKey] !== undefined) {
+              let baseColor = new THREE.Color(child.userData[cKey]);
+              let targetColor = new THREE.Color();
+              
+              if (sensor) {
+                const smoke = sensor.smoke_status !== undefined ? sensor.smoke_status : (sensor.smoke || 0);
+                if (sensor.device_status === 'CRITICAL' || sensor.device_status === 'ERROR' || sensor.device_status === 'FIRE' || sensor.temp >= 40 || smoke >= 1 || sensor.co2 >= 1000) {
+                  targetColor.setHex(0xff0000);
+                  mat.color.copy(baseColor).lerp(targetColor, 0.6 + 0.4 * blink);
+                } else if (sensor.temp >= 32 || smoke >= 0.5 || sensor.co2 >= 631) {
+                  targetColor.setHex(0xffaa00);
+                  mat.color.copy(baseColor).lerp(targetColor, 0.5);
                 } else {
-                  mat.color.copy(baseColor);
+                  targetColor.setHex(0x00ff00);
+                  mat.color.copy(baseColor).lerp(targetColor, 0.5);
                 }
+              } else if (activeSubModelRef.current) {
+                // Mặc định xanh lá cho phòng chi tiết khi không có sensor
+                targetColor.setHex(0x00ff00);
+                mat.color.copy(baseColor).lerp(targetColor, 0.5);
+              } else {
+                mat.color.copy(baseColor);
               }
-            });
-          }
+            }
+          });
         }
       });
     };
@@ -378,10 +398,10 @@ export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
     let reqId;
     const animateColors = () => {
       if (overallModelRef.current && !activeRoomId) {
-        applyColor(overallModelRef.current, true);
+        applyColor(overallModelRef.current);
       }
       if (activeSubModelRef.current && activeRoomId) {
-        applyColor(activeSubModelRef.current, false);
+        applyColor(activeSubModelRef.current);
       }
       reqId = requestAnimationFrame(animateColors);
     };
@@ -391,7 +411,7 @@ export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
   }, [sensorData, activeRoomId]);
 
   return (
-    <div ref={mountRef} className="relative w-full h-[65%] md:h-full cursor-crosshair">
+    <div ref={mountRef} className="relative w-full h-[65%] md:h-full cursor-crosshair bg-zinc-900">
       {hoverInfo && (
         <div
           className="pointer-events-none absolute z-50 max-w-[260px] rounded-lg border border-zinc-700 bg-black/90 p-3 text-[10px] leading-relaxed text-zinc-100 shadow-2xl backdrop-blur"
@@ -400,9 +420,9 @@ export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
           <div className="mb-1 text-[11px] font-bold text-blue-300">
             {hoverInfo.deviceId}
           </div>
-          <div>Phòng: <span className="text-emerald-300">{hoverInfo.roomId}</span></div>
-          <div>Tầng: {hoverInfo.floor}</div>
-          <div>Trạng thái: <span className={hoverInfo.status === 'CRITICAL' ? 'text-red-400 font-bold' : hoverInfo.status === 'WARNING' ? 'text-amber-300 font-bold' : 'text-emerald-300'}>{hoverInfo.status}</span></div>
+          <div>Room: <span className="text-emerald-300">{hoverInfo.roomId}</span></div>
+          <div>Floor: {hoverInfo.floor}</div>
+          <div>Status: <span className={hoverInfo.status === 'CRITICAL' ? 'text-red-400 font-bold' : hoverInfo.status === 'WARNING' ? 'text-amber-300 font-bold' : 'text-emerald-300'}>{hoverInfo.status}</span></div>
           <div className="mt-1 text-zinc-300">{hoverInfo.sensorText}</div>
         </div>
       )}

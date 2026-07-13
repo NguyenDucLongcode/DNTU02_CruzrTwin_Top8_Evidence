@@ -122,7 +122,8 @@ services:
     env_file:
       - ../.env
     environment:
-      - ORION_ENABLED=false
+      - ORION_ENABLED=true
+      - ORION_URL=http://orion:1026
       - LOG_DIR=/app/logs
     networks:
       - fiware-net

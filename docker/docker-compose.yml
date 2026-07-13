@@ -1,9 +1,6 @@
 name: dntu02-cruzrtwin
 
 services:
-  # ============================================================
-  # MONGODB - Database cho Orion và IoT Agent
-  # ============================================================
   mongo:
     image: mongo:4.4
     container_name: mongo
@@ -15,9 +12,6 @@ services:
     networks:
       - fiware-net
 
-  # ============================================================
-  # ORION CONTEXT BROKER - Quản lý ngữ cảnh
-  # ============================================================
   orion:
     image: fiware/orion:3.10.0
     container_name: orion
@@ -30,9 +24,6 @@ services:
     networks:
       - fiware-net
 
-  # ============================================================
-  # MQTT BROKER - Mosquitto
-  # ============================================================
   mosquitto:
     image: eclipse-mosquitto:2
     container_name: mosquitto
@@ -45,9 +36,6 @@ services:
     networks:
       - fiware-net
 
-  # ============================================================
-  # FIWARE IoT AGENT JSON - Thay thế cho FIMAT
-  # ============================================================
   iot-agent:
     image: fiware/iotagent-json:1.26.0
     container_name: iot-agent
@@ -57,50 +45,34 @@ services:
       - orion
       - mosquitto
     ports:
-      - "4041:4041" # API đăng ký device (Northbound)
+      - "4041:4041"
     environment:
-      # Orion connection
       - IOTA_CB_HOST=orion
       - IOTA_CB_PORT=1026
-
-      # Northbound API
       - IOTA_NORTH_PORT=4041
-
-      # MongoDB configuration
       - IOTA_MONGO_HOST=mongo
       - IOTA_MONGO_PORT=27017
       - IOTA_MONGO_DB=iotagentjson
-
-      # HTTP Southbound
       - IOTA_HTTP_PORT=7896
-
-      # MQTT configuration
       - IOTA_MQTT_HOST=mosquitto
       - IOTA_MQTT_PORT=1883
-
-      # Default configuration
       - IOTA_DEFAULT_RESOURCE=/iot/json
       - IOTA_DEFAULT_TRANSPORT=MQTT
       - IOTA_PROVIDER_URL=http://iot-agent:4041
-
-      # Logging
       - IOTA_LOG_LEVEL=DEBUG
     networks:
       - fiware-net
 
-  # ============================================================
-  # FIWARE DEVICE SIMULATOR
-  # ============================================================
   device-simulator:
     image: fiware/device-simulator:latest
     container_name: device-simulator
-    restart: "no" # Chạy 1 lần, không tự restart
+    restart: "no"
     depends_on:
       - mosquitto
       - iot-agent
       - orion
     volumes:
-      - ./simulator/config:/app/config # Mount thư mục cấu hình
+      - ./simulator/config:/app/config
     working_dir: /app
     environment:
       - MQTT_HOST=mosquitto
@@ -108,18 +80,15 @@ services:
       - ORION_HOST=orion
       - ORION_PORT=1026
     command: >
-      sh -c "mkdir -p /app/config && 
-             while [ ! -f /app/config/simulation.json ]; do 
-               echo 'Waiting for config file...'; 
-               sleep 2; 
-             done && 
+      sh -c "mkdir -p /app/config &&
+             while [ ! -f /app/config/simulation.json ]; do
+               echo 'Waiting for config file...';
+               sleep 2;
+             done &&
              /opt/fiware-device-simulator/bin/fiwareDeviceSimulatorCLI -c /app/config/simulation.json"
     networks:
       - fiware-net
 
-  # ============================================================
-  # TUYA BRIDGE - Kết nối ổ cắm thông minh Tuya vào MQTT
-  # ============================================================
   tuya-bridge:
     build: ./tuya-bridge
     image: dntu02/tuya-2-mqtt-sg:latest
@@ -135,8 +104,47 @@ services:
       - LOG_LEVEL=INFO
     networks:
       - fiware-net
+
+  backend:
+    build:
+      context: ../
+      dockerfile: Dockerfile
+    image: dntu02/cruzrtwin-backend
+    container_name: backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - ../logs:/app/logs
+      - ../data:/app/data
+      - ../models:/app/models
+      - ../evidence:/app/evidence
+    env_file:
+      - ../.env
+    environment:
+      - ORION_ENABLED=true
+      - ORION_URL=http://orion:1026
+      - LOG_DIR=/app/logs
+    networks:
+      - fiware-net
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    image: dntu02/cruzrtwin-frontend
+    container_name: frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - fiware-net
+
 volumes:
   cruzrtwin_mongo_data:
+
 networks:
   fiware-net:
     driver: bridge

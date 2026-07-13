@@ -44,7 +44,7 @@ def main():
     print("-" * 50)
 
     print("Registering IoT devices...")
-    register_all_devices()
+    # register_all_devices()
 
     print(f"Creating Room entity: {ROOM_CONFIG['id']}")
     room_extra_attrs = {
@@ -56,7 +56,7 @@ def main():
         "evacuation_status": {"type": "Text", "value": "normal"},
         "emergency_level": {"type": "Text", "value": "normal"},
     }
-    
+
     if create_room_entity(ROOM_CONFIG, extra_attributes=room_extra_attrs):
         print(f"Created: {ROOM_CONFIG['id']}")
     else:
@@ -73,7 +73,7 @@ def main():
         print(f"Created: {ROBOT_ACTION_ID}")
     else:
         print(f"Failed to create {ROBOT_ACTION_ID}")
-    
+
     # Hiển thị kết quả
     print_summary()
 

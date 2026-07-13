@@ -1,0 +1,14 @@
+node_modules
+dist
+__pycache__
+*.pyc
+.venv
+env
+.git
+.gitignore
+.env
+logs
+data
+models
+evidence
+docker

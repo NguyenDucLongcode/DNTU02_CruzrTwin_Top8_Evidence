@@ -8,7 +8,7 @@ echo.
 echo [1/2] Creating entities...
 echo ------------------------------------------------------------
 python src\fiware\entities\create_entities_required.py
-python \src\fimat\register.py
+python src\fimat\register.py
 
 if %errorlevel% neq 0 (
     echo ❌ Failed to create entities!

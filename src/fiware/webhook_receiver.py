@@ -44,25 +44,25 @@ def aggregate_sensor_data(device_data: dict) -> dict:
     Gộp dữ liệu từ nhiều notification vào 1 dict
     """
     global _sensor_cache, _cache_time
-    
+
     # Cập nhật cache
     for key, value in device_data.items():
         if value is not None:
             _sensor_cache[key] = value
-    
+
     # Cập nhật thời gian
     _cache_time = time.time()
-    
+
     # Kiểm tra xem đã có đủ 5 attributes chưa
     required_attrs = ["temperature", "humidity", "co2", "smoke_status", "energy_consumption"]
     has_all = all(attr in _sensor_cache for attr in required_attrs)
-    
+
     if has_all:
         # Có đủ dữ liệu, trả về và reset cache
         result = _sensor_cache.copy()
         _sensor_cache = {}
         return result
-    
+
     return {}  # Chưa đủ dữ liệu
 
 
@@ -77,25 +77,25 @@ def aggregate_sensor_data(device_data: dict) -> dict:
     Gộp dữ liệu từ nhiều notification vào 1 dict
     """
     global _sensor_cache, _cache_time
-    
+
     # Cập nhật cache
     for key, value in device_data.items():
         if value is not None:
             _sensor_cache[key] = value
-    
+
     # Cập nhật thời gian
     _cache_time = time.time()
-    
+
     # Kiểm tra xem đã có đủ 5 attributes chưa
     required_attrs = ["temperature", "humidity", "co2", "smoke_status", "energy_consumption"]
     has_all = all(attr in _sensor_cache for attr in required_attrs)
-    
+
     if has_all:
         # Có đủ dữ liệu, trả về và reset cache
         result = _sensor_cache.copy()
         _sensor_cache = {}
         return result
-    
+
     return {}  # Chưa đủ dữ liệu
 
 
@@ -103,34 +103,33 @@ def aggregate_sensor_data(device_data: dict) -> dict:
 def webhook_notify():
     """Nhận notification từ Orion"""
     global _sensor_cache
-    
+
     data = request.get_json(silent=True) or {}
     entity = data.get("data", [{}])[0] if data.get("data") else {}
-    
+
     # Lấy dữ liệu từ notification
     device_data = {}
     for attr in ["temperature", "humidity", "co2", "smoke_status", "energy_consumption"]:
         if attr in entity:
             device_data[attr] = entity[attr].get("value") if isinstance(entity[attr], dict) else entity[attr]
-    
-    
+
     # Gộp dữ liệu
     aggregated = aggregate_sensor_data(device_data)
-    
+
     if aggregated:
-        
+
         # Cập nhật Room entity
         update_room_sensors(aggregated)
-       
+
        # Ghi log trạng thái hiện tại của Room vào file
         write_orion_state_log(ZONE_ID)
-        
+
         # Chạy AI detection
         room_state = get_room_state(ZONE_ID)
         if room_state:
             scenario_id = room_state.get("scenario_id", {}).get("value", "SCN_CRITICAL_001")
             process_ai_detector_event(room_state, scenario_id)
-    
+
     return jsonify({"status": "ok"}), 200
 
 
@@ -307,8 +306,7 @@ def operator_ack():
         )
 
         result = decision
-
-    # ==========================================
+# ==========================================
     # Log theo đúng yêu cầu 4.5
     # ==========================================
 
@@ -352,6 +350,71 @@ def operator_ack():
     return jsonify(res), 200
 
 
+def _read_jsonl(filepath: str) -> list:
+    """Read a JSONL file and return a list of dicts in chronological order (oldest first)."""
+    if not os.path.exists(filepath):
+        return []
+    records = []
+    with open(filepath, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                try:
+                    records.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+    return records
+
+
+LOG_ROUTES = {
+    "sensors": "sensorReading.jsonl",
+    "state": "orion_state.jsonl",
+    "ai": "ai_detection.jsonl",
+    "robot": "robot_actions.jsonl",
+    "ack": "operator_ack.jsonl",
+}
+
+
+@app.route('/api/logs/<log_type>', methods=['GET'])
+def api_logs(log_type):
+    """Return log entries for the given log type."""
+    filename = LOG_ROUTES.get(log_type)
+    if not filename:
+        return jsonify({"error": f"Unknown log type: {log_type}"}), 404
+    cfg = get_config()
+    filepath = os.path.join(cfg["log_dir"], filename)
+    return jsonify(_read_jsonl(filepath)), 200
+
+
+@app.route('/api/db/sensors', methods=['GET'])
+def api_db_sensors():
+    """Return the latest sensor reading per zone_id grouped as {room_id: {temp, smoke, co2, device_status}}.
+    Keys are in L1-A{n} format (e.g. L1-A1, L1-A12) for frontend 3D/map lookup.
+    """
+    import re
+    cfg = get_config()
+    filepath = os.path.join(cfg["log_dir"], "sensorReading.jsonl")
+    records = _read_jsonl(filepath)
+    latest_per_zone = {}
+    for rec in records:
+        zone = rec.get("zone_id") or rec.get("room")
+        if not zone:
+            continue
+        match = re.search(r'A(\d+)', zone)
+        if match:
+            room_num = int(match.group(1)) - 100
+            room_key = f"L1-A{room_num}"
+        else:
+            room_key = zone.replace("DNTU_ROOM_", "")
+        latest_per_zone[room_key] = {
+            "temp": rec.get("temperature"),
+            "smoke": rec.get("smoke_status"),
+            "co2": rec.get("air_quality_or_co2"),
+            "device_status": rec.get("device_status"),
+        }
+    return jsonify(latest_per_zone), 200
+
+
 @app.route('/webhook/health', methods=['GET'])
 def health_check():
     return {"status": "healthy"}, 200
@@ -364,5 +427,5 @@ if __name__ == "__main__":
     print("=" * 50)
     print("   URL: http://0.0.0.0:5000/webhook/notify")
     print("=" * 50 + "\n")
-    
+
     app.run(host='0.0.0.0', port=5000, debug=False)

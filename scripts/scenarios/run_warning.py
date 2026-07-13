@@ -14,6 +14,8 @@ from src.utils.replay_helpers import (
     build_scenario_id,
 )
 
+
+
 # ======================================================
 # ĐƯỜNG DẪN FILE TEST
 # ======================================================
@@ -50,17 +52,15 @@ def send_all_readings(file_path: Path, delay: float = 1.0):
             t = reading.get("t", 0)
             device_values = extract_device_values_from_reading(reading)
             
-            print(f"\n📤 Reading {i}/{len(readings)} (t={t}s)")
-            print(f"   Temperature: {device_values['temp_sensor_a101']}°C")
-            print(f"   CO2: {device_values['air_sensor_a101']} ppm")
-            print(f"   Smoke: {device_values['smoke_sensor_a101']}")
-            
+            # Truyền dữ liệu từ kịch bản vào MQTT 
             publish_scenario_with_client(
                 client=mqtt_client,
                 device_values=device_values,
                 scenario_name=scenario_name,
                 scenario_id=scenario_id,
             )
+
+        
             
             if i < len(readings):
                 time.sleep(delay)

@@ -1,0 +1,21 @@
+{
+  "training_logic": "normal_only_boundary_learning",
+  "label_meaning": {
+    "0": "normal",
+    "1": "anomaly"
+  },
+  "data_path": "data/sensor_data.csv",
+  "accuracy": 0.990625,
+  "precision_anomaly": 0.869983948635634,
+  "recall_anomaly": 1.0,
+  "f1_anomaly": 0.9304721030042918,
+  "severity_summary": {
+    "normal": 8017,
+    "warning": 514,
+    "critical": 109
+  },
+  "notes": [
+    "The model is trained only with label=0 normal data.",
+    "Label=1 anomaly data is used only for evaluation."
+  ]
+}

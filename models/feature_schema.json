@@ -1,0 +1,12 @@
+{
+  "features": [
+    "temperature",
+    "humidity",
+    "co2",
+    "smoke_status",
+    "energy_consumption"
+  ],
+  "label_column": "label",
+  "timestamp_column": "timestamp",
+  "training_logic": "normal_only_boundary_learning"
+}

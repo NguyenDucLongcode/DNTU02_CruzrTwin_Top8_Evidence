@@ -48,6 +48,11 @@ ROOM_CONFIG = {
         {"name": "energy_consumption", "type": "Number"},
 
         # ==================================================
+        # DEVICE INFO - CHỈ LƯU DANH SÁCH THIẾT BỊ
+        # ==================================================
+        {"name": "device_ids", "type": "Array"},  # ["Device:TEMP_A101", "Device:ENERGY_E101"]
+
+        # ==================================================
         # ROOM STATUS
         # ==================================================
         {"name": "device_status", "type": "Text"},
@@ -314,63 +319,327 @@ DEVICES_TO_REGISTER = [
     },
 
     # ==================================================
-    # SMART PLUG
+    # ENERGY SENSOR (Power / Energy Consumption)
+    # ==================================================
+{
+    "device_id": "energy_sensor_e101",
+    "entity_name": "Device:ENERGY_E101",
+    "entity_type": "EnergyMeter",
+
+    "attributes": [
+        {"object_id": "energy_consumption", "name": "energy_consumption", "type": "Number"},
+        {"object_id": "power", "name": "instant_power", "type": "Number"},
+        {"object_id": "voltage", "name": "voltage", "type": "Number"},
+        {"object_id": "current", "name": "current", "type": "Number"},
+        {"object_id": "ts", "name": "TimeInstant", "type": "DateTime"}
+    ],
+
+    "static_attributes": [
+
+        # Core
+        {"name": "demo_run_id", "type": "Text", "value": DEMO_RUN_ID},
+        {"name": "zone_id", "type": "Text", "value": ZONE_ID},
+        {"name": "room_id", "type": "Text", "value": ZONE_ID},
+
+        # Device info
+        {"name": "unit", "type": "Text", "value": "kWh"},
+        {"name": "manufacturer", "type": "Text", "value": "DNTU IoT Lab"},
+        {"name": "device_model", "type": "Text", "value": "DNTU-ENERGY-V1"},
+        {"name": "firmware_version", "type": "Text", "value": "1.0.0"},
+
+        # Status
+        {"name": "status", "type": "Text", "value": "online"},
+        {"name": "connectivity", "type": "Text", "value": "connected"},
+        {"name": "battery_level", "type": "Number", "value": 90},
+        {"name": "signal_strength", "type": "Number", "value": -58},
+
+        # Thresholds (kWh)
+        {"name": "normal_min", "type": "Number", "value": 0},
+        {"name": "normal_max", "type": "Number", "value": 500},
+        {"name": "warning_threshold", "type": "Number", "value": 800},
+        {"name": "critical_threshold", "type": "Number", "value": 1000},
+
+        # Sensor config
+        {"name": "sampling_rate_seconds", "type": "Number", "value": 10},
+        {"name": "accuracy", "type": "Number", "value": 0.01},
+        {"name": "calibration_status", "type": "Text", "value": "calibrated"},
+        {"name": "ct_ratio", "type": "Number", "value": 2000},
+        {"name": "meter_type", "type": "Text", "value": "single_phase"},
+
+        # Location
+        {"name": "building_id", "type": "Text", "value": BUILDING_ID},
+        {"name": "floor", "type": "Number", "value": 1},
+        {"name": "installation_area", "type": "Text", "value": "Room E101 - Electrical Panel"}
+    ]
+
+    
+},
+    # ==================================================
+    # SMART PLUG THẬT (TUYA) - Device:PLUG_A101
     # ==================================================
     {
         "device_id": "smart_plug_a101",
         "entity_name": "Device:PLUG_A101",
         "entity_type": "SmartPlug",
-
+        
         "attributes": [
-            {"object_id": "energy", "name": "energy_consumption", "type": "Number"},
-            {"object_id": "ts", "name": "TimeInstant", "type": "DateTime"}
+            {"object_id": "cur_power", "name": "current_power", "type": "Number"},
+            {"object_id": "switch_1", "name": "switch_status", "type": "Boolean"}
         ],
 
         "static_attributes": [
-
-            # Core
             {"name": "demo_run_id", "type": "Text", "value": DEMO_RUN_ID},
             {"name": "zone_id", "type": "Text", "value": ZONE_ID},
             {"name": "room_id", "type": "Text", "value": ZONE_ID},
-
-            # Device info
             {"name": "unit", "type": "Text", "value": "W"},
-            {"name": "manufacturer", "type": "Text", "value": "DNTU IoT Lab"},
-            {"name": "device_model", "type": "Text", "value": "DNTU-PLUG-V1"},
-            {"name": "firmware_version", "type": "Text", "value": "1.0.0"},
-
-            # Status
+            {"name": "manufacturer", "type": "Text", "value": "Tuya"},
+            {"name": "device_model", "type": "Text", "value": "Smart Plug"},
             {"name": "status", "type": "Text", "value": "online"},
             {"name": "connectivity", "type": "Text", "value": "connected"},
-            {"name": "signal_strength", "type": "Number", "value": -58},
-
-            # Thresholds
-            {"name": "normal_min", "type": "Number", "value": 50},
-            {"name": "normal_max", "type": "Number", "value": 350},
-            {"name": "warning_threshold", "type": "Number", "value": 450},
-            {"name": "critical_threshold", "type": "Number", "value": 600},
-
-            # Electrical config
-            {"name": "voltage", "type": "Number", "value": 220},
-            {"name": "max_current_amp", "type": "Number", "value": 10},
-            {"name": "max_power_watt", "type": "Number", "value": 2200},
-            {"name": "power_source", "type": "Text", "value": "AC"},
-
-            # Smart features
-            {"name": "remote_control_enabled", "type": "Boolean", "value": True},
-            {"name": "overload_protection", "type": "Boolean", "value": True},
-            {"name": "auto_shutdown_enabled", "type": "Boolean", "value": True},
-
-            # Sensor config
+            {"name": "signal_strength", "type": "Number", "value": -60},
+            {"name": "firmware_version", "type": "Text", "value": "1.0.0"},
+            {"name": "battery_level", "type": "Number", "value": 95},
             {"name": "sampling_rate_seconds", "type": "Number", "value": 5},
             {"name": "accuracy", "type": "Number", "value": 1.0},
-
-            # Location
-            {"name": "building_id", "type": "Text", "value": BUILDING_ID},
-            {"name": "floor", "type": "Number", "value": 1},
-            {"name": "installation_area", "type": "Text", "value": "Room A101 Wall Socket"}
+            {"name": "calibration_status", "type": "Text", "value": "calibrated"},
+            {"name": "self_test_status", "type": "Text", "value": "passed"},
+            {"name": "power_source", "type": "Text", "value": "AC"},
         ]
-    }
+    },
+
+
+    # ==================================================
+    # SMART PLUG THẬT (TUYA) - Device:PLUG_A102
+    # ==================================================
+    {
+        "device_id": "smart_plug_a102",
+        "entity_name": "Device:PLUG_A102",
+        "entity_type": "SmartPlug",
+        
+        "attributes": [
+            {"object_id": "cur_power", "name": "current_power", "type": "Number"},
+            {"object_id": "switch_1", "name": "switch_status", "type": "Boolean"}
+        ],
+
+        "static_attributes": [
+            {"name": "demo_run_id", "type": "Text", "value": DEMO_RUN_ID},
+            {"name": "zone_id", "type": "Text", "value": ZONE_ID},
+            {"name": "room_id", "type": "Text", "value": ZONE_ID},
+            {"name": "unit", "type": "Text", "value": "W"},
+            {"name": "manufacturer", "type": "Text", "value": "Tuya"},
+            {"name": "device_model", "type": "Text", "value": "Smart Plug"},
+            {"name": "status", "type": "Text", "value": "online"},
+            {"name": "connectivity", "type": "Text", "value": "connected"},
+            {"name": "signal_strength", "type": "Number", "value": -60},
+            {"name": "firmware_version", "type": "Text", "value": "1.0.0"},
+            {"name": "battery_level", "type": "Number", "value": 95},
+            {"name": "sampling_rate_seconds", "type": "Number", "value": 5},
+            {"name": "accuracy", "type": "Number", "value": 1.0},
+            {"name": "calibration_status", "type": "Text", "value": "calibrated"},
+            {"name": "self_test_status", "type": "Text", "value": "passed"},
+            {"name": "power_source", "type": "Text", "value": "AC"},
+        ]
+    },
+
+    # ==================================================
+    # SMART PLUG THẬT (TUYA) - Device:PLUG_A103
+    # ==================================================
+
+      {
+        "device_id": "smart_plug_a103",
+        "entity_name": "Device:PLUG_A103",
+        "entity_type": "SmartPlug",
+        
+        "attributes": [
+            {"object_id": "cur_power", "name": "current_power", "type": "Number"},
+            {"object_id": "switch_1", "name": "switch_status", "type": "Boolean"}
+        ],
+
+        "static_attributes": [
+            {"name": "demo_run_id", "type": "Text", "value": DEMO_RUN_ID},
+            {"name": "zone_id", "type": "Text", "value": ZONE_ID},
+            {"name": "room_id", "type": "Text", "value": ZONE_ID},
+            {"name": "unit", "type": "Text", "value": "W"},
+            {"name": "manufacturer", "type": "Text", "value": "Tuya"},
+            {"name": "device_model", "type": "Text", "value": "Smart Plug"},
+            {"name": "status", "type": "Text", "value": "online"},
+            {"name": "connectivity", "type": "Text", "value": "connected"},
+            {"name": "signal_strength", "type": "Number", "value": -60},
+            {"name": "firmware_version", "type": "Text", "value": "1.0.0"},
+            {"name": "battery_level", "type": "Number", "value": 95},
+            {"name": "sampling_rate_seconds", "type": "Number", "value": 5},
+            {"name": "accuracy", "type": "Number", "value": 1.0},
+            {"name": "calibration_status", "type": "Text", "value": "calibrated"},
+            {"name": "self_test_status", "type": "Text", "value": "passed"},
+            {"name": "power_source", "type": "Text", "value": "AC"},
+        ]
+    },
+
+     # ==================================================
+    # SMART PLUG THẬT (TUYA) - Device:PLUG_A104
+    # ==================================================
+    {
+        "device_id": "smart_plug_a104",
+        "entity_name": "Device:PLUG_A104",
+        "entity_type": "SmartPlug",
+        
+        "attributes": [
+            {"object_id": "cur_power", "name": "current_power", "type": "Number"},
+            {"object_id": "switch_1", "name": "switch_status", "type": "Boolean"}
+        ],
+
+        "static_attributes": [
+            {"name": "demo_run_id", "type": "Text", "value": DEMO_RUN_ID},
+            {"name": "zone_id", "type": "Text", "value": ZONE_ID},
+            {"name": "room_id", "type": "Text", "value": ZONE_ID},
+            {"name": "unit", "type": "Text", "value": "W"},
+            {"name": "manufacturer", "type": "Text", "value": "Tuya"},
+            {"name": "device_model", "type": "Text", "value": "Smart Plug"},
+            {"name": "status", "type": "Text", "value": "online"},
+            {"name": "connectivity", "type": "Text", "value": "connected"},
+            {"name": "signal_strength", "type": "Number", "value": -60},
+            {"name": "firmware_version", "type": "Text", "value": "1.0.0"},
+            {"name": "battery_level", "type": "Number", "value": 95},
+            {"name": "sampling_rate_seconds", "type": "Number", "value": 5},
+            {"name": "accuracy", "type": "Number", "value": 1.0},
+            {"name": "calibration_status", "type": "Text", "value": "calibrated"},
+            {"name": "self_test_status", "type": "Text", "value": "passed"},
+            {"name": "power_source", "type": "Text", "value": "AC"},
+        ]
+    }, 
+
+     # ==================================================
+    # SMART PLUG THẬT (TUYA) - Device:PLUG_A105
+    # ==================================================
+    {
+        "device_id": "smart_plug_a105",
+        "entity_name": "Device:PLUG_A105",
+        "entity_type": "SmartPlug",
+        
+        "attributes": [
+            {"object_id": "cur_power", "name": "current_power", "type": "Number"},
+            {"object_id": "switch_1", "name": "switch_status", "type": "Boolean"}
+        ],
+
+        "static_attributes": [
+            {"name": "demo_run_id", "type": "Text", "value": DEMO_RUN_ID},
+            {"name": "zone_id", "type": "Text", "value": ZONE_ID},
+            {"name": "room_id", "type": "Text", "value": ZONE_ID},
+            {"name": "unit", "type": "Text", "value": "W"},
+            {"name": "manufacturer", "type": "Text", "value": "Tuya"},
+            {"name": "device_model", "type": "Text", "value": "Smart Plug"},
+            {"name": "status", "type": "Text", "value": "online"},
+            {"name": "connectivity", "type": "Text", "value": "connected"},
+            {"name": "signal_strength", "type": "Number", "value": -60},
+            {"name": "firmware_version", "type": "Text", "value": "1.0.0"},
+            {"name": "battery_level", "type": "Number", "value": 95},
+            {"name": "sampling_rate_seconds", "type": "Number", "value": 5},
+            {"name": "accuracy", "type": "Number", "value": 1.0},
+            {"name": "calibration_status", "type": "Text", "value": "calibrated"},
+            {"name": "self_test_status", "type": "Text", "value": "passed"},
+            {"name": "power_source", "type": "Text", "value": "AC"},
+        ]
+    },
+
+    # ==================================================
+    # SMART PLUG THẬT (TUYA) - Device:PLUG_A106
+    # ==================================================
+
+      {
+        "device_id": "smart_plug_a106",
+        "entity_name": "Device:PLUG_A106",
+        "entity_type": "SmartPlug",
+        
+        "attributes": [
+            {"object_id": "cur_power", "name": "current_power", "type": "Number"},
+            {"object_id": "switch_1", "name": "switch_status", "type": "Boolean"}
+        ],
+
+        "static_attributes": [
+            {"name": "demo_run_id", "type": "Text", "value": DEMO_RUN_ID},
+            {"name": "zone_id", "type": "Text", "value": ZONE_ID},
+            {"name": "room_id", "type": "Text", "value": ZONE_ID},
+            {"name": "unit", "type": "Text", "value": "W"},
+            {"name": "manufacturer", "type": "Text", "value": "Tuya"},
+            {"name": "device_model", "type": "Text", "value": "Smart Plug"},
+            {"name": "status", "type": "Text", "value": "online"},
+            {"name": "connectivity", "type": "Text", "value": "connected"},
+            {"name": "signal_strength", "type": "Number", "value": -60},
+            {"name": "firmware_version", "type": "Text", "value": "1.0.0"},
+            {"name": "battery_level", "type": "Number", "value": 95},
+            {"name": "sampling_rate_seconds", "type": "Number", "value": 5},
+            {"name": "accuracy", "type": "Number", "value": 1.0},
+            {"name": "calibration_status", "type": "Text", "value": "calibrated"},
+            {"name": "self_test_status", "type": "Text", "value": "passed"},
+            {"name": "power_source", "type": "Text", "value": "AC"},
+        ]
+    },
+# ==================================================
+# AUDIBLE ALARM (TUYA) - Device:ALARM_A101
+# ==================================================
+{
+    "device_id": "audible_alarm_a101",
+    "entity_name": "Device:ALARM_A101",
+    "entity_type": "AudibleAlarm",
+    
+    "attributes": [
+        {"object_id": "AlarmSwitch", "name": "alarm_status", "type": "Boolean"},
+        {"object_id": "AlarmType", "name": "alarm_type", "type": "Text"},
+        {"object_id": "AlarmPeriod", "name": "alarm_duration", "type": "Number"},
+        {"object_id": "BatteryStatus", "name": "battery_status", "type": "Text"}
+    ],
+
+    "static_attributes": [
+        {"name": "demo_run_id", "type": "Text", "value": DEMO_RUN_ID},
+        {"name": "zone_id", "type": "Text", "value": ZONE_ID},
+        {"name": "room_id", "type": "Text", "value": ZONE_ID},
+        {"name": "manufacturer", "type": "Text", "value": "Tuya"},
+        {"name": "device_model", "type": "Text", "value": "Siren Sensor"},
+        {"name": "status", "type": "Text", "value": "online"},
+        {"name": "connectivity", "type": "Text", "value": "connected"},
+        {"name": "signal_strength", "type": "Number", "value": -60},
+        {"name": "firmware_version", "type": "Text", "value": "1.0.0"},
+        {"name": "battery_level", "type": "Number", "value": 95},
+        {"name": "sampling_rate_seconds", "type": "Number", "value": 5},
+        {"name": "accuracy", "type": "Number", "value": 1.0},
+        {"name": "calibration_status", "type": "Text", "value": "calibrated"},
+        {"name": "self_test_status", "type": "Text", "value": "passed"},
+        {"name": "power_source", "type": "Text", "value": "DC"}
+    ]
+},
+# ==================================================
+# LOCK DOOR (TUYA) - Device:LOCK_A101 (C100-F)
+# ==================================================
+{
+    "device_id": "lock_door_a101",
+    "entity_name": "Device:LOCK_A101",
+    "entity_type": "DoorLock",
+    
+    "attributes": [
+        {"object_id": "manual_lock", "name": "lock_status", "type": "Boolean"},
+        {"object_id": "battery_state", "name": "battery_level", "type": "Number"},
+        {"object_id": "automatic_lock", "name": "auto_lock_enabled", "type": "Boolean"},
+        {"object_id": "auto_lock_time", "name": "auto_lock_delay", "type": "Number"}
+    ],
+
+    "static_attributes": [
+        {"name": "demo_run_id", "type": "Text", "value": DEMO_RUN_ID},
+        {"name": "zone_id", "type": "Text", "value": ZONE_ID},
+        {"name": "room_id", "type": "Text", "value": ZONE_ID},
+        {"name": "manufacturer", "type": "Text", "value": "Tuya"},
+        {"name": "device_model", "type": "Text", "value": "C100-F"},
+        {"name": "status", "type": "Text", "value": "online"},
+        {"name": "connectivity", "type": "Text", "value": "connected"},
+        {"name": "signal_strength", "type": "Number", "value": -60},
+        {"name": "firmware_version", "type": "Text", "value": "1.0.0"},
+        {"name": "battery_level", "type": "Number", "value": 95},
+        {"name": "sampling_rate_seconds", "type": "Number", "value": 5},
+        {"name": "accuracy", "type": "Number", "value": 1.0},
+        {"name": "calibration_status", "type": "Text", "value": "calibrated"},
+        {"name": "self_test_status", "type": "Text", "value": "passed"},
+        {"name": "power_source", "type": "Text", "value": "Battery"}
+    ]
+}
 ]
 
 

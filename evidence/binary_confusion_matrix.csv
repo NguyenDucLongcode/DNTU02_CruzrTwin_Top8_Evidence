@@ -1,0 +1,3 @@
+actual,predicted_normal_0,predicted_anomaly_1,total
+normal_0,8017,81,8098
+anomaly_1,0,542,542

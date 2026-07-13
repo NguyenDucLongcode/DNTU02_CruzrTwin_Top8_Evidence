@@ -1,167 +1,182 @@
-"""
-AI Anomaly Detection - Isolation Forest + Rule Layer
-"""
-
 import os
-import sys
+import json
+import joblib
+import pandas as pd
 from datetime import datetime, timezone
 
-# Thêm đường dẫn
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, ROOT_DIR)
+from src.ai.feature_extractor import extract_one
+from src.ai.rule_engine import classify_alert_level, DEFAULT_BASELINE
+from src.ai.schemas import normalize_sensor_dict
+from src.common import config
+from src.common.errors import InferenceError
+from src.common.time_utils import now_iso
 
-from src.fiware.entities import create_alert_event
-from src.fiware.client import get_entity
+_model_cache = None
+_profile_cache = None
 
-# ======================================================
-# CẤU HÌNH
-# ======================================================
+def reset_profile_cache():
+    """Reset the profile cache, used for testing changes in profile."""
+    global _profile_cache
+    _profile_cache = None
 
-DEMO_RUN_ID = os.getenv("DEMO_RUN_ID", "DNTU02_TOP8_RUN_2026_001")
-ZONE_ID = os.getenv("ZONE_ID", "DNTU_ROOM_A101")
-
-# File log AI detection
-AI_LOG_FILE = "logs/ai_detection.jsonl"
-
-
-# ======================================================
-# HÀM TIỆN ÍCH
-# ======================================================
-
-def now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
-
-
-def write_ai_log(log_entry: dict):
-    """Ghi log AI detection theo file Word 4.3"""
-    import os
-    os.makedirs(os.path.dirname(AI_LOG_FILE), exist_ok=True)
-    import json
-    with open(AI_LOG_FILE, "a", encoding="utf-8") as f:
-        f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
-
-
-# ======================================================
-# AI DETECTION LOGIC
-# ======================================================
-
-def detect_anomaly(sensor_data: dict) -> dict:
+def load_detector_model(model_path: str):
     """
-    Phát hiện bất thường từ dữ liệu cảm biến
-    Theo yêu cầu file Word
+    Load the IsolationForest model from disk.
+    Caches the model to avoid reading it on every call.
     """
-    temperature = sensor_data.get("temperature", 0)
-    co2 = sensor_data.get("co2", 0)
-    smoke = sensor_data.get("smoke_status", 0)
-    energy = sensor_data.get("energy_consumption", 0)
-    
-    # ==============================================
-    # CRITICAL - CHÁY
-    # ==============================================
-    if smoke == 1 and temperature >= 38:
-        return {
-            "predicted_level": "critical",
-            "anomaly_score": -0.31,
-            "rationale": f"High temperature ({temperature}°C), smoke detected ({smoke}), abnormal CO2 ({co2}ppm), and high energy consumption ({energy}W) indicate a critical indoor-environment anomaly.",
-            "recommended_action": "Send Cruzr to response point and request operator acknowledgement."
-        }
-    
-    # ==============================================
-    # WARNING - CẢNH BÁO
-    # ==============================================
-    elif co2 >= 1100 or temperature >= 32:
-        return {
-            "predicted_level": "warning",
-            "anomaly_score": -0.18,
-            "rationale": f"CO2 level ({co2}ppm) and temperature ({temperature}°C) are elevated. Potential ventilation issue or early fire warning.",
-            "recommended_action": "Send low-priority alert to dashboard for operator awareness."
-        }
-    
-    # ==============================================
-    # NORMAL - BÌNH THƯỜNG
-    # ==============================================
-    else:
-        return {
-            "predicted_level": "normal",
-            "anomaly_score": -0.05,
-            "rationale": f"All parameters are within normal ranges. Temperature: {temperature}°C, CO2: {co2}ppm, Smoke: {smoke}",
-            "recommended_action": "Continue monitoring. No action needed."
-        }
-
-
-def process_and_alert(sensor_data: dict):
-    """
-    Xử lý dữ liệu cảm biến và tạo alert nếu cần
-    """
-    # Phát hiện bất thường
-    result = detect_anomaly(sensor_data)
-    
-    # Xác định scenario_id
-    if result["predicted_level"] == "critical":
-        scenario_id = "SCN_CRITICAL_001"
-    elif result["predicted_level"] == "warning":
-        scenario_id = "SCN_WARNING_001"
-    else:
-        scenario_id = "SCN_NORMAL_001"
-    
-    # Ghi log AI detection (theo file Word 4.3)
-    ai_log = {
-        "demo_run_id": DEMO_RUN_ID,
-        "timestamp": now_iso(),
-        "scenario_id": scenario_id,
-        "zone_id": ZONE_ID,
-        "model": "rule_assisted_isolation_forest",
-        "anomaly_score": result["anomaly_score"],
-        "predicted_level": result["predicted_level"],
-        "expected_label": result["predicted_level"],
-        "rationale": result["rationale"],
-        "recommended_action": result["recommended_action"]
-    }
-    write_ai_log(ai_log)
-    print(f"🤖 AI Detection: {result['predicted_level'].upper()} (score: {result['anomaly_score']})")
-    
-    # Tạo AlertEvent nếu critical hoặc warning
-    if result["predicted_level"] in ["critical", "warning"]:
-        alert_id = create_alert_event(
-            scenario_id=scenario_id,
-            severity=result["predicted_level"],
-            source_room=f"Room:{ZONE_ID}"
-        )
+    global _model_cache
+    if _model_cache is not None:
+        return _model_cache
         
-        if alert_id:
-            print(f"🚨 AlertEvent created: {alert_id}")
-            
-            # Nếu critical, gửi lệnh robot
-            if result["predicted_level"] == "critical":
-                print(f"🤖 Robot dispatched to {ZONE_ID}!")
-                print(f"   Voice: '{result['recommended_action']}'")
+    if not os.path.exists(model_path):
+        raise InferenceError(f"Model file not found at {model_path}. Train the model first.")
+        
+    try:
+        _model_cache = joblib.load(model_path)
+        return _model_cache
+    except Exception as e:
+        raise InferenceError(f"Failed to load IsolationForest model: {e}")
+
+def load_sensor_profile(profile_path: str) -> dict:
+    """
+    Load the sensor baseline profile from disk.
+    Caches the profile to avoid reading it on every call.
+    """
+    global _profile_cache
+    if _profile_cache is not None:
+        return _profile_cache
+        
+    if not os.path.exists(profile_path):
+        return None
+        
+    try:
+        with open(profile_path, "r", encoding="utf-8") as f:
+            _profile_cache = json.load(f)
+        return _profile_cache
+    except Exception as e:
+        print(f"Warning: Failed to load sensor profile at {profile_path}: {e}")
+        return None
+
+def detect_anomaly(sensor: dict) -> dict:
+    """
+    Run AI anomaly detection and severity rule checking on sensor input.
+    """
+    cfg = config.get_config()
+    model_path = cfg["model_path"]
+    profile_path = cfg.get("sensor_profile_path", "models/sensor_profile.json")
     
-    return result
+    # Normalize keys for backward compatibility
+    normalized = normalize_sensor_dict(sensor)
+    
+    # 1. Load model & profile
+    model = load_detector_model(model_path)
+    profile = load_sensor_profile(profile_path)
+    
+    # Determine the baseline configuration
+    baseline = None
+    baseline_type = "default hardcoded"
+    ts = normalized.get("timestamp")
+    
+    if profile is not None:
+        hour_str = None
+        day_type_str = None
+        if ts:
+            try:
+                # Accept ISO formats
+                cleaned_ts = ts.replace("Z", "+00:00") if isinstance(ts, str) else ts
+                dt = pd.to_datetime(cleaned_ts)
+                hour_str = str(dt.hour)
+                day_type_str = "weekend" if dt.weekday() >= 5 else "working_day"
+            except Exception as e:
+                print(f"Warning: Failed to parse timestamp {ts}: {e}")
+                
+        if hour_str is not None and "hourly_baseline" in profile and hour_str in profile["hourly_baseline"]:
+            hourly = profile["hourly_baseline"][hour_str]
+            has_all_fields = all(field in hourly for field in ["temperature", "humidity", "co2", "smoke_status", "energy_consumption"])
+            sample_count = hourly.get("temperature", {}).get("sample_count", 0)
+            if has_all_fields and sample_count >= 5:
+                baseline = hourly
+                baseline_type = f"hourly (hour {hour_str})"
+                
+        if baseline is None and day_type_str is not None and "day_type_baseline" in profile and day_type_str in profile["day_type_baseline"]:
+            dt_base = profile["day_type_baseline"][day_type_str]
+            has_all_fields = all(field in dt_base for field in ["temperature", "humidity", "co2", "smoke_status", "energy_consumption"])
+            sample_count = dt_base.get("temperature", {}).get("sample_count", 0)
+            if has_all_fields and sample_count >= 5:
+                baseline = dt_base
+                baseline_type = f"day-type ({day_type_str})"
+                
+        if baseline is None and "global_statistics" in profile:
+            baseline = profile["global_statistics"]
+            baseline_type = "global monthly"
 
-
-# ======================================================
-# MAIN - TEST
-# ======================================================
-
-if __name__ == "__main__":
-    # Test với dữ liệu critical
-    test_data = {
-        "temperature": 39.8,
-        "humidity": 78.0,
-        "co2": 1250,
-        "smoke_status": 1,
-        "energy_consumption": 920
+    if baseline is None:
+        baseline = DEFAULT_BASELINE
+        baseline_type = "default hardcoded"
+    else:
+        if profile is not None and "safety_guardrails" in profile:
+            baseline = dict(baseline)
+            baseline["safety_guardrails"] = profile["safety_guardrails"]
+    
+    # 2. Extract features
+    X = extract_one(normalized)
+    
+    # 3. Predict & Score
+    try:
+        pred = model.predict(X)[0]
+        score = float(model.decision_function(X)[0])
+    except Exception as e:
+        raise InferenceError(f"Model prediction failed: {e}")
+        
+    # 4. Map IsolationForest outputs (1 = normal, -1 = anomaly)
+    predicted_anomaly = 0 if pred == 1 else 1
+    in_boundary = (predicted_anomaly == 0)
+    
+    # 5. Extract timestamp or create one
+    if not ts:
+        ts = now_iso()
+        
+    features_dict = {
+        "temperature": float(normalized.get("temperature", 0.0)),
+        "humidity": float(normalized.get("humidity", 0.0)),
+        "smoke_status": float(normalized.get("smoke_status", 0.0)),
+        "co2": float(normalized.get("co2", 0.0)),
+        "energy_consumption": float(normalized.get("energy_consumption", 0.0))
     }
     
-    print("\n" + "=" * 60)
-    print("🧠 AI DETECTOR TEST")
-    print("=" * 60)
-    print(f"Input: temp={test_data['temperature']}°C, smoke={test_data['smoke_status']}, co2={test_data['co2']}ppm")
-    print("-" * 60)
-    
-    result = process_and_alert(test_data)
-    
-    print("-" * 60)
-    print(f"Predicted: {result['predicted_level'].upper()}")
-    print(f"Score: {result['anomaly_score']}")
-    print("=" * 60)
+    # 6. Format output
+    if predicted_anomaly == 0:
+        return {
+            "timestamp": ts,
+            "features": features_dict,
+            "model": "IsolationForest",
+            "training_logic": "normal_only_boundary_learning",
+            "anomaly_score": score,
+            "predicted_anomaly": 0,
+            "in_boundary": True,
+            "predicted_level": "normal",
+            "rule_hits": [],
+            "rationale": "Sensor values remain within normal operating range.",
+            "recommended_action": "NO_ACTION",
+            "status": "AI_DETECTED"
+        }
+    else:
+        # Check rule layer
+        rule_result = classify_alert_level(normalized, baseline, baseline_type)
+        lvl = rule_result["level"]
+        rec_action = "CREATE_WARNING_ALERT" if lvl == "warning" else "CREATE_CRITICAL_ALERT"
+        
+        return {
+            "timestamp": ts,
+            "features": features_dict,
+            "model": "IsolationForest",
+            "training_logic": "normal_only_boundary_learning",
+            "anomaly_score": score,
+            "predicted_anomaly": 1,
+            "in_boundary": False,
+            "predicted_level": lvl,
+            "rule_hits": rule_result["rule_hits"],
+            "rationale": rule_result["rationale"],
+            "recommended_action": rec_action,
+            "status": "AI_DETECTED"
+        }

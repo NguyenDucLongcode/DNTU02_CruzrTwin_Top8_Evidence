@@ -1,0 +1,93 @@
+{
+  "training_logic": "normal_only_boundary_learning",
+  "data_path": "data/sensor_data.csv",
+  "features": [
+    "temperature",
+    "humidity",
+    "co2",
+    "smoke_status",
+    "energy_consumption"
+  ],
+  "label_meaning": {
+    "0": "normal",
+    "1": "anomaly"
+  },
+  "training_rows_label_0_normal": 8098,
+  "training_rows_label_1_anomaly": 0,
+  "anomaly_rows_used_for_training": 0,
+  "model": "IsolationForest",
+  "model_path": "models/anomaly_model.pkl",
+  "feature_schema_path": "models/feature_schema.json",
+  "status": "TRAINED",
+  "contamination_candidates": [
+    0.005,
+    0.01,
+    0.015,
+    0.02,
+    0.03,
+    0.05
+  ],
+  "selected_contamination": 0.01,
+  "tuning_results": [
+    {
+      "contamination": 0.005,
+      "precision": 0.9100877192982456,
+      "recall": 0.7656826568265682,
+      "f1": 0.8316633266533067,
+      "accuracy": 0.9805555555555555,
+      "meets_target": false
+    },
+    {
+      "contamination": 0.01,
+      "precision": 0.869983948635634,
+      "recall": 1.0,
+      "f1": 0.9304721030042918,
+      "accuracy": 0.990625,
+      "meets_target": true
+    },
+    {
+      "contamination": 0.015,
+      "precision": 0.8162650602409639,
+      "recall": 1.0,
+      "f1": 0.8988391376451078,
+      "accuracy": 0.9858796296296296,
+      "meets_target": false
+    },
+    {
+      "contamination": 0.02,
+      "precision": 0.7698863636363636,
+      "recall": 1.0,
+      "f1": 0.869983948635634,
+      "accuracy": 0.98125,
+      "meets_target": false
+    },
+    {
+      "contamination": 0.03,
+      "precision": 0.6904458598726114,
+      "recall": 1.0,
+      "f1": 0.8168801808590807,
+      "accuracy": 0.971875,
+      "meets_target": false
+    },
+    {
+      "contamination": 0.05,
+      "precision": 0.5723336853220697,
+      "recall": 1.0,
+      "f1": 0.7280053727333781,
+      "accuracy": 0.953125,
+      "meets_target": false
+    }
+  ],
+  "evaluation_metrics": {
+    "precision": 0.869983948635634,
+    "recall": 1.0,
+    "f1": 0.9304721030042918,
+    "accuracy": 0.990625,
+    "meets_target": true
+  },
+  "notes": [
+    "The model is trained only with label=0 normal data.",
+    "Label=1 anomaly data is not used for training.",
+    "Contamination parameter tuned via grid search on evaluation set."
+  ]
+}

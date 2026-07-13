@@ -64,6 +64,7 @@ def create_subscription_for_devices():
                 "smoke_status",
                 "energy_consumption"
             ],
+            "covered": True, 
             "attrsFormat": "keyValues",
             "metadata": ["dateCreated", "dateModified"]
         },

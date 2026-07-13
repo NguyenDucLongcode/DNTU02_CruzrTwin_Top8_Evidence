@@ -67,8 +67,8 @@
       ]
     },
     {
-      "entity_name": "Device:PLUG_A101",
-      "entity_type": "SmartPlug",
+      "entity_name": "Device:ENERGY_E101",
+      "entity_type": "EnergyMeter",
       "schedule": "*/5 * * * * *",
       "active": [
         {

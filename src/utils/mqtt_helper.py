@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 
 import paho.mqtt.client as mqtt
 from src.fiware.entities.query import get_room_state, get_all_devices, get_entity_by_type
-
+from src.fiware import update_room_scenario
 from src.utils.replay_helpers import (
     build_scenario_id,
     get_device_status_from_filename,
@@ -38,20 +38,19 @@ DEFAULT_ZONE_ID = os.getenv("ZONE_ID", "DNTU_ROOM_A101")
 
 
 # Log file paths
-ORION_SYNC_LOG = os.path.join("logs", "orion_sync.jsonl")
+SENSOR_LOG = os.path.join("logs", "sensorReading.jsonl")
 
 # ======================================================
 # MAP DEVICE ID → OBJECT ID
 # ======================================================
 
 OBJECT_ID_MAP = {
-    "temp_sensor_a101": "t",
-    "humid_sensor_a101": "h",
-    "air_sensor_a101": "co2",
-    "smoke_sensor_a101": "smoke",
-    "smart_plug_a101": "energy"
+    "temp_sensor_a101": "t",           # Map với object_id "t" trong Device:TEMP_A101
+    "humid_sensor_a101": "h",          # Map với object_id "h" (nếu có)
+    "air_sensor_a101": "co2",          # Map với object_id "co2" trong Device:TEMP_A101
+    "smoke_sensor_a101": "smoke",      # Map với object_id "smoke_status" (hoặc "smoke")
+    "energy_sensor_e101": "energy_consumption"  # Map với object_id "energy_consumption" trong Device:ENERGY_E101
 }
-
 
 # ======================================================
 # HÀM MQTT CLIENT
@@ -229,6 +228,12 @@ def publish_scenario_with_client(
     delay: float = 0.05,
 ) -> bool:
 
+    # In WARNING scenario, we also want to update the room scenario in Orion for each reading
+    update_room_scenario(
+        scenario_id=scenario_id,
+                
+    )
+
     success_count = publish_multiple_devices(
         client,
         device_values,
@@ -273,14 +278,14 @@ def save_scenario_logs(
         "humidity": device_values.get("humid_sensor_a101", 0),
         "air_quality_or_co2": device_values.get("air_sensor_a101", 0),
         "smoke_status": device_values.get("smoke_sensor_a101", 0),
-        "energy_consumption": device_values.get("smart_plug_a101", 0),
+        "energy_consumption": device_values.get("energy_sensor_e101", 0),
         "device_status": device_status,
     }
  
 
-    _append_jsonl(ORION_SYNC_LOG, sensor_entry)
+    _append_jsonl(SENSOR_LOG, sensor_entry)
 
-    print(f"   SensorReading log saved: {ORION_SYNC_LOG}")
+    print(f"   SensorReading log saved: {SENSOR_LOG}")
 
 
 # ======================================================

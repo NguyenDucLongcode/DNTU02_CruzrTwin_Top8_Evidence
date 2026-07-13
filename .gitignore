@@ -226,5 +226,17 @@ __marimo__/
 # OS files
 .DS_Store
 Thumbs.db
+
 Reports
 Reports.zip
+
+
+
+Reports
+Reports.zip
+
+# Ignore frontend dependencies
+frontend/node_modules/
+frontend/.next/
+frontend/dist/
+

@@ -3,6 +3,7 @@
 """
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -27,13 +28,14 @@ def main():
     parser.add_argument("--workers", type=int, default=6)
     args = parser.parse_args()
     
-    # Gửi lệnh - không in gì
-    control_multiple_by_fiware_ids(
+    # Gửi lệnh và in kết quả
+    results = control_multiple_by_fiware_ids(
         fiware_ids=ALL_PLUGS,
         action=args.action,
         device_type="smart_plug",
         max_workers=args.workers
     )
+    print(json.dumps(results, indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":

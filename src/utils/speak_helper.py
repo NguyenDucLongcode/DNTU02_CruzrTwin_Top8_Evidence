@@ -160,6 +160,7 @@ def speak_and_wait(
         f"   📊 Words={word_count}, "
         f"Estimated={estimated_time:.1f}s"
     )
+    time.sleep(wait_time)
     
     # 4. Kiểm tra robot đã sẵn sàng chưa
     remaining_time = max_wait - (time.time() - start_time)

@@ -183,12 +183,8 @@ def operator_ack():
         else "Operator reported error."
     )
 
-    # Dùng alert_id để tránh trùng
+    # Dùng alert_id để định danh
     operator_ack_id = f"OperatorAck:{alert_id}"
-
-    # Idempotency cho demo
-    if operator_ack_id in _processed_acks:
-        return jsonify(_processed_acks[operator_ack_id]), 200
 
     timestamp = (
         datetime.now(timezone.utc)

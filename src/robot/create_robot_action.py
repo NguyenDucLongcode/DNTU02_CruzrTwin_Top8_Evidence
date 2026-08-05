@@ -1,33 +1,35 @@
-"""
-Hệ thống điều khiển Robot Cruzr & IoT tự động khẩn cấp (Asynchronous Cluster Pipeline)
-"""
-
 import os
 import sys
 import json
 import asyncio
+import concurrent.futures
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Dict, Any, List
-
-# Cấu hình UTF-8 cho Windows console để tránh lỗi UnicodeEncodeError
-if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
-    try:
-        sys.stdout.reconfigure(encoding='utf-8')
-    except Exception:
-        pass
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT_DIR))
 
 from src.tuya import control_multiple_by_fiware_ids
 from src.fiware import get_smart_plugs_in_room, get_alarms_in_room
-from src.robot.cruzr_client import CruzrRobotClient
+from .cruzr_client import CruzrRobotClient
 from src.utils import translate_to_vietnamese, estimate_speak_duration
 
+# Cấu hình UTF-8 cho Windows console
+if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
 
 # Lưu các action đã thực hiện trong phiên chạy hiện tại (Idempotency Cache)
 _created_robot_actions = set()
+
+
+def reset_robot_action_cache():
+    """Xóa cache các robot action đã thực hiện"""
+    global _created_robot_actions
+    _created_robot_actions.clear()
 
 
 def append_jsonl(path: str, data: dict):
@@ -37,14 +39,22 @@ def append_jsonl(path: str, data: dict):
         f.write(json.dumps(data, ensure_ascii=False) + "\n")
 
 
-def get_utc_timestamp() -> str:
-    """Trả về timestamp ISO8601 UTC chuẩn"""
-    return (
-        datetime.now(timezone.utc)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
+def test_robot_connection() -> dict:
+    """Kiểm tra thử nghiệm kết nối Robot Cruzr (Cho nút Robot Retry)"""
+    client = CruzrRobotClient()
+    connected = client.connect()
+    if connected:
+        client.disconnect()
+        return {
+            "connected": True,
+            "status": "CONNECTED",
+            "message": "Kết nối thành công tới Robot Cruzr!"
+        }
+    return {
+        "connected": False,
+        "status": "DISCONNECTED",
+        "message": "Robot chưa kết nối. Đã gửi yêu cầu kết nối lại (Retry)..."
+    }
 
 
 async def run_in_executor(func, *args, **kwargs):
@@ -53,28 +63,9 @@ async def run_in_executor(func, *args, **kwargs):
     return await loop.run_in_executor(None, lambda: func(*args, **kwargs))
 
 
-async def async_speak_sequence(robot_client: CruzrRobotClient, message: str, language: str) -> bool:
-    """
-    Gửi lệnh nói và chờ chính xác theo thời gian ước lượng nói (không chồng chéo lệnh)
-    """
-    if not robot_client or not robot_client.is_connected():
-        print(f"   [WARNING] [Speak {language.upper()}] Bỏ qua do robot chưa kết nối: {message[:40]}...")
-        return False
-
-    duration = estimate_speak_duration(message, language=language) + 1.5  # Thêm 1.5s buffer an toàn cho TTS engine
-    print(f"   [SPEAK - {language.upper()}] (đợi ~{duration:.1f}s): {message[:50]}...")
-    
-    # Gửi lệnh nói sang WebSocket (chạy in executor để không block loop)
-    await run_in_executor(robot_client.speak, message, language=language)
-    
-    # Ngủ bất đồng bộ để chờ robot nói xong hoàn toàn trước khi lệnh tiếp theo được gửi
-    await asyncio.sleep(duration)
-    return True
-
-
 async def async_main(alert_event: dict) -> dict:
     """
-    Luồng xử lý cảnh báo khẩn cấp chia cụm (Clustering Pipeline) bất đồng bộ
+    Luồng xử lý cảnh báo khẩn cấp bất đồng bộ (Async Pipeline)
     """
     demo_run_id = alert_event["demo_run_id"]
     alert_id = alert_event["alert_id"]
@@ -84,7 +75,7 @@ async def async_main(alert_event: dict) -> dict:
 
     robot_action_id = f"RobotAction:{scenario_id}"
 
-    # Kiểm tra Idempotency: Không thực hiện lại nếu action đã tạo trong phiên chạy
+    # Không thực hiện lại nếu action đã được tạo trong phiên chạy
     if robot_action_id in _created_robot_actions:
         return {
             "status": "skipped",
@@ -93,7 +84,7 @@ async def async_main(alert_event: dict) -> dict:
             "zone_id": zone_id
         }
 
-    # Chỉ xử lý cảnh báo mức độ critical
+    # Chỉ xử lý cảnh báo critical
     if severity.lower() != "critical":
         return {
             "status": "skipped",
@@ -102,24 +93,40 @@ async def async_main(alert_event: dict) -> dict:
         }
 
     # Đánh dấu đã xử lý
-    _created_robot_actions.add(robot_action_id)
+    # _created_robot_actions.add(robot_action_id)
 
+    # ============================================
+    # TẠO MESSAGE VÀ DỊCH SANG TIẾNG VIỆT
+    # ============================================
     room_name = zone_id.split("_")[-1]
-    
-    # Chuẩn bị nội dung thông báo
-    msg_critical_en = (
-        f"Critical indoor-environment anomaly detected in Room {room_name}. "
-        f"Please follow staff guidance and move calmly to the safe waiting area. "
+
+    messageCitical = (
+        f"Critical indoor-environment anomaly detected in "
+        f"Room {room_name}. Please follow staff guidance and move calmly to the safe waiting area"
     )
-    msg_critical_vi = translate_to_vietnamese(msg_critical_en)
+    vi_messageCitical = translate_to_vietnamese(messageCitical)
 
-    msg_plugs_en = "Turn off all electrical devices."
-    msg_plugs_vi = translate_to_vietnamese(msg_plugs_en)
+    messageSmartPlug = "Turn off all electrical devices"
+    vi_messageSmartPlug = translate_to_vietnamese(messageSmartPlug)
 
-    msg_alarm_en = "activate the alarm.."
-    msg_alarm_vi = translate_to_vietnamese(msg_alarm_en)
+    messageAlarm = "activate the alarm"
+    vi_messageAlarm = translate_to_vietnamese(messageAlarm)
 
-    # Ghi log RobotAction PENDING
+    # Khởi tạo robot client
+    RobotClient = CruzrRobotClient()
+    isConnected = await run_in_executor(RobotClient.connect)
+
+    # Kết nối nếu chưa kết nối
+    # if not isConnected:
+    #     print("   🤖 Robot not connected. Trying to connect...")
+    #     return {
+    #         "status": "failed",
+    #         "reason": "Robot not connected",
+    #         "robot_action_id": robot_action_id,
+    #         "zone_id": zone_id
+    #     }
+
+    # Ghi log RobotAction
     log_entry = {
         "demo_run_id": demo_run_id,
         "timestamp": get_utc_timestamp(),
@@ -128,60 +135,46 @@ async def async_main(alert_event: dict) -> dict:
         "zone_id": zone_id,
         "action_type": "VOICE_DISPLAY_GUIDANCE",
         "navigation_mode": "PREDEFINED_RESPONSE_POINT",
-        "message": msg_critical_en,
-        "status": "PENDING"
+        "message": messageCitical,
+        "status": "ACK"
     }
+
     log_path = ROOT_DIR / "logs" / "robot_actions.jsonl"
     append_jsonl(str(log_path), log_entry)
 
-    # Khởi tạo Robot Client
-    robot_client = CruzrRobotClient()
     smart_plugs: List[str] = []
     alarms: List[str] = []
 
     try:
-        # ============================================================
-        # [CLUSTER 1] ROBOT CONNECT & EMOTION (Kết nối & Cảm xúc khẩn cấp)
-        # ============================================================
-        print("\n" + "="*60)
-        print("[CLUSTER 1] ROBOT CONNECT & EMOTION (Kết nối & Cảm xúc)")
-        print("="*60)
-        
-        is_connected = await run_in_executor(robot_client.connect)
-        if not is_connected:
-            print("   [WARNING] Không thể kết nối với Robot Cruzr thật. Tiếp tục xử lý các lệnh IoT (Plugs/Alarm)...")
-        else:
-            print("   [SUCCESS] Kết nối Robot thành công! Đang hiển thị Emotion khẩn cấp...")
-            res_emotion = await run_in_executor(robot_client.play_emotion, "emotion://va/techface_upset")
-            print(f"   [EMOTION] Result: {res_emotion}")
-            # Đợi 2.5s để activity hiển thị Emotion trên Android Cruzr tải xong, tránh xung đột lệnh Voice
-            await asyncio.sleep(2.5)
+        # Hiển thị emotion khẩn cấp
+        result = await run_in_executor(RobotClient.play_emotion, "emotion://va/techface_upset")
+        print(f"   😫 Emotion result: {result}")
 
-        # ============================================================
-        # [CLUSTER 2] VOICE & DISPLAY GUIDANCE (Cảnh báo sơ tán)
-        # ============================================================
-        print("\n" + "="*60)
-        print("[CLUSTER 2] VOICE & DISPLAY GUIDANCE (Cảnh báo sơ tán khẩn cấp)")
-        print("="*60)
-        
-        await async_speak_sequence(robot_client, msg_critical_vi, "vi")
-        await async_speak_sequence(robot_client, msg_critical_en, "en")
+        # Robot di chuyển
+        # await run_in_executor(RobotClient.move_forward, 1)
+        # await asyncio.sleep(3)
+        # await run_in_executor(RobotClient.stop)
 
-        # ============================================================
-        # [CLUSTER 3] ELECTRICAL ACTUATION (Tắt toàn bộ ổ cắm điện)
-        # ============================================================
-        print("\n" + "="*60)
-        print("[CLUSTER 3] ELECTRICAL ACTUATION (Tắt thiết bị điện & Lời nhắc)")
-        print("="*60)
-        
-        # Lấy danh sách smart plugs trong phòng
+        # ============================================
+        # Speak sequence (nhiều message)
+        # ============================================
+        await run_in_executor(RobotClient.speak, vi_messageCitical, language="vi")
+        await asyncio.sleep(12)  # Đợi message tiếng Việt kết thúc
+
+        await run_in_executor(RobotClient.speak, messageCitical, language="en")
+        await asyncio.sleep(14)  # Đợi message tiếng Anh kết thúc
+
+        # Lấy danh sách smart plug và alarm trong phòng
         smart_plugs = await run_in_executor(get_smart_plugs_in_room, zone_id)
-        print(f"   [INFO] Tìm thấy {len(smart_plugs)} ổ cắm điện trong phòng {zone_id}.")
-        
-        # Nói lời nhắc tắt điện
-        await async_speak_sequence(robot_client, msg_plugs_vi, "vi")
-        await async_speak_sequence(robot_client, msg_plugs_en, "en")
-        
+        alarms = await run_in_executor(get_alarms_in_room, zone_id)
+
+        await run_in_executor(RobotClient.speak, vi_messageSmartPlug, language="vi")
+        await asyncio.sleep(4)
+
+        await run_in_executor(RobotClient.speak, messageSmartPlug, language="en")
+        await asyncio.sleep(0.01)
+
+        # Tắt Smart Plug
         if smart_plugs:
             print(f"   [IOT-PLUGS] Đang gửi lệnh tắt {len(smart_plugs)} ổ cắm điện (Smart Plugs)...")
             await run_in_executor(
@@ -192,21 +185,13 @@ async def async_main(alert_event: dict) -> dict:
                 max_workers=len(smart_plugs)
             )
 
-        # ============================================================
-        # [CLUSTER 4] ALARM & SIREN ACTUATION (Kích hoạt còi báo động)
-        # ============================================================
-        print("\n" + "="*60)
-        print("[CLUSTER 4] ALARM & SIREN ACTUATION (Kích hoạt còi báo động)")
-        print("="*60)
-        
-        # Lấy danh sách alarm trong phòng
-        alarms = await run_in_executor(get_alarms_in_room, zone_id)
-        print(f"   [INFO] Tìm thấy {len(alarms)} thiết bị cảnh báo trong phòng {zone_id}.")
-        
-        # Nói lời nhắc bật còi
-        await async_speak_sequence(robot_client, msg_alarm_vi, "vi")
-        await async_speak_sequence(robot_client, msg_alarm_en, "en")
-        
+        await run_in_executor(RobotClient.speak, vi_messageAlarm, language="vi")
+        await asyncio.sleep(4)
+
+        await run_in_executor(RobotClient.speak, messageAlarm, language="en")
+        await asyncio.sleep(4)
+
+        # Bật Alarm
         if alarms:
             print(f"   [IOT-ALARM] Đang gửi lệnh kích hoạt {len(alarms)} còi báo động (Alarms)...")
             await run_in_executor(
@@ -218,21 +203,9 @@ async def async_main(alert_event: dict) -> dict:
                 duration=60,
                 max_workers=len(alarms)
             )
-
     finally:
-        # ============================================================
-        # [CLUSTER 5] SAFE DISCONNECT & CLEANUP (Ngắt kết nối an toàn)
-        # ============================================================
-        print("\n" + "="*60)
-        print("[CLUSTER 5] SAFE DISCONNECT & CLEANUP (Ngắt kết nối an toàn)")
-        print("="*60)
-        if robot_client and robot_client.is_connected():
-            print("   [CLEANUP] Đang ngắt kết nối WebSocket an toàn với Robot Cruzr...")
-            await run_in_executor(robot_client.disconnect)
-            print("   [SUCCESS] Đã đóng socket thành công. Đảm bảo Robot không bị reset/nháy màn hình.")
-        else:
-            print("   [INFO] Robot không trong trạng thái kết nối cần đóng.")
-        print("="*60 + "\n")
+        if RobotClient and RobotClient.is_connected():
+            await run_in_executor(RobotClient.disconnect)
 
     return {
         "status": "success",
@@ -249,7 +222,7 @@ async def async_main(alert_event: dict) -> dict:
 
 def main(alert_event: dict) -> dict:
     """
-    Hàm wrapper đồng bộ (Synchronous Wrapper) để tương thích 100% với các test suite và alert_service hiện tại.
+    Hàm wrapper đồng bộ (Synchronous Wrapper) tương thích 100% với các test suite và pipeline đồng bộ.
     """
     try:
         loop = asyncio.get_running_loop()
@@ -257,17 +230,14 @@ def main(alert_event: dict) -> dict:
         loop = None
 
     if loop and loop.is_running():
-        # Nếu đang trong event loop có sẵn (vd: Jupyter hoặc test runner), chạy qua ThreadPoolExecutor
-        import concurrent.futures
         with concurrent.futures.ThreadPoolExecutor() as pool:
             return pool.submit(lambda: asyncio.run(async_main(alert_event))).result()
     else:
-        # Khởi tạo event loop mới
         return asyncio.run(async_main(alert_event))
 
 
 if __name__ == "__main__":
-    test_event = {
+    event = {
         "demo_run_id": "DNTU02_TOP8_RUN_2026_001",
         "alert_id": "AlertEvent:SCN_CRITICAL_001",
         "scenario_id": "critical_001",
@@ -275,5 +245,6 @@ if __name__ == "__main__":
         "severity": "critical"
     }
 
-    res = main(test_event)
-    print(json.dumps(res, indent=2, ensure_ascii=False))
+    result = main(event)
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+

@@ -105,7 +105,7 @@ export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
     
     const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
     cameraRef.current = camera;
-    camera.position.set(0, 100, 120);
+    camera.position.set(0, 75, 90); // Zoom in ~20-25% closer/larger
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(container.clientWidth, container.clientHeight);
@@ -117,6 +117,19 @@ export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.6; // Auto-rotate slowly
+
+    let autoRotateTimer = null;
+    const pauseAutoRotate = () => {
+      controls.autoRotate = false;
+      if (autoRotateTimer) clearTimeout(autoRotateTimer);
+      autoRotateTimer = setTimeout(() => {
+        controls.autoRotate = true;
+      }, 2000); // Pause rotation for 2 seconds on interaction
+    };
+
+    controls.addEventListener('start', pauseAutoRotate);
 
     // Lighting
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
@@ -124,13 +137,8 @@ export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
     dirLight.position.set(50, 100, 50);
     scene.add(dirLight);
-    
-    // Grid Helper
-    const grid = new THREE.GridHelper(200, 40, 0x0044ff, 0x001133);
-    grid.position.y = -0.1;
-    scene.add(grid);
 
-    // Lắp ráp mô hình tổng từ các file Tầng
+    // Assembly
     const overallGroup = new THREE.Group();
     scene.add(overallGroup);
     overallModelRef.current = overallGroup;
@@ -151,8 +159,6 @@ export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
         const floorIndex = Math.round(floor.y / 4) + 1;
         floorMesh.userData.floorIndex = floorIndex;
         
-        // Retain original colors in userData for blinking effect
-        // Traverse top-down to inherit room IDs
         floorMesh.traverse((child) => {
           if (child.name && child.name.match(/(L1-[TB]\d|A10\d)/i)) {
             child.userData.roomIdMatch = child.name;
@@ -186,7 +192,8 @@ export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
     mouseRef.current = mouse;
 
     const onMouseClick = (event) => {
-      if (activeRoomIdRef.current) return; // Prevent clicking if already in room view
+      pauseAutoRotate();
+      if (activeRoomIdRef.current) return;
       
       const rect = container.getBoundingClientRect();
       mouse.x = ((event.clientX - rect.left) / container.clientWidth) * 2 - 1;
@@ -196,32 +203,21 @@ export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
       if (overallModelRef.current) {
         const intersects = raycaster.intersectObject(overallModelRef.current, true);
         if (intersects.length > 0) {
-          const point = intersects[0].point;
           let currentObj = intersects[0].object;
-          let floorIdx = 1;
-          while(currentObj) {
-            if (currentObj.userData && currentObj.userData.floorIndex) {
-              floorIdx = currentObj.userData.floorIndex;
-              break;
-            }
-            currentObj = currentObj.parent;
-          }
+          let floorIdx = getFloorIndex(currentObj);
           
-          const isTopRow = point.z < 0;
-          const idx = Math.round(point.x / 12) + 3;
-          
-          let objName = (intersects[0].object.userData && intersects[0].object.userData.name) ? intersects[0].object.userData.name : intersects[0].object.name;
-          let extractedId = null;
-          if (objName) {
-            const match = objName.match(/(L1-[TB]\d)/i);
-            if (match) extractedId = match[1].toUpperCase();
+          let roomId = getRoomIdFromObject(currentObj, null);
+          if (!roomId) {
+            const point = intersects[0].point;
+            const isTopRow = point.z < 0;
+            const idx = Math.max(1, Math.min(6, Math.round(point.x / 12) + 3));
+            let rawRoom = `L1-${isTopRow ? 'T' : 'B'}${idx}`;
+            roomId = (ROOM_MAPPING[rawRoom] || 'L1-A1').replace('L1', `L${floorIdx}`);
           }
 
-          let rawRoom = extractedId || `L1-${isTopRow ? 'T' : 'B'}${idx}`;
-          let actualRoomId = ROOM_MAPPING[rawRoom] || 'L1-A1';
-          actualRoomId = actualRoomId.replace('L1', `L${floorIdx}`);
-
-          onRoomClickRef.current(actualRoomId, floorIdx);
+          if (roomId && onRoomClickRef.current) {
+            onRoomClickRef.current(roomId, floorIdx);
+          }
         }
       }
     };
@@ -291,14 +287,19 @@ export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
       container.removeEventListener('click', onMouseClick);
       container.removeEventListener('mousemove', onMouseMove);
       container.removeEventListener('mouseleave', onMouseLeave);
-      container.removeChild(renderer.domElement);
+      if (autoRotateTimer) clearTimeout(autoRotateTimer);
+      if (renderer.domElement && container.contains(renderer.domElement)) {
+        container.removeChild(renderer.domElement);
+      }
       renderer.dispose();
     };
-  }, []); // Run once
+  }, []);
 
   // Handle Mode Change (Building vs Room)
   useEffect(() => {
-    if (!sceneRef.current) return;
+    if (!sceneRef.current || !cameraRef.current) return;
+    
+    const camera = cameraRef.current;
     
     if (activeRoomId) {
       if (overallModelRef.current) overallModelRef.current.visible = false;
@@ -314,9 +315,18 @@ export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
         
         const box = new THREE.Box3().setFromObject(subModel);
         const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
         subModel.position.sub(center);
         
         sceneRef.current.add(subModel);
+        
+        setTimeout(() => {
+          const maxDim = Math.max(size.x, size.y, size.z);
+          const fov = 45;
+          const distance = maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)));
+          camera.position.set(0, distance * 0.8, distance * 1.5);
+          camera.lookAt(0, 0, 0);
+        }, 100);
       });
     } else {
       if (overallModelRef.current) overallModelRef.current.visible = true;
@@ -324,6 +334,11 @@ export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
         sceneRef.current.remove(activeSubModelRef.current);
         activeSubModelRef.current = null;
       }
+      
+      setTimeout(() => {
+        camera.position.set(0, 75, 90);
+        camera.lookAt(0, 8, 0);
+      }, 100);
     }
   }, [activeRoomId]);
 
@@ -332,62 +347,26 @@ export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
     if (!overallModelRef.current && !activeSubModelRef.current) return;
     
     const applyColor = (model) => {
-      let blink = (Math.sin(Date.now() * 0.005) + 1) / 2; // 0 -> 1
+      let blink = (Math.sin(Date.now() * 0.005) + 1) / 2;
 
       model.traverse((child) => {
         if (child.isMesh && child.material) {
-          let roomId = null;
-          
-          // Khi ở chế độ phòng chi tiết, dùng activeRoomId
-          if (activeSubModelRef.current && activeRoomId) {
-            roomId = activeRoomId;
-          } else if (child.userData.name) {
-            const match = child.userData.name.match(/(L1-[TB]\d|A1\d{2})/i);
-            if (match) {
-              const raw = match[1].toUpperCase();
-              roomId = raw.startsWith('A') ? `L1-A${parseInt(raw.slice(1)) - 100}` : (ROOM_MAPPING[raw] || raw);
-              let cur = child;
-              let fIdx = 1;
-              while (cur) {
-                if (cur.userData && cur.userData.floorIndex) { fIdx = cur.userData.floorIndex; break; }
-                cur = cur.parent;
-              }
-              roomId = roomId.replace('L1', `L${fIdx}`);
-            }
-          }
+          const roomId = getRoomIdFromObject(child, activeRoomIdRef.current);
+          const sensor = roomId ? sensorDataRef.current[roomId] : null;
+          const status = getSensorStatus(sensor);
 
-          let sensor = roomId && sensorData[roomId] ? sensorData[roomId] : null;
           let materials = Array.isArray(child.material) ? child.material : [child.material];
-          
-          materials.forEach((mat, idx) => {
-            let cKey = `originalColor_${idx}`;
-            if (child.userData[cKey] === undefined) child.userData[cKey] = mat.color.getHex();
-          });
-
           materials.forEach((mat, idx) => {
             let cKey = `originalColor_${idx}`;
             if (child.userData[cKey] !== undefined) {
-              let baseColor = new THREE.Color(child.userData[cKey]);
-              let targetColor = new THREE.Color();
-              
-              if (sensor) {
-                const smoke = sensor.smoke_status !== undefined ? sensor.smoke_status : (sensor.smoke || 0);
-                if (sensor.device_status === 'CRITICAL' || sensor.device_status === 'ERROR' || sensor.device_status === 'FIRE' || sensor.temp >= 40 || smoke >= 1 || sensor.co2 >= 1000) {
-                  targetColor.setHex(0xff0000);
-                  mat.color.copy(baseColor).lerp(targetColor, 0.6 + 0.4 * blink);
-                } else if (sensor.temp >= 32 || smoke >= 0.5 || sensor.co2 >= 631) {
-                  targetColor.setHex(0xffaa00);
-                  mat.color.copy(baseColor).lerp(targetColor, 0.5);
-                } else {
-                  targetColor.setHex(0x00ff00);
-                  mat.color.copy(baseColor).lerp(targetColor, 0.5);
-                }
-              } else if (activeSubModelRef.current) {
-                // Mặc định xanh lá cho phòng chi tiết khi không có sensor
-                targetColor.setHex(0x00ff00);
-                mat.color.copy(baseColor).lerp(targetColor, 0.5);
+              if (status === 'CRITICAL') {
+                const targetColor = new THREE.Color(0xff0000);
+                mat.color.lerpColors(new THREE.Color(child.userData[cKey]), targetColor, blink);
+              } else if (status === 'WARNING') {
+                const targetColor = new THREE.Color(0xffaa00);
+                mat.color.lerpColors(new THREE.Color(child.userData[cKey]), targetColor, blink * 0.7);
               } else {
-                mat.color.copy(baseColor);
+                mat.color.setHex(child.userData[cKey]);
               }
             }
           });
@@ -395,35 +374,51 @@ export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
       });
     };
 
-    let reqId;
-    const animateColors = () => {
-      if (overallModelRef.current && !activeRoomId) {
+    let frameId;
+    const updateColors = () => {
+      if (overallModelRef.current && overallModelRef.current.visible) {
         applyColor(overallModelRef.current);
       }
-      if (activeSubModelRef.current && activeRoomId) {
+      if (activeSubModelRef.current && activeSubModelRef.current.visible !== false) {
         applyColor(activeSubModelRef.current);
       }
-      reqId = requestAnimationFrame(animateColors);
+      frameId = requestAnimationFrame(updateColors);
     };
-    animateColors();
 
-    return () => cancelAnimationFrame(reqId);
-  }, [sensorData, activeRoomId]);
+    updateColors();
+    return () => cancelAnimationFrame(frameId);
+  }, [sensorData]);
 
   return (
-    <div ref={mountRef} className="relative w-full h-[65%] md:h-full cursor-crosshair bg-zinc-900">
+    <div className="relative w-full h-full" ref={mountRef}>
       {hoverInfo && (
         <div
-          className="pointer-events-none absolute z-50 max-w-[260px] rounded-lg border border-zinc-700 bg-black/90 p-3 text-[10px] leading-relaxed text-zinc-100 shadow-2xl backdrop-blur"
-          style={{ left: Math.min(hoverInfo.x + 14, window.innerWidth - 280), top: Math.min(hoverInfo.y + 14, window.innerHeight - 140) }}
+          className="absolute z-50 pointer-events-none p-3 rounded-lg shadow-xl bg-zinc-950/90 border border-zinc-700 text-xs font-mono backdrop-blur-md"
+          style={{
+            left: Math.min(hoverInfo.x + 15, window.innerWidth - 240),
+            top: Math.min(hoverInfo.y + 15, window.innerHeight - 150)
+          }}
         >
-          <div className="mb-1 text-[11px] font-bold text-blue-300">
-            {hoverInfo.deviceId}
+          <div className="font-bold text-white mb-1 flex items-center justify-between gap-2 border-b border-zinc-800 pb-1">
+            <span>{hoverInfo.roomId}</span>
+            <span
+              className={`px-1.5 py-0.5 rounded text-[10px] ${
+                hoverInfo.status === 'CRITICAL'
+                  ? 'bg-red-500/20 text-red-400 border border-red-500/40'
+                  : hoverInfo.status === 'WARNING'
+                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                  : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+              }`}
+            >
+              {hoverInfo.status}
+            </span>
           </div>
-          <div>Room: <span className="text-emerald-300">{hoverInfo.roomId}</span></div>
-          <div>Floor: {hoverInfo.floor}</div>
-          <div>Status: <span className={hoverInfo.status === 'CRITICAL' ? 'text-red-400 font-bold' : hoverInfo.status === 'WARNING' ? 'text-amber-300 font-bold' : 'text-emerald-300'}>{hoverInfo.status}</span></div>
-          <div className="mt-1 text-zinc-300">{hoverInfo.sensorText}</div>
+          <div className="text-zinc-400 text-[11px] mb-1">
+            Object: <span className="text-zinc-200">{hoverInfo.deviceId}</span>
+          </div>
+          <div className="text-zinc-300 text-[11px]">
+            {hoverInfo.sensorText}
+          </div>
         </div>
       )}
     </div>

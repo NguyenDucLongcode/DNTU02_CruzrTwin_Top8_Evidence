@@ -155,7 +155,9 @@ export default function LogPanel({ title, data, height, showNormal = true, empty
     if (!isDragging) return;
     const handleMouseMove = (e) => {
       const delta = e.clientY - dragRef.current.startY;
-      const newHeight = Math.max(60, dragRef.current.startHeight + delta);
+      const minH = isCollapsed ? 24 : 40;
+      const maxH = 400;
+      const newHeight = Math.max(minH, Math.min(maxH, dragRef.current.startHeight + delta));
       if (onResize) onResize(newHeight);
     };
     const handleMouseUp = () => setIsDragging(false);
@@ -165,7 +167,7 @@ export default function LogPanel({ title, data, height, showNormal = true, empty
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, onResize]);
+  }, [isDragging, onResize, isCollapsed]);
 
   const handleDragStart = useCallback((e) => {
     e.preventDefault();

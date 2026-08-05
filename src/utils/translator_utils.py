@@ -11,12 +11,18 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT_DIR))
 
+if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
 try:
     from deep_translator import GoogleTranslator
     HAS_TRANSLATOR = True
 except ImportError:
     HAS_TRANSLATOR = False
-    print("⚠️ deep-translator not installed. Install: pip install deep-translator")
+    print("[WARNING] deep-translator not installed. Using fallback text.")
 
 # Cache để tránh dịch lại nhiều lần
 _translation_cache = {}

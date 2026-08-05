@@ -165,9 +165,10 @@ def operator_ack():
 
     decision = req_data.get("decision", "").upper()
 
-    if decision not in ["ACK", "ERROR"]:
+    valid_decisions = ["ACK", "ERROR", "ROBOT_RETRY", "RETRY", "UNDO", "NORMAL", "WARNING", "CRITICAL"]
+    if decision not in valid_decisions:
         return jsonify({
-            "error": "Invalid decision. Must be ACK or ERROR"
+            "error": f"Invalid decision. Must be one of {valid_decisions}"
         }), 400
 
     alert_id = req_data.get("alert_id") or "AlertEvent:SCN_CRITICAL_001"
@@ -177,11 +178,7 @@ def operator_ack():
     scenario_id = req_data.get("scenario_id") or "SCN_CRITICAL_001"
     zone_id = req_data.get("zone_id") or cfg["default_zone_id"]
 
-    note = req_data.get("note") or (
-        "Operator confirmed Cruzr guidance delivered."
-        if decision == "ACK"
-        else "Operator reported error."
-    )
+    note = req_data.get("note") or f"Operator decision: {decision}"
 
     # Dùng alert_id để định danh
     operator_ack_id = f"OperatorAck:{alert_id}"
@@ -198,17 +195,37 @@ def operator_ack():
     if cfg["orion_enabled"]:
         try:
 
-            if decision == "ACK":
+            if decision in ["ACK", "NORMAL"]:
                 alert_status = "RESOLVED"
                 robot_status = "COMPLETED"
-                result = "ACK"
+                result = decision
                 operator_decision = "ACKNOWLEDGED"
-
-            else:
+            elif decision in ["ERROR", "CRITICAL"]:
                 alert_status = "NEEDS_REVIEW"
                 robot_status = "ERROR"
-                result = "ERROR"
+                result = decision
                 operator_decision = "ERROR_REPORTED"
+            elif decision in ["ROBOT_RETRY", "RETRY"]:
+                try:
+                    from src.robot.create_robot_action import test_robot_connection
+                    retry_res = test_robot_connection()
+                    note = retry_res.get("message", "Robot retry executed")
+                except Exception as e:
+                    note = f"Robot retry check: {e}"
+                alert_status = "RETRYING"
+                robot_status = "PENDING"
+                result = "RETRY"
+                operator_decision = "RETRY_TRIGGERED"
+            elif decision == "UNDO":
+                alert_status = "PENDING"
+                robot_status = "PENDING"
+                result = "UNDO"
+                operator_decision = "ACTION_UNDONE"
+            else:
+                alert_status = "REVIEWING"
+                robot_status = "PENDING"
+                result = decision
+                operator_decision = f"{decision}_REPORTED"
 
             # Update AlertEvent
             alert_success = update_entity_attrs(
@@ -409,6 +426,100 @@ def api_db_sensors():
             "device_status": rec.get("device_status"),
         }
     return jsonify(latest_per_zone), 200
+
+
+def remove_last_log_line():
+    """Xóa dòng log vừa thực hiện gần nhất khỏi các file logs (Undo khi bấm Reset Demo 1 lần)"""
+    log_files = [
+        "sensorReading.jsonl",
+        "ai_detection.jsonl",
+        "alert_events.jsonl",
+        "robot_actions.jsonl",
+        "operator_acks.jsonl"
+    ]
+    logs_dir = os.path.join(ROOT_DIR, "logs")
+    for filename in log_files:
+        filepath = os.path.join(logs_dir, filename)
+        if os.path.exists(filepath):
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+                if lines:
+                    with open(filepath, "w", encoding="utf-8") as f:
+                        f.writelines(lines[:-1])
+            except Exception as e:
+                print(f"Error removing last line from {filename}: {e}")
+
+
+@app.route('/api/scenario/run', methods=['POST'])
+def run_scenario():
+    """Kích hoạt chạy kịch bản mô phỏng (run_normal, run_warning, run_critical, undo, reset_all)"""
+    import subprocess
+    req_data = request.get_json(silent=True) or {}
+    scenario_type = req_data.get("scenario", "normal").lower()
+
+    # Xóa cache bộ nhớ trong Flask server
+    try:
+        from src.alerts.alert_service import reset_alert_service_cache
+        from src.robot.create_robot_action import reset_robot_action_cache
+        reset_alert_service_cache()
+        reset_robot_action_cache()
+        reset_processed_acks()
+    except Exception as e:
+        print(f"Warning clearing in-memory caches: {e}")
+
+    # Nút Reset Demo: Ấn 1 lần (undo) -> xóa log vừa thực hiện gần nhất
+    if scenario_type in ["undo", "undo_last"]:
+        remove_last_log_line()
+        return jsonify({
+            "success": True,
+            "message": "Action undone: Removed last log entry successfully"
+        }), 200
+
+    # Nút Reset Demo: Ấn 3 lần (reset_all/reset) -> xóa toàn bộ log
+    if scenario_type in ["reset", "reset_all"]:
+        script_path = os.path.join(ROOT_DIR, "scripts", "tools", "reset_task_5_6_outputs.py")
+        python_executable = sys.executable or "python"
+        subprocess.Popen([python_executable, script_path])
+        return jsonify({
+            "success": True,
+            "message": "Reset all demo logs completely!"
+        }), 200
+
+    # Nút Robot Retry: Kiểm tra kết nối Robot và trả thông báo lên UI (Không ghi log ACK)
+    if scenario_type in ["robot_retry", "retry"]:
+        try:
+            from src.robot.create_robot_action import test_robot_connection
+            retry_res = test_robot_connection()
+            return jsonify({
+                "success": True,
+                "message": retry_res.get("message", "Robot Retry connection check completed"),
+                "connected": retry_res.get("connected", False)
+            }), 200
+        except Exception as e:
+            return jsonify({
+                "success": False,
+                "error": f"Robot retry check notice: {e}"
+            }), 500
+
+    script_map = {
+        "normal": os.path.join(ROOT_DIR, "scripts", "scenarios", "run_normal.py"),
+        "warning": os.path.join(ROOT_DIR, "scripts", "scenarios", "run_warning.py"),
+        "critical": os.path.join(ROOT_DIR, "scripts", "scenarios", "run_critical.py"),
+    }
+
+    script_path = script_map.get(scenario_type)
+    if not script_path or not os.path.exists(script_path):
+        return jsonify({"success": False, "error": f"Invalid scenario type: {scenario_type}"}), 400
+
+    python_executable = sys.executable or "python"
+    subprocess.Popen([python_executable, script_path])
+
+    return jsonify({
+        "success": True,
+        "message": f"Scenario {scenario_type} triggered successfully",
+        "script": script_path
+    }), 200
 
 
 @app.route('/webhook/health', methods=['GET'])

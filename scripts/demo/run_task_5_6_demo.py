@@ -92,8 +92,11 @@ def main():
 
     # Simulate Cruzr Robot Simulator delivery
     print("SIMULATING ROBOT ACTION DELIVERY...")
-    from src.robot.cruzr_simulator import poll_and_simulate_once
-    poll_and_simulate_once(config)
+    try:
+        from src.robot.cruzr_simulator import poll_and_simulate_once
+        poll_and_simulate_once(config)
+    except ImportError:
+        print("Using create_robot_action client delivery mode.")
     print("Robot action status transitioned to DELIVERED.")
     
     # Simulate Operator ACK

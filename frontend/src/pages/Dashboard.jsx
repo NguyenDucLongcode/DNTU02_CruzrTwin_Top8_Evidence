@@ -59,6 +59,29 @@ export default function Dashboard() {
   const [showNormalLogs, setShowNormalLogs] = useState(true);
   const [ackStatus, setAckStatus] = useState('idle');
   const [ackMessage, setAckMessage] = useState('');
+  const [isWebhookOnline, setIsWebhookOnline] = useState(false);
+  const [networkLatency, setNetworkLatency] = useState(0);
+  const [e2eMeasuredLatency, setE2eMeasuredLatency] = useState(null);
+
+  const resetClickCountRef = useRef(0);
+  const resetClickTimerRef = useRef(null);
+
+  const handleResetDemoClick = () => {
+    resetClickCountRef.current += 1;
+    if (resetClickTimerRef.current) clearTimeout(resetClickTimerRef.current);
+
+    resetClickTimerRef.current = setTimeout(async () => {
+      const clicks = resetClickCountRef.current;
+      resetClickCountRef.current = 0;
+      if (clicks >= 3) {
+        // Ấn 3 lần nhanh -> Xóa toàn bộ logs
+        await handleRunScenario('reset_all');
+      } else {
+        // Ấn 1 lần -> Undo dòng log vừa thực hiện gần nhất
+        await handleRunScenario('undo');
+      }
+    }, 450);
+  };
 
   const [sidebarWidth, setSidebarWidth] = useState(420);
   const [panelHeights, setPanelHeights] = useState({
@@ -68,12 +91,18 @@ export default function Dashboard() {
 
   const [bottomPanelHeight, setBottomPanelHeight] = useState(240);
   const [mapWidthPercent, setMapWidthPercent] = useState(75);
+  const [isDraggingMapResize, setIsDraggingMapResize] = useState(false);
+  const mapResizeRef = useRef({ startX: 0, startPercent: 0 });
 
   const [isDraggingSidebar, setIsDraggingSidebar] = useState(false);
   const sidebarDragRef = useRef({ startX: 0, startWidth: 0 });
 
   const fetchJson = async (path) => {
     const response = await fetch(path);
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      throw new Error('Flask backend (port 5000) chưa bật.');
+    }
     if (!response.ok) {
       throw new Error(`${path} returned HTTP ${response.status}`);
     }
@@ -141,16 +170,22 @@ export default function Dashboard() {
         demo_run_id: DEMO_RUN_ID,
         scenario_id: base.scenario_id || DEFAULT_SCENARIO_ID,
         zone_id: base.zone_id || selectedZoneId || DEFAULT_ZONE_ID,
-        note: decision === 'ACK'
-          ? 'Operator confirmed Cruzr guidance delivered.'
-          : 'Operator reported an issue with Cruzr guidance.'
+        note: `Operator decision: ${decision}`
       };
 
+      const t0 = performance.now();
       const response = await fetch('/api/operator/ack', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+      const t1 = performance.now();
+      setNetworkLatency(Math.round(t1 - t0));
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Flask server (port 5000) chưa bật. Hãy chạy: py src/fiware/webhook_receiver.py');
+      }
 
       const result = await response.json();
 
@@ -159,7 +194,7 @@ export default function Dashboard() {
       }
 
       setAckStatus('success');
-      setAckMessage(`${decision === 'ACK' ? 'ACK confirmed' : 'ERROR reported'}: ${result.status || decision}`);
+      setAckMessage(`${decision}: ${result.status || 'OK'}`);
       loadLog('ack');
     } catch (err) {
       setAckStatus('error');
@@ -167,10 +202,117 @@ export default function Dashboard() {
     }
   };
 
+  const handleRunScenario = async (scenarioType) => {
+    try {
+      setAckStatus('loading');
+      setAckMessage(`Triggering ${scenarioType}...`);
+      const t0 = performance.now();
+      const response = await fetch('/api/scenario/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scenario: scenarioType })
+      });
+      const t1 = performance.now();
+      const measuredMs = Math.max(1, Math.round(t1 - t0));
+      setE2eMeasuredLatency(measuredMs);
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Flask server (port 5000) chưa bật. Hãy chạy: py src/fiware/webhook_receiver.py');
+      }
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || `Failed with HTTP ${response.status}`);
+      }
+      setAckStatus('success');
+      setAckMessage(result.message || `Started: ${scenarioType}`);
+      setTimeout(() => {
+        setAckStatus('idle');
+        setAckMessage('');
+      }, 3500);
+    } catch (err) {
+      setAckStatus('error');
+      setAckMessage(err.message || `Failed to run ${scenarioType}`);
+    }
+  };
+
+  const checkWebhookHealth = async () => {
+    try {
+      const t0 = performance.now();
+      const res = await fetch('/webhook/health');
+      const t1 = performance.now();
+      const contentType = res.headers.get('content-type');
+      if (res.ok && contentType && contentType.includes('application/json')) {
+        const data = await res.json();
+        setIsWebhookOnline(data.status === 'healthy');
+        setNetworkLatency(Math.max(2, Math.round(t1 - t0)));
+      } else {
+        setIsWebhookOnline(false);
+      }
+    } catch (e) {
+      setIsWebhookOnline(false);
+    }
+  };
+
+  const calculatedE2eLatency = useMemo(() => {
+    if (e2eMeasuredLatency !== null) {
+      return e2eMeasuredLatency;
+    }
+    const latestRobot = roomLogs.robot?.[roomLogs.robot.length - 1];
+    const latestAi = roomLogs.ai?.[roomLogs.ai.length - 1];
+    const latestSensor = roomLogs.sensors?.[roomLogs.sensors.length - 1];
+
+    if (!latestSensor && !latestAi && !latestRobot) return null;
+
+    const latestTarget = latestRobot || latestAi;
+    const tSensorStr = latestSensor?.timestamp || latestSensor?.created_at;
+    const tTargetStr = latestTarget?.timestamp || latestTarget?.created_at;
+
+    if (tSensorStr && tTargetStr) {
+      const t1 = new Date(tSensorStr).getTime();
+      const t2 = new Date(tTargetStr).getTime();
+
+      if (!isNaN(t1) && !isNaN(t2)) {
+        const diffMs = Math.abs(t2 - t1);
+        if (diffMs > 0) {
+          return diffMs;
+        }
+      }
+    }
+
+    return null;
+  }, [e2eMeasuredLatency, roomLogs.sensors, roomLogs.robot, roomLogs.ai]);
+
+  const handleStartWebhookServer = async () => {
+    try {
+      setAckStatus('loading');
+      setAckMessage('Starting Webhook Server...');
+      const res = await fetch('/start-webhook-server', { method: 'POST' });
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Hãy restart Vite (npm run dev) để nạp plugin mới.');
+      }
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Server spawn error');
+      }
+      setTimeout(async () => {
+        await checkWebhookHealth();
+        setAckStatus('idle');
+        setAckMessage('');
+      }, 2500);
+    } catch (err) {
+      setAckStatus('error');
+      setAckMessage(err.message || 'Failed to start Webhook Server');
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
 
     const fetchData = async () => {
+      await checkWebhookHealth();
       await Promise.all(LOG_CONFIG.map(({ type }) => loadLog(type)));
       try {
         const dbData = await fetchJson('/api/db/sensors');
@@ -196,7 +338,7 @@ export default function Dashboard() {
     if (!isDraggingSidebar) return;
     const handleMouseMove = (e) => {
       const delta = e.clientX - sidebarDragRef.current.startX;
-      const newWidth = Math.max(320, Math.min(900, sidebarDragRef.current.startWidth + delta));
+      const newWidth = Math.max(320, Math.min(900, sidebarDragRef.current.startWidth - delta));
       setSidebarWidth(newWidth);
     };
     const handleMouseUp = () => setIsDraggingSidebar(false);
@@ -213,6 +355,29 @@ export default function Dashboard() {
     sidebarDragRef.current = { startX: e.clientX, startWidth: sidebarWidth };
     setIsDraggingSidebar(true);
   }, [sidebarWidth]);
+
+  const handleMapDragStart = useCallback((e) => {
+    e.preventDefault();
+    mapResizeRef.current = { startX: e.clientX, startPercent: mapWidthPercent };
+    setIsDraggingMapResize(true);
+  }, [mapWidthPercent]);
+
+  useEffect(() => {
+    if (!isDraggingMapResize) return;
+    const handleMouseMove = (e) => {
+      const delta = e.clientX - mapResizeRef.current.startX;
+      const viewportWidth = window.innerWidth;
+      const newPercent = Math.max(40, Math.min(90, mapResizeRef.current.startPercent + (delta / viewportWidth) * 100));
+      setMapWidthPercent(newPercent);
+    };
+    const handleMouseUp = () => setIsDraggingMapResize(false);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingMapResize]);
 
   const togglePanel = useCallback((type) => {
     setCollapsedPanels((prev) => ({ ...prev, [type]: !prev[type] }));
@@ -232,6 +397,16 @@ export default function Dashboard() {
             onRoomClick={handleRoomClick}
             sensorData={sensorData}
           />
+
+          {!isWebhookOnline && (
+            <button
+              onClick={handleStartWebhookServer}
+              disabled={ackStatus === 'loading'}
+              className="absolute top-6 left-6 px-4 py-2 bg-red-600/95 hover:bg-red-500 text-white font-mono font-bold text-xs rounded-lg shadow-[0_0_20px_rgba(220,38,38,0.7)] border border-red-400 animate-pulse transition-all z-50 cursor-pointer flex items-center gap-2"
+            >
+              <span>⚡ WEBHOOK OFFLINE - CLICK TO START SERVER</span>
+            </button>
+          )}
 
           {activeRoom.id && (
             <button
@@ -294,54 +469,102 @@ export default function Dashboard() {
         {!activeRoom.id && (
           <div className="w-full border-t border-zinc-800 bg-zinc-900" style={{ height: bottomPanelHeight }}>
             <div className="flex h-full">
-              <div className="border-r border-zinc-800 bg-black" style={{ width: `${mapWidthPercent}%` }}>
+              <div className="flex-shrink-0" style={{ width: `${mapWidthPercent}%` }}>
                 <Map2D
                   activeFloorIdx={activeRoom.floor}
                   activeRoomId={activeRoom.id}
                   sensorData={sensorData}
+                  onRoomClick={handleRoomClick}
                 />
               </div>
-              <div className="flex-1 p-4 flex flex-col justify-center items-center gap-3 relative overflow-hidden bg-zinc-950 min-w-[120px]">
-                <div className="text-[10px] text-zinc-500 font-mono text-center tracking-wider">OPERATING SYSTEM</div>
-                <button
-                  onClick={() => handleOperatorAck('ACK')}
-                  disabled={ackStatus === 'loading'}
-                  className="w-full max-w-[120px] h-8 bg-emerald-900/40 hover:bg-emerald-600/60 border border-emerald-500/50 hover:border-emerald-400 text-emerald-300 hover:text-white font-mono font-bold text-[10px] rounded-lg shadow-[0_0_12px_rgba(16,185,129,0.18)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  ACK
-                </button>
+              <div
+                className="w-1.5 cursor-col-resize bg-zinc-800 hover:bg-blue-500/40 transition-colors flex-shrink-0"
+                onMouseDown={handleMapDragStart}
+              />
+              <div className="flex-1 p-3 flex flex-col justify-center items-center gap-2 relative overflow-hidden bg-zinc-950 min-w-[220px]">
+                {/* Thanh thông số độ trễ Mạng (NET RTT) & Toàn luồng (E2E LATENCY) */}
+                <div className="w-full max-w-[260px] flex items-center justify-between px-2.5 py-1 bg-zinc-900/90 border border-zinc-800 rounded-md font-mono text-[9px] text-zinc-400 select-none shadow-inner">
+                  <div className="flex items-center gap-1.5" title="Độ trễ mạng RTT (Round-Trip Time)">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                    <span className="text-zinc-500">NET RTT:</span>
+                    <span className="text-emerald-400 font-bold">{networkLatency} ms</span>
+                  </div>
+                  <div className="flex items-center gap-1.5" title="Độ trễ toàn luồng End-to-End (Sensor -> AI -> Robot)">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                    <span className="text-zinc-500">E2E LATENCY:</span>
+                    <span className="text-blue-400 font-bold">{calculatedE2eLatency !== null ? `${calculatedE2eLatency} ms` : '-- ms'}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 w-full max-w-[260px]">
+                  {/* Cột 1 (Trái) */}
+                  <button
+                    onClick={() => handleOperatorAck('ACK')}
+                    disabled={ackStatus === 'loading'}
+                    className="h-7 bg-emerald-950/60 hover:bg-emerald-600/80 border border-emerald-500/50 text-emerald-300 hover:text-white font-mono font-bold text-[10px] rounded-md shadow-[0_0_10px_rgba(16,185,129,0.2)] transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    ACK
+                  </button>
+                  {/* Cột 2 (Phải) */}
+                  <button
+                    onClick={() => handleRunScenario('normal')}
+                    disabled={ackStatus === 'loading'}
+                    className="h-7 bg-blue-950/60 hover:bg-blue-600/80 border border-blue-500/50 text-blue-300 hover:text-white font-mono font-bold text-[10px] rounded-md shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    Normal
+                  </button>
+
+                  <button
+                    onClick={() => handleRunScenario('robot_retry')}
+                    disabled={ackStatus === 'loading'}
+                    className="h-7 bg-amber-950/60 hover:bg-amber-600/80 border border-amber-500/50 text-amber-300 hover:text-white font-mono font-bold text-[10px] rounded-md shadow-[0_0_10px_rgba(245,158,11,0.2)] transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    Robot Retry
+                  </button>
+                  <button
+                    onClick={() => handleRunScenario('warning')}
+                    disabled={ackStatus === 'loading'}
+                    className="h-7 bg-yellow-950/60 hover:bg-yellow-600/80 border border-yellow-500/50 text-yellow-300 hover:text-white font-mono font-bold text-[10px] rounded-md shadow-[0_0_10px_rgba(234,179,8,0.2)] transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    Warning
+                  </button>
+
+                  <button
+                    onClick={handleResetDemoClick}
+                    disabled={ackStatus === 'loading'}
+                    title="Bấm 1 lần: Undo dòng log vừa thực hiện | Bấm 3 lần nhanh: Xóa toàn bộ log"
+                    className="h-7 bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-600 text-zinc-300 hover:text-white font-mono font-bold text-[10px] rounded-md shadow-[0_0_10px_rgba(113,113,122,0.2)] transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    Reset Demo
+                  </button>
+                  <button
+                    onClick={() => handleRunScenario('critical')}
+                    disabled={ackStatus === 'loading'}
+                    className="h-7 bg-red-950/60 hover:bg-red-600/80 border border-red-500/50 text-red-300 hover:text-white font-mono font-bold text-[10px] rounded-md shadow-[0_0_10px_rgba(239,68,68,0.2)] transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    Critical
+                  </button>
+
+                  {/* Nút Khởi động Webhook - nằm ngay trong cụm nút */}
+                  {!isWebhookOnline && (
+                    <button
+                      onClick={handleStartWebhookServer}
+                      disabled={ackStatus === 'loading'}
+                      className="col-span-2 h-8 bg-red-600/90 hover:bg-red-500 text-white font-mono font-bold text-[10px] rounded-md shadow-[0_0_15px_rgba(220,38,38,0.6)] border border-red-400 animate-pulse transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    >
+                      <span>⚡ WEBHOOK OFFLINE - CLICK TO START SERVER</span>
+                    </button>
+                  )}
+                </div>
+
                 {ackMessage && (
-                  <div className={`w-full max-w-[180px] text-[10px] font-mono text-center ${ackStatus === 'error' ? 'text-red-400' : ackStatus === 'success' ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                  <div className={`w-full max-w-[260px] text-[10px] font-mono text-center ${ackStatus === 'error' ? 'text-red-400' : ackStatus === 'success' ? 'text-emerald-400' : 'text-zinc-500'}`}>
                     {ackMessage}
                   </div>
                 )}
-                <div className="w-full max-w-[180px] text-[10px] text-zinc-600 font-mono text-center break-all">
-                  {latestActionText}
-                </div>
               </div>
             </div>
           </div>
-        )}
-
-        {!activeRoom.id && (
-          <div
-            className="h-1.5 cursor-row-resize bg-zinc-800 hover:bg-blue-500/40 transition-colors flex-shrink-0"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              const startY = e.clientY;
-              const startH = bottomPanelHeight;
-              const onMove = (ev) => {
-                const delta = ev.clientY - startY;
-                setBottomPanelHeight(Math.max(120, Math.min(600, startH + delta)));
-              };
-              const onUp = () => {
-                window.removeEventListener('mousemove', onMove);
-                window.removeEventListener('mouseup', onUp);
-              };
-              window.addEventListener('mousemove', onMove);
-              window.addEventListener('mouseup', onUp);
-            }}
-          />
         )}
       </main>
 
@@ -372,7 +595,7 @@ export default function Dashboard() {
         )}
 
         <div className="flex-1 overflow-y-auto flex flex-col">
-          {LOG_CONFIG.map(({ type, header }, idx) => (
+          {LOG_CONFIG.map(({ type, header }) => (
             <LogPanel
               key={type}
               title={header}

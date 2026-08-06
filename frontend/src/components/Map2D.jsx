@@ -1,5 +1,19 @@
 import { useEffect, useRef } from 'react';
 
+function getRoomColor(sensor, ds, aRoom, roomId) {
+  if (aRoom === roomId) {
+    return { color: '#00ff00', isAlert: false };
+  }
+  if (!sensor) return { color: '#0c0c0e', isAlert: false };
+  if (ds === 'CRITICAL' || ds === 'ERROR' || ds === 'FIRE' || sensor?.temp >= 40 || sensor?.smoke >= 1 || sensor?.co2 >= 1000) {
+    return { color: '#ff0000', isAlert: true };
+  }
+  if (ds === 'WARNING' || sensor?.temp >= 32 || sensor?.smoke >= 0.5 || sensor?.co2 >= 631) {
+    return { color: '#ffaa00', isAlert: true };
+  }
+  return { color: '#00ff00', isAlert: false };
+}
+
 export default function Map2D({ activeFloorIdx, activeRoomId, sensorData }) {
   const canvasRef = useRef(null);
   const sensorDataRef = useRef(sensorData);
@@ -94,26 +108,7 @@ export default function Map2D({ activeFloorIdx, activeRoomId, sensorData }) {
         const id = room.id;
         const sensor = sd[id];
         const ds = String(sensor?.device_status || sensor?.status || '').toUpperCase();
-        let color = '#0c0c0e';
-        let isAlert = false;
-
-        if (sensor) {
-          if (ds === 'CRITICAL' || ds === 'ERROR' || ds === 'FIRE' || sensor?.temp >= 40 || sensor?.smoke >= 1 || sensor?.co2 >= 1000) {
-            color = '#ff0000'; isAlert = true;
-          } else if (ds === 'WARNING' || sensor?.temp >= 32 || sensor?.smoke >= 0.5 || sensor?.co2 >= 631) {
-            color = '#ffaa00'; isAlert = true;
-          } else {
-            color = '#10b981';
-          }
-        } else {
-          color = '#0c0c0e';
-        }
-
-        if (aRoom === id) {
-          color = '#06b6d4';
-          isAlert = false;
-        }
-
+        const { color, isAlert } = getRoomColor(sensor, ds, aRoom, id);
         drawRoom(room.rx, room.rz, id, color, isAlert);
       });
 

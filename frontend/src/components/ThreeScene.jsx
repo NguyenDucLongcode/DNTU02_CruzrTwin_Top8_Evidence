@@ -27,6 +27,22 @@ function normalizeRoomId(rawId) {
   return ROOM_MAPPING[id] || id;
 }
 
+function isSameRoomId(id1, id2) {
+  if (!id1 || !id2) return false;
+  if (id1 === id2) return true;
+
+  const norm = (s) => {
+    let str = String(s).toUpperCase().replace('DNTU_ROOM_', '').replace('PHONG_', '');
+    const m = str.match(/L(\d+)-A(\d+)/i);
+    if (m) return `A${parseInt(m[1]) * 100 + parseInt(m[2])}`;
+    const m2 = str.match(/A(\d+)/i);
+    if (m2) return `A${parseInt(m2[1])}`;
+    return str;
+  };
+
+  return norm(id1) === norm(id2);
+}
+
 function getFloorIndex(object) {
   let current = object;
   while (current) {
@@ -36,6 +52,7 @@ function getFloorIndex(object) {
   return 1;
 }
 
+// eslint-disable-next-line no-unused-vars
 function getRoomIdFromObject(object, fallbackRoomId) {
   let current = object;
   while (current) {
@@ -105,7 +122,7 @@ export default function ThreeScene({ activeRoomId, activeFloorIdx, onRoomClick, 
     const scene = new THREE.Scene();
     sceneRef.current = scene;
     scene.background = new THREE.Color(0x111827);
-    
+
     const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
     cameraRef.current = camera;
     camera.position.set(0, 75, 90); // Zoom in ~20-25% closer/larger
@@ -162,7 +179,7 @@ export default function ThreeScene({ activeRoomId, activeFloorIdx, onRoomClick, 
         floorMesh.position.y = floor.y;
         const floorIndex = Math.round(floor.y / 4) + 1;
         floorMesh.userData.floorIndex = floorIndex;
-        
+
         floorMesh.traverse((child) => {
           if (child.name && child.name.match(/(L1-[TB]\d|A10\d)/i)) {
             child.userData.roomIdMatch = child.name;
@@ -170,7 +187,7 @@ export default function ThreeScene({ activeRoomId, activeFloorIdx, onRoomClick, 
           if (child.parent && child.parent.userData && child.parent.userData.roomIdMatch) {
             child.userData.roomIdMatch = child.parent.userData.roomIdMatch;
           }
-          
+
           if (child.isMesh) {
             child.userData.name = child.userData.roomIdMatch || child.name;
             if (child.material) {
@@ -198,7 +215,7 @@ export default function ThreeScene({ activeRoomId, activeFloorIdx, onRoomClick, 
     const onMouseClick = (event) => {
       pauseAutoRotate();
       if (activeRoomIdRef.current) return;
-      
+
       const rect = container.getBoundingClientRect();
       mouse.x = ((event.clientX - rect.left) / container.clientWidth) * 2 - 1;
       mouse.y = -((event.clientY - rect.top) / container.clientHeight) * 2 + 1;
@@ -296,32 +313,32 @@ export default function ThreeScene({ activeRoomId, activeFloorIdx, onRoomClick, 
   // Handle Mode Change (Building vs Room vs Floor)
   useEffect(() => {
     if (!sceneRef.current || !cameraRef.current || !controlsRef.current) return;
-    
+
     const camera = cameraRef.current;
     const scene = sceneRef.current;
     const controls = controlsRef.current;
-    
+
     if (activeRoomId) {
       // 1. Chế độ xem Từng Phòng (Room View)
       if (overallModelRef.current) overallModelRef.current.visible = false;
-      
+
       const loader = new GLTFLoader();
       const roomFile = `/mohinh/Phong/Phong_${activeRoomId}.glb`;
       loader.load(roomFile, (gltf) => {
         if (activeSubModelRef.current) {
           scene.remove(activeSubModelRef.current);
         }
-        
+
         const subModel = gltf.scene;
         activeSubModelRef.current = subModel;
-        
+
         const box = new THREE.Box3().setFromObject(subModel);
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
         subModel.position.sub(center);
-        
+
         scene.add(subModel);
-        
+
         const maxDim = Math.max(size.x || 1, size.y || 1, size.z || 1);
         const distance = maxDim * 1.5;
         camera.position.set(0, distance * 0.8, distance * 1.5);
@@ -371,7 +388,7 @@ export default function ThreeScene({ activeRoomId, activeFloorIdx, onRoomClick, 
   // Handle Colors Sync
   useEffect(() => {
     if (!overallModelRef.current && !activeSubModelRef.current) return;
-    
+
     const applyColor = (model) => {
       let blink = (Math.sin(Date.now() * 0.005) + 1) / 2;
 
@@ -389,26 +406,31 @@ export default function ThreeScene({ activeRoomId, activeFloorIdx, onRoomClick, 
           const status = getSensorStatus(sensor);
 
           const selectedRoom = activeRoomIdRef.current;
-          const isSelected = selectedRoom && (roomId === selectedRoom || child.userData.roomIdMatch === selectedRoom);
+          const isSelected = selectedRoom && (
+            isRoomView ||
+            isSameRoomId(roomId, selectedRoom) ||
+            isSameRoomId(child.userData.roomIdMatch, selectedRoom) ||
+            isSameRoomId(child.name, selectedRoom)
+          );
 
           let materials = Array.isArray(child.material) ? child.material : [child.material];
           materials.forEach((mat, idx) => {
             let cKey = `originalColor_${idx}`;
+            if (child.userData[cKey] === undefined && mat && mat.color) {
+              child.userData[cKey] = mat.color.getHex();
+            }
+
             if (child.userData[cKey] !== undefined) {
-              if (isSelected) {
-                // Phòng đang được CLICK CHỌN: Hiển thị màu Cyan/Blue sáng nổi bật
-                const targetColor = new THREE.Color(0x06b6d4);
-                mat.color.lerpColors(new THREE.Color(child.userData[cKey]), targetColor, 0.75);
-              } else if (status === 'CRITICAL') {
+              if (status === 'CRITICAL') {
                 const targetColor = new THREE.Color(0xff0000);
                 mat.color.lerpColors(new THREE.Color(child.userData[cKey]), targetColor, blink);
               } else if (status === 'WARNING') {
                 const targetColor = new THREE.Color(0xffaa00);
                 mat.color.lerpColors(new THREE.Color(child.userData[cKey]), targetColor, blink * 0.7);
-              } else if (sensor) {
-                // Trạng thái NORMAL: Phủ màu xanh Emerald nhẹ nhàng cho duy nhất phòng có cảm biến hoạt động
-                const targetColor = new THREE.Color(0x10b981);
-                mat.color.lerpColors(new THREE.Color(child.userData[cKey]), targetColor, 0.35);
+              } else if (isSelected || sensor) {
+                // Phòng được CLICK CHỌN / Trạng thái Normal: Hiển thị màu Xanh Lá tươi (0x00ff00 / Pure Green)
+                const targetColor = new THREE.Color(0x00ff00);
+                mat.color.lerpColors(new THREE.Color(child.userData[cKey]), targetColor, 0.6);
               } else {
                 mat.color.setHex(child.userData[cKey]);
               }
@@ -446,13 +468,12 @@ export default function ThreeScene({ activeRoomId, activeFloorIdx, onRoomClick, 
           <div className="font-bold text-white mb-1 flex items-center justify-between gap-2 border-b border-zinc-800 pb-1">
             <span>{hoverInfo.roomId}</span>
             <span
-              className={`px-1.5 py-0.5 rounded text-[10px] ${
-                hoverInfo.status === 'CRITICAL'
+              className={`px-1.5 py-0.5 rounded text-[10px] ${hoverInfo.status === 'CRITICAL'
                   ? 'bg-red-500/20 text-red-400 border border-red-500/40'
                   : hoverInfo.status === 'WARNING'
-                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                  : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-              }`}
+                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                    : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                }`}
             >
               {hoverInfo.status}
             </span>

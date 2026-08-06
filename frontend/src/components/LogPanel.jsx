@@ -227,14 +227,32 @@ export default function LogPanel({ title, data, height, showNormal = true, empty
             const display = getLogDisplay(title, log, showNormal);
             if (!display) return null;
             const msg = formatRoomName(display.message);
-            const textColor = display.isCritical
-              ? 'text-red-400 font-bold'
-              : display.isWarning
-                ? 'text-amber-300 font-bold'
-                : 'text-white opacity-80';
+
+            if (display.isCritical) {
+              return (
+                <div
+                  key={`${title}-${i}`}
+                  className="my-1.5 p-2 rounded-md border border-red-500 bg-red-950/40 text-red-200 font-mono font-bold leading-relaxed break-words shadow-[0_0_12px_rgba(239,68,68,0.4)] animate-pulse transition-all"
+                >
+                  {msg}
+                </div>
+              );
+            }
+
+            if (display.isWarning) {
+              return (
+                <div
+                  key={`${title}-${i}`}
+                  className="my-1.5 p-2 rounded-md border border-amber-500 bg-amber-950/35 text-amber-100 font-mono font-bold leading-relaxed break-words shadow-[0_0_10px_rgba(245,158,11,0.3)] animate-pulse transition-all"
+                >
+                  {msg}
+                </div>
+              );
+            }
+
             return (
-              <div key={`${title}-${i}`} className="mb-2 break-words hover:opacity-100 transition-opacity">
-                <span className={textColor}>{msg}</span>
+              <div key={`${title}-${i}`} className="py-1 px-1.5 my-0.5 border-b border-zinc-800/40 text-zinc-300 opacity-85 hover:opacity-100 transition-opacity">
+                <span>{msg}</span>
               </div>
             );
           })

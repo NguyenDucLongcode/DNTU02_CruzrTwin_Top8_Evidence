@@ -3,6 +3,7 @@ import ThreeScene from '../components/ThreeScene';
 import LogPanel from '../components/LogPanel';
 import Map2D from '../components/Map2D';
 import EmergencyPopUpHUD from '../components/EmergencyPopUpHUD';
+import MiniThreeViewer from '../components/MiniThreeViewer';
 
 const LOG_CONFIG = [
   { type: 'sensors', header: 'SENSORS' },
@@ -60,6 +61,74 @@ function getLatestRoomLog(logs, zoneId, predicate) {
   return [...scopedLogs].reverse().find(predicate) || null;
 }
 
+function RoomDetailBottomBar({ roomId, floorIdx, sensorData }) {
+  const sensor = sensorData[roomId] || sensorData[roomId?.replace(/L\d+/, 'L1')] || {};
+
+  const temp = Number(sensor.temp !== undefined ? sensor.temp : (sensor.temperature !== undefined ? sensor.temperature : 24.5));
+  const smoke = Number(sensor.smoke_status !== undefined ? sensor.smoke_status : (sensor.smoke !== undefined ? sensor.smoke : 0.0));
+  const co2 = Number(sensor.co2 !== undefined ? sensor.co2 : (sensor.air_quality_or_co2 !== undefined ? sensor.air_quality_or_co2 : 400.0));
+  const deviceStatus = String(sensor.device_status || sensor.status || 'NORMAL').toUpperCase();
+
+  const isCritical = deviceStatus === 'CRITICAL' || deviceStatus === 'ERROR' || deviceStatus === 'FIRE' || temp >= 40 || smoke >= 1 || co2 >= 1000;
+  const isWarning = !isCritical && (deviceStatus === 'WARNING' || temp >= 32 || co2 >= 631 || smoke >= 0.5);
+
+  const floorFileIdx = Math.max(0, Math.min(4, (floorIdx || 1) - 1));
+  const floorGlb = `/mohinh/Tang/Tang_${floorFileIdx}.glb`;
+  const roomGlb = `/mohinh/Phong/Phong_${roomId}.glb`;
+
+  return (
+    <div className="w-full h-full p-1.5 grid grid-cols-3 gap-2 bg-zinc-950 font-mono text-white overflow-hidden">
+      {/* Mục 1: Mô hình Tầng chứa phòng */}
+      <div className="relative rounded-lg overflow-hidden border border-blue-500/30 bg-black/40 flex flex-col h-full">
+        <div className="px-2 py-0.5 bg-blue-950/60 border-b border-blue-500/30 text-[10px] font-bold text-blue-400 flex items-center justify-between">
+          <span>🏛️ FLOOR {floorIdx || 1} VIEW</span>
+          <span className="text-[9px] text-zinc-400">3D MODEL</span>
+        </div>
+        <div className="flex-1 relative w-full h-full">
+          <MiniThreeViewer key={`f-${floorGlb}`} glbPath={floorGlb} severity={isCritical ? 'critical' : isWarning ? 'warning' : 'normal'} highlightRoomId={roomId} />
+        </div>
+      </div>
+
+      {/* Mục 2: Mô hình Phòng 3D */}
+      <div className={`relative rounded-lg overflow-hidden border ${isCritical ? 'border-red-500/40 bg-red-950/20' : isWarning ? 'border-amber-500/40 bg-amber-950/20' : 'border-emerald-500/40 bg-emerald-950/20'} flex flex-col h-full`}>
+        <div className={`px-2 py-0.5 border-b text-[10px] font-bold flex items-center justify-between ${isCritical ? 'bg-red-950/60 border-red-500/30 text-red-400' : isWarning ? 'bg-amber-950/60 border-amber-500/30 text-amber-400' : 'bg-emerald-950/60 border-emerald-500/30 text-emerald-400'}`}>
+          <span>🔥 ROOM {roomId} 3D</span>
+          <span className="text-[9px] px-1 py-0.5 rounded bg-black/40">{deviceStatus}</span>
+        </div>
+        <div className="flex-1 relative w-full h-full">
+          <MiniThreeViewer key={`r-${roomGlb}`} glbPath={roomGlb} severity={isCritical ? 'critical' : isWarning ? 'warning' : 'normal'} />
+        </div>
+      </div>
+
+      {/* Mục 3: Bảng Thông số Cảm biến từ Log */}
+      <div className="relative rounded-lg border border-emerald-500/30 bg-zinc-900/90 p-2 flex flex-col justify-between text-[11px] h-full overflow-y-auto">
+        <div className="font-bold text-emerald-400 border-b border-zinc-800 pb-1 flex justify-between items-center">
+          <span>📊 SENSOR TELEMETRY</span>
+          <span className="text-[9px] text-zinc-400">ROOM {roomId}</span>
+        </div>
+        <div className="space-y-1 my-1">
+          <div className="flex justify-between items-center bg-zinc-950/80 px-2 py-0.5 rounded border border-zinc-800/60">
+            <span className="text-zinc-400">🌡️ Nhiệt độ</span>
+            <span className={`font-bold ${temp >= 40 ? 'text-red-400 animate-pulse' : temp >= 32 ? 'text-amber-400' : 'text-emerald-400'}`}>{temp.toFixed(1)} °C</span>
+          </div>
+          <div className="flex justify-between items-center bg-zinc-950/80 px-2 py-0.5 rounded border border-zinc-800/60">
+            <span className="text-zinc-400">💨 Khói</span>
+            <span className={`font-bold ${smoke >= 0.5 ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`}>{smoke.toFixed(1)} %</span>
+          </div>
+          <div className="flex justify-between items-center bg-zinc-950/80 px-2 py-0.5 rounded border border-zinc-800/60">
+            <span className="text-zinc-400">🫁 CO₂</span>
+            <span className={`font-bold ${co2 >= 1000 ? 'text-red-400 animate-pulse' : co2 >= 631 ? 'text-amber-400' : 'text-emerald-400'}`}>{co2.toFixed(0)} ppm</span>
+          </div>
+        </div>
+        <div className="flex justify-between items-center text-[10px] text-zinc-400 pt-1 border-t border-zinc-800/60">
+          <span>🤖 Robot: <strong className="text-cyan-400">DISPATCHED</strong></span>
+          <span>🔌 Plug: <strong className={isCritical ? 'text-red-400' : 'text-emerald-400'}>{isCritical ? 'POWER OFF' : 'ON'}</strong></span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [activeRoom, setActiveRoom] = useState({ id: null, floor: null });
   const [sensorData, setSensorData] = useState({});
@@ -100,6 +169,7 @@ export default function Dashboard() {
   });
   const [collapsedPanels, setCollapsedPanels] = useState({});
 
+  // eslint-disable-next-line no-unused-vars
   const [bottomPanelHeight, setBottomPanelHeight] = useState(240);
   const [mapWidthPercent, setMapWidthPercent] = useState(75);
   const [isDraggingMapResize, setIsDraggingMapResize] = useState(false);
@@ -131,6 +201,7 @@ export default function Dashboard() {
   };
 
   const selectedZoneId = getRoomZoneId(activeRoom.id);
+  // eslint-disable-next-line no-unused-vars
   const displayRoomLabel = activeRoom.id || 'ALL ROOMS';
 
   const roomLogs = useMemo(() => {
@@ -155,6 +226,7 @@ export default function Dashboard() {
     return {};
   };
 
+  // eslint-disable-next-line no-unused-vars
   const latestActionText = latestRoomRobotAction
     ? `${latestRoomRobotAction.robot_action_id || 'RobotAction'}`
     : 'No recent RobotAction';
@@ -264,7 +336,7 @@ export default function Dashboard() {
       } else {
         setIsWebhookOnline(false);
       }
-    } catch (e) {
+    } catch {
       setIsWebhookOnline(false);
     }
   };
@@ -344,6 +416,7 @@ export default function Dashboard() {
       cancelled = true;
       clearInterval(interval);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-detect CRITICAL/WARNING from AI detection logs and pop the emergency HUD
@@ -436,7 +509,7 @@ export default function Dashboard() {
   return (
     <div className="w-full h-full flex flex-col md:flex-row overflow-hidden bg-black">
       <main className="flex-1 relative h-full flex flex-col min-w-0">
-        <div className="flex-1 relative w-full">
+        <div className="flex-1 relative w-full overflow-hidden">
           <ThreeScene
             activeRoomId={activeRoom.id}
             activeFloorIdx={activeRoom.floor}
@@ -454,40 +527,47 @@ export default function Dashboard() {
             </button>
           )}
 
+
+
+          {/* Nút bấm QUAY VỀ TOÀN TÒA NHÀ (Hiển thị nổi bật khi đang xem Phòng hoặc Tầng) */}
           {(activeRoom.id || activeRoom.floor) && (
             <button
               onClick={handleBackToBuilding}
-              className="absolute top-20 left-6 px-5 py-2 bg-red-600/90 hover:bg-red-500 text-white font-bold font-mono text-xs rounded shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all border border-red-400 z-40 cursor-pointer"
+              className="absolute top-6 left-6 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-mono font-bold text-xs rounded-xl shadow-[0_0_20px_rgba(37,99,235,0.7)] border-2 border-blue-300 z-50 cursor-pointer flex items-center gap-2 transition-all hover:scale-105"
             >
-              BACK TO BUILDING
+              <span className="text-sm">⬅</span>
+              <span>BACK TO BUILDING VIEW {activeRoom.id ? `(ROOM ${activeRoom.id})` : `(FLOOR ${activeRoom.floor})`}</span>
             </button>
           )}
 
-          {activeRoom.floor && !activeRoom.id && (
-            <div className="absolute top-6 left-6 px-4 py-2 bg-blue-900/80 border border-blue-500 text-blue-300 font-mono font-bold text-xs rounded-lg shadow-lg z-40">
-              FLOOR {activeRoom.floor} VIEW
-            </div>
+          {/* Emergency Pop-up HUD — 3 panel nổi phủ lên vùng 3D (Chỉ hiển thị khi ở Chế độ Toàn Tòa Nhà) */}
+          {!activeRoom.id && (
+            <EmergencyPopUpHUD
+              roomInfo={emergencyPopup}
+              sensorData={sensorData}
+              onClose={() => setEmergencyPopup(null)}
+            />
           )}
-
-          {/* Emergency Pop-up HUD — 3 panels riêng biệt phủ lên vùng 3D */}
-          <EmergencyPopUpHUD
-            roomInfo={emergencyPopup}
-            sensorData={sensorData}
-            onClose={() => setEmergencyPopup(null)}
-          />
         </div>
 
-        {!activeRoom.id && (
-          <div className="w-full border-t border-zinc-800 bg-zinc-900" style={{ height: bottomPanelHeight }}>
-            <div className="flex h-full">
-              <div className="flex-shrink-0" style={{ width: `${mapWidthPercent}%` }}>
+        <div className="w-full border-t border-zinc-800 bg-zinc-900" style={{ height: bottomPanelHeight }}>
+          <div className="flex h-full">
+            <div className="flex-shrink-0" style={{ width: `${mapWidthPercent}%` }}>
+              {!activeRoom.id ? (
                 <Map2D
                   activeFloorIdx={activeRoom.floor}
                   activeRoomId={activeRoom.id}
                   sensorData={sensorData}
                   onRoomClick={handleRoomClick}
                 />
-              </div>
+              ) : (
+                <RoomDetailBottomBar
+                  roomId={activeRoom.id}
+                  floorIdx={activeRoom.floor}
+                  sensorData={sensorData}
+                />
+              )}
+            </div>
               <div
                 className="w-1.5 cursor-col-resize bg-zinc-800 hover:bg-blue-500/40 transition-colors flex-shrink-0"
                 onMouseDown={handleMapDragStart}
@@ -576,7 +656,6 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-        )}
       </main>
 
       <div

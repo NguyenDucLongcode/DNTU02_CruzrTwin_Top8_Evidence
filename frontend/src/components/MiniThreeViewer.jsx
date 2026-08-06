@@ -125,37 +125,55 @@ export default function MiniThreeViewer({ glbPath, severity = 'normal', highligh
         controls.update();
 
         const sev = (severity || 'normal').toLowerCase();
-        if (sev !== 'normal') {
-          const blink = (Math.sin(Date.now() * 0.005) + 1) / 2;
-          const targetHex = sev === 'critical' ? 0xff0000 : 0xffaa00;
-          const targetColor = new THREE.Color(targetHex);
-          const blinkStrength = sev === 'critical' ? blink : blink * 0.6;
+        const blink = (Math.sin(Date.now() * 0.005) + 1) / 2;
+        const hlNorm = highlightRoomId ? normalizeRoomId(highlightRoomId) || highlightRoomId : null;
 
-          // Normalize highlightRoomId for comparison
-          const hlNorm = highlightRoomId ? normalizeRoomId(highlightRoomId) || highlightRoomId : null;
+        scene.traverse((child) => {
+          if (!child.isMesh || !child.material) return;
+          const info = meshInfoMap.get(child.uuid);
 
-          scene.traverse((child) => {
-            if (!child.isMesh || !child.material) return;
-            const info = meshInfoMap.get(child.uuid);
-            if (!info) return;
-
-            // Determine if this mesh should blink
-            const shouldBlink = !hlNorm                        // no specific room → blink all (Room panel)
-              || info.roomId === hlNorm                         // exact match
-              || (info.roomId && hlNorm && info.roomId.replace(/^L\d+-/, '') === hlNorm.replace(/^L\d+-/, '')); // match ignoring floor prefix
-
-            const mats = Array.isArray(child.material) ? child.material : [child.material];
-            mats.forEach((mat, idx) => {
-              const origHex = info.origColors.get(idx);
-              if (origHex === undefined || !mat?.color) return;
-              if (shouldBlink) {
-                mat.color.lerpColors(new THREE.Color(origHex), targetColor, blinkStrength);
-              } else {
-                mat.color.setHex(origHex);
-              }
-            });
+          // Nếu model là mô hình 1 phòng duy nhất (Phong_xxx.glb), tự động gán origColors nếu chưa có
+          const origColors = info?.origColors || new Map();
+          const mats = Array.isArray(child.material) ? child.material : [child.material];
+          mats.forEach((mat, idx) => {
+            if (origColors.get(idx) === undefined && mat?.color) {
+              origColors.set(idx, mat.color.getHex());
+            }
           });
-        }
+
+          // Đối với mô hình Tầng (Tang_x.glb): chỉ tô màu cho duy nhất phòng target (highlightRoomId)
+          // Đối với mô hình Phòng (Phong_x.glb): tô màu toàn bộ mô hình phòng đó
+          const isSingleRoomModel = glbPath.includes('/Phong/');
+          const shouldHighlight = isSingleRoomModel
+            ? true
+            : Boolean(
+                hlNorm && info?.roomId && (
+                  info.roomId === hlNorm ||
+                  info.roomId.replace(/^L\d+-/, '') === hlNorm.replace(/^L\d+-/, '')
+                )
+              );
+
+          mats.forEach((mat, idx) => {
+            const origHex = origColors.get(idx);
+            if (origHex === undefined || !mat?.color) return;
+
+            if (shouldHighlight) {
+              if (sev === 'critical') {
+                const targetColor = new THREE.Color(0xff0000);
+                mat.color.lerpColors(new THREE.Color(origHex), targetColor, blink);
+              } else if (sev === 'warning') {
+                const targetColor = new THREE.Color(0xffaa00);
+                mat.color.lerpColors(new THREE.Color(origHex), targetColor, blink * 0.6);
+              } else {
+                // Trạng thái Normal / Selected: Hiển thị màu Xanh Lá tươi (0x00ff00 / Pure Green)
+                const targetColor = new THREE.Color(0x00ff00);
+                mat.color.lerpColors(new THREE.Color(origHex), targetColor, 0.6);
+              }
+            } else {
+              mat.color.setHex(origHex);
+            }
+          });
+        });
 
         renderer.render(scene, camera);
       };

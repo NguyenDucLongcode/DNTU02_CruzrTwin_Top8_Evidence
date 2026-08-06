@@ -6,6 +6,7 @@ Webhook Receiver - Nhận notification từ Orion
 import json
 import os
 import sys
+import threading
 from datetime import datetime, timezone
 from flask import Flask, request, jsonify
 import time
@@ -24,6 +25,10 @@ from src.utils import write_orion_state_log
 
 
 app = Flask(__name__)
+
+# Đăng ký Blueprint xử lý 12 nút script kịch bản Controller
+from src.fiware.script_runner_api import script_runner_bp
+app.register_blueprint(script_runner_bp)
 
 ZONE_ID = os.getenv("ZONE_ID", "DNTU_ROOM_A101")
 
@@ -597,7 +602,6 @@ def run_scenario():
 @app.route('/webhook/health', methods=['GET'])
 def health_check():
     return {"status": "healthy"}, 200
-
 
 
 if __name__ == "__main__":

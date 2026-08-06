@@ -201,6 +201,7 @@ export default function Dashboard() {
 
   const resetClickCountRef = useRef(0);
   const resetClickTimerRef = useRef(null);
+  const lastAlertIdRef = useRef(null);
 
   const handleResetDemoClick = () => {
     resetClickCountRef.current += 1;

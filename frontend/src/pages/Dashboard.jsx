@@ -1,9 +1,31 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import ThreeScene from '../components/ThreeScene';
 import LogPanel from '../components/LogPanel';
 import Map2D from '../components/Map2D';
 import EmergencyPopUpHUD from '../components/EmergencyPopUpHUD';
 import MiniThreeViewer from '../components/MiniThreeViewer';
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.warn("ErrorBoundary caught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || null;
+    }
+    return this.props.children;
+  }
+}
 
 const LOG_CONFIG = [
   { type: 'sensors', header: 'SENSORS' },
@@ -141,7 +163,41 @@ export default function Dashboard() {
   const [networkLatency, setNetworkLatency] = useState(0);
   const [e2eMeasuredLatency, setE2eMeasuredLatency] = useState(null);
   const [emergencyPopup, setEmergencyPopup] = useState(null);
-  const lastAlertIdRef = useRef(null);
+  const [controllerState, setControllerState] = useState({ ai_detection_focus: false });
+
+  // Poll Controller State từ Remote Controller (/api/script/state) định kỳ 1s
+  useEffect(() => {
+    const pollControllerState = async () => {
+      try {
+        const res = await fetch('/api/script/state');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.state) setControllerState(data.state);
+        }
+      } catch (err) {
+        // ignore offline
+      }
+    };
+    pollControllerState();
+    const interval = setInterval(pollControllerState, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const [aiFocusRendered, setAiFocusRendered] = useState(false);
+  const [aiFocusVisible, setAiFocusVisible] = useState(false);
+
+  // Điều khiển hiệu ứng mượt mà Zoom-In khi mở và Zoom-Out khi đóng Modal
+  useEffect(() => {
+    if (controllerState.ai_detection_focus) {
+      setAiFocusRendered(true);
+      const timer = setTimeout(() => setAiFocusVisible(true), 20);
+      return () => clearTimeout(timer);
+    } else {
+      setAiFocusVisible(false);
+      const timer = setTimeout(() => setAiFocusRendered(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [controllerState.ai_detection_focus]);
 
   const resetClickCountRef = useRef(0);
   const resetClickTimerRef = useRef(null);
@@ -540,13 +596,15 @@ export default function Dashboard() {
             </button>
           )}
 
-          {/* Emergency Pop-up HUD — 3 panel nổi phủ lên vùng 3D (Chỉ hiển thị khi ở Chế độ Toàn Tòa Nhà) */}
+          {/* Emergency Pop-up HUD — 3 panel nổi phủ lên vùng 3D (Bọc ErrorBoundary bảo vệ tuyệt đối) */}
           {!activeRoom.id && (
-            <EmergencyPopUpHUD
-              roomInfo={emergencyPopup}
-              sensorData={sensorData}
-              onClose={() => setEmergencyPopup(null)}
-            />
+            <ErrorBoundary fallback={null}>
+              <EmergencyPopUpHUD
+                roomInfo={emergencyPopup}
+                sensorData={sensorData}
+                onClose={() => setEmergencyPopup(null)}
+              />
+            </ErrorBoundary>
           )}
         </div>
 
@@ -701,6 +759,33 @@ export default function Dashboard() {
         className="w-1.5 cursor-col-resize bg-zinc-800 hover:bg-blue-500/40 transition-colors flex-shrink-0 h-full"
         onMouseDown={handleSidebarDragStart}
       />
+
+      {/* FULL-SCREEN FOCUS MODAL FOR AI DETECTION LOG (Hiệu ứng Zoom-In khi mở & Zoom-Out khi đóng) */}
+      {aiFocusRendered && (
+        <div
+          className={`fixed inset-0 z-[100] flex items-center justify-center p-6 transition-all duration-300 ease-out ${
+            aiFocusVisible
+              ? 'bg-black/80 backdrop-blur-md opacity-100'
+              : 'bg-black/0 backdrop-blur-none opacity-0'
+          }`}
+        >
+          <div
+            className={`bg-[#0c0c0e] border border-zinc-800 rounded-xl p-4 w-full max-w-4xl shadow-2xl flex flex-col h-[75vh] max-h-[80vh] overflow-hidden transition-all duration-350 cubic-bezier(0.16, 1, 0.3, 1) transform origin-[85%_55%] ${
+              aiFocusVisible
+                ? 'scale-100 opacity-100 translate-x-0 translate-y-0'
+                : 'scale-0 opacity-0 translate-x-24 translate-y-8 pointer-events-none'
+            }`}
+          >
+            <LogPanel
+              title="AI_DETECTION"
+              data={logs.ai}
+              height="100%"
+              showNormal={showNormalLogs}
+              emptyMessage="Chưa có dữ liệu AI Detection..."
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

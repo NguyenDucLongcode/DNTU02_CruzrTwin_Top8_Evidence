@@ -157,17 +157,19 @@ export default function MiniThreeViewer({ glbPath, severity = 'normal', highligh
             const origHex = origColors.get(idx);
             if (origHex === undefined || !mat?.color) return;
 
+            const baseColor = new THREE.Color(origHex);
+
             if (shouldHighlight) {
               if (sev === 'critical') {
                 const targetColor = new THREE.Color(0xff0000);
-                mat.color.lerpColors(new THREE.Color(origHex), targetColor, blink);
+                mat.color.copy(baseColor.clone().lerp(targetColor, 0.2 + 0.8 * blink));
               } else if (sev === 'warning') {
                 const targetColor = new THREE.Color(0xffaa00);
-                mat.color.lerpColors(new THREE.Color(origHex), targetColor, blink * 0.6);
+                mat.color.copy(baseColor.clone().lerp(targetColor, 0.2 + 0.8 * blink));
               } else {
                 // Trạng thái Normal / Selected: Hiển thị màu Xanh Lá tươi (0x00ff00 / Pure Green)
                 const targetColor = new THREE.Color(0x00ff00);
-                mat.color.lerpColors(new THREE.Color(origHex), targetColor, 0.6);
+                mat.color.copy(baseColor.clone().lerp(targetColor, 0.6));
               }
             } else {
               mat.color.setHex(origHex);

@@ -71,6 +71,7 @@ def update_room_scenario(
 
     attrs = {
         "scenario_id": {
+            "type": "Text",
             "value": scenario_id
         }
     }

@@ -204,7 +204,7 @@ export default function LogPanel({ title, data, height, showNormal = true, empty
 
   return (
     <div
-      className="flex flex-col border-b border-zinc-800"
+      className="flex flex-col border-b border-zinc-800 min-h-0 h-full overflow-hidden"
       style={{ height: typeof height === 'number' ? `${height}px` : height }}
     >
       <div

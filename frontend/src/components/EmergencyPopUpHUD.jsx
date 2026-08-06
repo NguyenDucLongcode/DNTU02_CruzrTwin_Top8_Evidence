@@ -89,11 +89,20 @@ function EmergencyPopupContent({ roomInfo, sensorData, onClose }) {
     return () => observer.disconnect();
   }, []);
 
-  const sensor = sensorData[roomId] || sensorData[roomId?.replace(/L\d+/, 'L1')] || {};
+  const safeSensorData = sensorData || {};
+  const targetKey = roomId || 'L1-A1';
+  const fallbackKey = targetKey.replace(/L\d+/, 'L1');
+  const sensor = safeSensorData[targetKey] || safeSensorData[fallbackKey] || {};
 
-  const temp = Number(sensor.temp !== undefined ? sensor.temp : (sensor.temperature !== undefined ? sensor.temperature : 24.5));
-  const smoke = Number(sensor.smoke_status !== undefined ? sensor.smoke_status : (sensor.smoke !== undefined ? sensor.smoke : 0.0));
-  const co2 = Number(sensor.co2 !== undefined ? sensor.co2 : (sensor.air_quality_or_co2 !== undefined ? sensor.air_quality_or_co2 : 400.0));
+  const rawTemp = sensor.temp ?? sensor.temperature ?? 24.5;
+  const temp = isNaN(Number(rawTemp)) ? 24.5 : Number(rawTemp);
+
+  const rawSmoke = sensor.smoke_status ?? sensor.smoke ?? 0.0;
+  const smoke = isNaN(Number(rawSmoke)) ? 0.0 : Number(rawSmoke);
+
+  const rawCo2 = sensor.co2 ?? sensor.air_quality_or_co2 ?? 400.0;
+  const co2 = isNaN(Number(rawCo2)) ? 400.0 : Number(rawCo2);
+
   const deviceStatus = String(sensor.device_status || sensor.status || 'NORMAL').toUpperCase();
 
   const isCritical = deviceStatus === 'CRITICAL' || deviceStatus === 'ERROR' || deviceStatus === 'FIRE' || temp >= 40 || smoke >= 1 || co2 >= 1000;
@@ -120,9 +129,17 @@ function EmergencyPopupContent({ roomInfo, sensorData, onClose }) {
   const bottomPanelX = SPACING;
   const bottomPanelY = Math.max(SPACING, containerSize.h - TELEMETRY_HEIGHT - SPACING);
 
+  useEffect(() => {
+    if (!showFloor && !showRoom && !showSensor) {
+      onClose?.();
+    }
+  }, [showFloor, showRoom, showSensor, onClose]);
+
   const floorFileIdx = Math.max(0, Math.min(4, (floorIdx || 1) - 1));
   const floorGlb = `/mohinh/Tang/Tang_${floorFileIdx}.glb`;
-  const roomGlb = `/mohinh/Phong/Phong_${roomId}.glb`;
+  const validRooms = ['L1-A1', 'L1-A2', 'L1-A3', 'L1-A4', 'L1-A5'];
+  const safeRoomId = validRooms.includes(roomId) ? roomId : 'L1-A1';
+  const roomGlb = `/mohinh/Phong/Phong_${safeRoomId}.glb`;
 
   return (
     <div ref={containerRef} className="absolute inset-0 pointer-events-none z-40 overflow-hidden">
@@ -186,9 +203,6 @@ function EmergencyPopupContent({ roomInfo, sensorData, onClose }) {
           </div>
         </FloatingPanel>
       )}
-
-      {/* Master close: khi tất cả panel đã đóng → gọi onClose */}
-      {!showFloor && !showRoom && !showSensor && (() => { onClose?.(); return null; })()}
     </div>
   );
 }

@@ -20,7 +20,7 @@ if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
         pass
 
 # Đoạn xin phép bắt đầu (Greeting / Start Text)
-START_TEXT_VI = "Đội DNTU CruzrTwin xin được phép bắt đầu."
+# START_TEXT_VI = "Đội DNTU CruzrTwin xin được phép bắt đầu."
 START_TEXT_EN = "Ladies and Gentlemen, dear judges and all the audience. The DNTU CruzrTwin team would like to begin our presentation now."
 
 # Đoạn văn bản giới thiệu bằng Tiếng Anh (English Intro Text)
@@ -30,11 +30,11 @@ INTRO_TEXT_EN = (
 )
 
 # Bản dịch Tiếng Việt chuẩn (Vietnamese Intro Text)
-INTRO_TEXT_VI = (
-    "Tại nhiều tòa nhà công cộng tại khu vực ASEAN, hệ thống kỹ thuật số có thể phát hiện nguy hiểm—"
-    "nhưng lại không thể tiếp cận trực tiếp những người đang cần hỗ trợ. "
+# INTRO_TEXT_VI = (
+#     "Tại nhiều tòa nhà công cộng tại khu vực ASEAN, hệ thống kỹ thuật số có thể phát hiện nguy hiểm—"
+#     "nhưng lại không thể tiếp cận trực tiếp những người đang cần hỗ trợ. "
 
-)
+# )
 
 
 def play_gestures_continuously(client, duration_sec: float, actions: list, stop_event: threading.Event):

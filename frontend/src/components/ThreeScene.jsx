@@ -415,25 +415,25 @@ export default function ThreeScene({ activeRoomId, activeFloorIdx, onRoomClick, 
 
           let materials = Array.isArray(child.material) ? child.material : [child.material];
           materials.forEach((mat, idx) => {
-            let cKey = `originalColor_${idx}`;
+            let cKey = `pristineColorHex_${idx}`;
             if (child.userData[cKey] === undefined && mat && mat.color) {
               child.userData[cKey] = mat.color.getHex();
             }
 
-            if (child.userData[cKey] !== undefined) {
-              if (status === 'CRITICAL') {
-                const targetColor = new THREE.Color(0xff0000);
-                mat.color.lerpColors(new THREE.Color(child.userData[cKey]), targetColor, blink);
-              } else if (status === 'WARNING') {
-                const targetColor = new THREE.Color(0xffaa00);
-                mat.color.lerpColors(new THREE.Color(child.userData[cKey]), targetColor, blink * 0.7);
-              } else if (isSelected || sensor) {
-                // Phòng được CLICK CHỌN / Trạng thái Normal: Hiển thị màu Xanh Lá tươi (0x00ff00 / Pure Green)
-                const targetColor = new THREE.Color(0x00ff00);
-                mat.color.lerpColors(new THREE.Color(child.userData[cKey]), targetColor, 0.6);
-              } else {
-                mat.color.setHex(child.userData[cKey]);
-              }
+            const origHex = child.userData[cKey] !== undefined ? child.userData[cKey] : (mat.color ? mat.color.getHex() : 0xcccccc);
+
+            if (status === 'CRITICAL') {
+              const targetColor = new THREE.Color(0xff0000);
+              mat.color.lerpColors(new THREE.Color(origHex), targetColor, blink);
+            } else if (status === 'WARNING') {
+              const targetColor = new THREE.Color(0xffaa00);
+              mat.color.lerpColors(new THREE.Color(origHex), targetColor, blink * 0.7);
+            } else if (isSelected || sensor) {
+              // Phòng được CLICK CHỌN / Trạng thái Normal: Hiển thị màu Xanh Lá tươi (0x00ff00 / Pure Green)
+              const targetColor = new THREE.Color(0x00ff00);
+              mat.color.lerpColors(new THREE.Color(origHex), targetColor, 0.6);
+            } else {
+              mat.color.setHex(origHex);
             }
           });
         }

@@ -43,7 +43,9 @@ function getRoomIdFromObject(object, fallbackRoomId) {
     if (matched) return matched.replace('L1', `L${getFloorIndex(current)}`);
     current = current.parent;
   }
-  return fallbackRoomId;
+  // Trả về null nếu mesh không thuộc phòng nào (hành lang, tường chung, v.v.)
+  // Chỉ dùng fallbackRoomId khi đang ở chế độ xem phòng đơn lẻ (Room View)
+  return null;
 }
 
 function getSensorText(sensor) {
@@ -69,12 +71,13 @@ function getSensorStatus(sensor) {
   return 'NORMAL';
 }
 
-export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
+export default function ThreeScene({ activeRoomId, activeFloorIdx, onRoomClick, sensorData }) {
   const mountRef = useRef(null);
   const sceneRef = useRef(null);
   const overallModelRef = useRef(null);
   const activeSubModelRef = useRef(null);
   const cameraRef = useRef(null);
+  const controlsRef = useRef(null);
   const raycasterRef = useRef(null);
   const mouseRef = useRef(new THREE.Vector2());
   const activeRoomIdRef = useRef(activeRoomId);
@@ -115,6 +118,7 @@ export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
     container.appendChild(renderer.domElement);
 
     const controls = new OrbitControls(camera, renderer.domElement);
+    controlsRef.current = controls;
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.autoRotate = true;
@@ -205,17 +209,10 @@ export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
         if (intersects.length > 0) {
           let currentObj = intersects[0].object;
           let floorIdx = getFloorIndex(currentObj);
-          
           let roomId = getRoomIdFromObject(currentObj, null);
-          if (!roomId) {
-            const point = intersects[0].point;
-            const isTopRow = point.z < 0;
-            const idx = Math.max(1, Math.min(6, Math.round(point.x / 12) + 3));
-            let rawRoom = `L1-${isTopRow ? 'T' : 'B'}${idx}`;
-            roomId = (ROOM_MAPPING[rawRoom] || 'L1-A1').replace('L1', `L${floorIdx}`);
-          }
 
-          if (roomId && onRoomClickRef.current) {
+          // Nếu click vào hành lang / mặt sàn (roomId = null) -> Chọn tầng đó để hiển thị bản đồ 2D của tầng đó!
+          if (onRoomClickRef.current) {
             onRoomClickRef.current(roomId, floorIdx);
           }
         }
@@ -245,15 +242,16 @@ export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
       const hit = intersects[0];
       const roomId = getRoomIdFromObject(hit.object, activeRoomIdRef.current);
       const deviceId = hit.object.userData?.name || hit.object.name || 'Unknown device';
+      const floorNum = getFloorIndex(hit.object);
       const sensor = roomId ? sensorDataRef.current[roomId] : null;
       const status = getSensorStatus(sensor);
 
       setHoverInfo({
         x: event.clientX - rect.left,
         y: event.clientY - rect.top,
-        roomId: roomId || 'Unknown room',
+        roomId: roomId || `Floor ${floorNum} (common area)`,
         deviceId,
-        floor: getFloorIndex(hit.object),
+        floor: floorNum,
         sensorText: getSensorText(sensor),
         status
       });
@@ -295,19 +293,23 @@ export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
     };
   }, []);
 
-  // Handle Mode Change (Building vs Room)
+  // Handle Mode Change (Building vs Room vs Floor)
   useEffect(() => {
-    if (!sceneRef.current || !cameraRef.current) return;
+    if (!sceneRef.current || !cameraRef.current || !controlsRef.current) return;
     
     const camera = cameraRef.current;
+    const scene = sceneRef.current;
+    const controls = controlsRef.current;
     
     if (activeRoomId) {
+      // 1. Chế độ xem Từng Phòng (Room View)
       if (overallModelRef.current) overallModelRef.current.visible = false;
       
       const loader = new GLTFLoader();
-      loader.load(`/mohinh/Phong/Phong_${activeRoomId}.glb`, (gltf) => {
+      const roomFile = `/mohinh/Phong/Phong_${activeRoomId}.glb`;
+      loader.load(roomFile, (gltf) => {
         if (activeSubModelRef.current) {
-          sceneRef.current.remove(activeSubModelRef.current);
+          scene.remove(activeSubModelRef.current);
         }
         
         const subModel = gltf.scene;
@@ -318,29 +320,53 @@ export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
         const size = box.getSize(new THREE.Vector3());
         subModel.position.sub(center);
         
-        sceneRef.current.add(subModel);
+        scene.add(subModel);
         
-        setTimeout(() => {
-          const maxDim = Math.max(size.x, size.y, size.z);
-          const fov = 45;
-          const distance = maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)));
-          camera.position.set(0, distance * 0.8, distance * 1.5);
-          camera.lookAt(0, 0, 0);
-        }, 100);
+        const maxDim = Math.max(size.x || 1, size.y || 1, size.z || 1);
+        const distance = maxDim * 1.5;
+        camera.position.set(0, distance * 0.8, distance * 1.5);
+        controls.target.set(0, 0, 0);
+        controls.update();
       });
-    } else {
-      if (overallModelRef.current) overallModelRef.current.visible = true;
+    } else if (activeFloorIdx) {
+      // 2. Chế độ xem Từng Tầng (Floor View)
       if (activeSubModelRef.current) {
-        sceneRef.current.remove(activeSubModelRef.current);
+        scene.remove(activeSubModelRef.current);
         activeSubModelRef.current = null;
       }
-      
-      setTimeout(() => {
-        camera.position.set(0, 75, 90);
-        camera.lookAt(0, 8, 0);
-      }, 100);
+
+      if (overallModelRef.current) {
+        overallModelRef.current.visible = true;
+        overallModelRef.current.children.forEach((floorMesh) => {
+          if (floorMesh.userData && floorMesh.userData.floorIndex !== undefined) {
+            floorMesh.visible = (floorMesh.userData.floorIndex === activeFloorIdx);
+          }
+        });
+      }
+
+      const targetY = (activeFloorIdx - 1) * 4;
+      camera.position.set(0, targetY + 30, 45);
+      controls.target.set(0, targetY, 0);
+      controls.update();
+    } else {
+      // 3. Chế độ xem Toàn Bộ Tòa Nhà (Building View)
+      if (activeSubModelRef.current) {
+        scene.remove(activeSubModelRef.current);
+        activeSubModelRef.current = null;
+      }
+
+      if (overallModelRef.current) {
+        overallModelRef.current.visible = true;
+        overallModelRef.current.children.forEach((floorMesh) => {
+          floorMesh.visible = true;
+        });
+      }
+
+      camera.position.set(0, 75, 90);
+      controls.target.set(0, 8, 0);
+      controls.update();
     }
-  }, [activeRoomId]);
+  }, [activeRoomId, activeFloorIdx]);
 
   // Handle Colors Sync
   useEffect(() => {
@@ -351,20 +377,38 @@ export default function ThreeScene({ activeRoomId, onRoomClick, sensorData }) {
 
       model.traverse((child) => {
         if (child.isMesh && child.material) {
-          const roomId = getRoomIdFromObject(child, activeRoomIdRef.current);
+          // Trong Building/Floor view: chỉ tô màu mesh thuộc phòng rõ ràng
+          // Trong Room view: tô toàn bộ mesh (vì model chỉ chứa 1 phòng)
+          const isRoomView = (model === activeSubModelRef.current);
+          const roomId = isRoomView
+            ? getRoomIdFromObject(child, activeRoomIdRef.current) || activeRoomIdRef.current
+            : getRoomIdFromObject(child, null);
+
+          // Chỉ lookup sensor data cho đúng roomId, KHÔNG fallback sang L1
           const sensor = roomId ? sensorDataRef.current[roomId] : null;
           const status = getSensorStatus(sensor);
+
+          const selectedRoom = activeRoomIdRef.current;
+          const isSelected = selectedRoom && (roomId === selectedRoom || child.userData.roomIdMatch === selectedRoom);
 
           let materials = Array.isArray(child.material) ? child.material : [child.material];
           materials.forEach((mat, idx) => {
             let cKey = `originalColor_${idx}`;
             if (child.userData[cKey] !== undefined) {
-              if (status === 'CRITICAL') {
+              if (isSelected) {
+                // Phòng đang được CLICK CHỌN: Hiển thị màu Cyan/Blue sáng nổi bật
+                const targetColor = new THREE.Color(0x06b6d4);
+                mat.color.lerpColors(new THREE.Color(child.userData[cKey]), targetColor, 0.75);
+              } else if (status === 'CRITICAL') {
                 const targetColor = new THREE.Color(0xff0000);
                 mat.color.lerpColors(new THREE.Color(child.userData[cKey]), targetColor, blink);
               } else if (status === 'WARNING') {
                 const targetColor = new THREE.Color(0xffaa00);
                 mat.color.lerpColors(new THREE.Color(child.userData[cKey]), targetColor, blink * 0.7);
+              } else if (sensor) {
+                // Trạng thái NORMAL: Phủ màu xanh Emerald nhẹ nhàng cho duy nhất phòng có cảm biến hoạt động
+                const targetColor = new THREE.Color(0x10b981);
+                mat.color.lerpColors(new THREE.Color(child.userData[cKey]), targetColor, 0.35);
               } else {
                 mat.color.setHex(child.userData[cKey]);
               }

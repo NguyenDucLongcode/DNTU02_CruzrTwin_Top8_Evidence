@@ -432,9 +432,12 @@ def remove_last_log_line():
     """Xóa dòng log vừa thực hiện gần nhất khỏi các file logs (Undo khi bấm Reset Demo 1 lần)"""
     log_files = [
         "sensorReading.jsonl",
+        "sensor_readings.jsonl",
+        "orion_state.jsonl",
         "ai_detection.jsonl",
         "alert_events.jsonl",
         "robot_actions.jsonl",
+        "operator_ack.jsonl",
         "operator_acks.jsonl"
     ]
     logs_dir = os.path.join(ROOT_DIR, "logs")
@@ -453,8 +456,7 @@ def remove_last_log_line():
 
 @app.route('/api/scenario/run', methods=['POST'])
 def run_scenario():
-    """Kích hoạt chạy kịch bản mô phỏng (run_normal, run_warning, run_critical, undo, reset_all)"""
-    import subprocess
+    """Kích hoạt chạy kịch bản mô phỏng (normal, warning, critical, undo, reset_all)"""
     req_data = request.get_json(silent=True) or {}
     scenario_type = req_data.get("scenario", "normal").lower()
 
@@ -468,19 +470,58 @@ def run_scenario():
     except Exception as e:
         print(f"Warning clearing in-memory caches: {e}")
 
+    # Hàm hỗ trợ bật lại điện Smart Plug và tắt Còi báo động khi về Normal / Reset
+    def restore_tuya_devices():
+        try:
+            from src.tuya import control_multiple_by_fiware_ids
+            all_plugs = [
+                "smart_plug_a101",
+                "smart_plug_a102",
+                "smart_plug_a103",
+                "smart_plug_a104",
+                "smart_plug_a105",
+                "smart_plug_a106",
+            ]
+            all_alarms = [
+                "audible_alarm_a101"
+            ]
+            print(f"🔌 [RESTORE IOT] Đang cấp điện lại cho toàn bộ {len(all_plugs)} ổ cắm Smart Plug...")
+            control_multiple_by_fiware_ids(all_plugs, action="on", device_type="smart_plug", max_workers=len(all_plugs))
+            print(f"🔕 [RESTORE IOT] Đang tắt toàn bộ {len(all_alarms)} còi báo động Alarm...")
+            control_multiple_by_fiware_ids(all_alarms, action="off", device_type="alarm", max_workers=len(all_alarms))
+        except Exception as err:
+            print(f"Restore Tuya devices note: {err}")
+
     # Nút Reset Demo: Ấn 1 lần (undo) -> xóa log vừa thực hiện gần nhất
     if scenario_type in ["undo", "undo_last"]:
         remove_last_log_line()
+        threading.Thread(target=restore_tuya_devices, daemon=True).start()
         return jsonify({
             "success": True,
-            "message": "Action undone: Removed last log entry successfully"
+            "message": "Action undone: Removed last log entry & restored IoT devices"
         }), 200
 
     # Nút Reset Demo: Ấn 3 lần (reset_all/reset) -> xóa toàn bộ log
     if scenario_type in ["reset", "reset_all"]:
-        script_path = os.path.join(ROOT_DIR, "scripts", "tools", "reset_task_5_6_outputs.py")
-        python_executable = sys.executable or "python"
-        subprocess.Popen([python_executable, script_path])
+        log_files = [
+            "sensorReading.jsonl",
+            "sensor_readings.jsonl",
+            "orion_state.jsonl",
+            "ai_detection.jsonl",
+            "alert_events.jsonl",
+            "robot_actions.jsonl",
+            "operator_ack.jsonl",
+            "operator_acks.jsonl"
+        ]
+        logs_dir = os.path.join(ROOT_DIR, "logs")
+        for filename in log_files:
+            filepath = os.path.join(logs_dir, filename)
+            if os.path.exists(filepath):
+                try:
+                    os.remove(filepath)
+                except Exception as e:
+                    print(f"Error deleting log file {filename}: {e}")
+        threading.Thread(target=restore_tuya_devices, daemon=True).start()
         return jsonify({
             "success": True,
             "message": "Reset all demo logs completely!"
@@ -502,24 +543,55 @@ def run_scenario():
                 "error": f"Robot retry check notice: {e}"
             }), 500
 
-    script_map = {
-        "normal": os.path.join(ROOT_DIR, "scripts", "scenarios", "run_normal.py"),
-        "warning": os.path.join(ROOT_DIR, "scripts", "scenarios", "run_warning.py"),
-        "critical": os.path.join(ROOT_DIR, "scripts", "scenarios", "run_critical.py"),
+    file_map = {
+        "normal": "normal_001.json",
+        "warning": "warning_001.json",
+        "critical": "critical_001.json"
     }
 
-    script_path = script_map.get(scenario_type)
-    if not script_path or not os.path.exists(script_path):
+    target_file = file_map.get(scenario_type)
+    if not target_file:
         return jsonify({"success": False, "error": f"Invalid scenario type: {scenario_type}"}), 400
 
-    python_executable = sys.executable or "python"
-    subprocess.Popen([python_executable, script_path])
+    file_path = os.path.join(ROOT_DIR, "data", "replay_test_set", target_file)
+    if not os.path.exists(file_path):
+        return jsonify({"success": False, "error": f"Dataset file not found: {file_path}"}), 404
 
-    return jsonify({
-        "success": True,
-        "message": f"Scenario {scenario_type} triggered successfully",
-        "script": script_path
-    }), 200
+    try:
+        from pathlib import Path
+        from src.utils.replay_helpers import load_test_file, extract_all_readings, extract_device_values_from_reading, build_scenario_id
+        from src.orchestration.pipeline import process_sensor_event
+
+        test_data = load_test_file(Path(file_path))
+        readings = extract_all_readings(test_data)
+        scenario_id = build_scenario_id(target_file)
+
+        generated_count = 0
+        for reading in readings:
+            device_values = extract_device_values_from_reading(reading)
+            payload = {
+                "scenario_id": scenario_id,
+                "temperature": device_values.get("temp_sensor_a101", 25.0),
+                "humidity": device_values.get("humid_sensor_a101", 60.0),
+                "smoke": device_values.get("smoke_sensor_a101", 0.0),
+                "co2": device_values.get("air_sensor_a101", 400.0),
+                "power": device_values.get("energy_sensor_e101", 50.0)
+            }
+            process_sensor_event(payload)
+            generated_count += 1
+
+        if scenario_type == "normal":
+            threading.Thread(target=restore_tuya_devices, daemon=True).start()
+
+        return jsonify({
+            "success": True,
+            "message": f"Kịch bản {scenario_type} đã thực thi thành công! Đã tạo {generated_count} bản ghi log.",
+            "generated_logs": generated_count,
+            "scenario": scenario_type
+        }), 200
+    except Exception as err:
+        print(f"Error executing scenario {scenario_type}: {err}")
+        return jsonify({"success": False, "error": f"Execution error: {err}"}), 500
 
 
 @app.route('/webhook/health', methods=['GET'])
@@ -529,10 +601,11 @@ def health_check():
 
 
 if __name__ == "__main__":
+    port = int(os.getenv("PORT", 5001))
     print("\n" + "=" * 50)
     print("Webhook Receiver Ready")
     print("=" * 50)
-    print("   URL: http://0.0.0.0:5000/webhook/notify")
+    print(f"   URL: http://0.0.0.0:{port}/webhook/notify")
     print("=" * 50 + "\n")
 
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=False)

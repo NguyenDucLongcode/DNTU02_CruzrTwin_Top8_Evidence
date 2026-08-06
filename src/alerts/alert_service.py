@@ -52,7 +52,8 @@ def create_alert_event(ai_result: dict, demo_run_id: str = None, scenario_id: st
             
     action_code = ai_result.get("action_code") or ("DISPATCH_CRUZR_GUIDANCE" if level == "critical" else "CHECK_ROOM")
     
-    alert_id = f"AlertEvent:{scenario_id}"
+    ts_clean = str(timestamp).replace(":", "").replace("-", "").replace("T", "_").replace("Z", "").replace(".", "_")
+    alert_id = f"AlertEvent:{scenario_id}_{ts_clean}"
     source_ai_event_id = ai_result.get("source_ai_event_id") or f"AIEvent:{scenario_id}"
     
     if level == "critical":
@@ -143,9 +144,10 @@ def create_alert_event(ai_result: dict, demo_run_id: str = None, scenario_id: st
         alert_log_path = os.path.join(cfg["log_dir"], "alert_events.jsonl")
         append_jsonl(alert_log_path, log_entry)
 
-        # Trigger RobotAction if critical
+        # Trigger RobotAction in background thread if critical
         if level == "critical":
-            create_robot_action(event)
+            import threading
+            threading.Thread(target=create_robot_action, args=(event,), daemon=True).start()
             
     return event
 

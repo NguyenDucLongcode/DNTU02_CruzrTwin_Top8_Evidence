@@ -33,36 +33,42 @@ if HAS_TRANSLATOR:
     _translator = GoogleTranslator(source='en', target='vi')
 
 
+_STATIC_TRANSLATIONS = {
+    "Turn off all electrical devices": "Tắt tất cả thiết bị điện",
+    "activate the alarm": "Kích hoạt còi báo động",
+    "Critical indoor-environment anomaly detected": "Phát hiện sự cố môi trường nguy hiểm",
+    "Warning indoor-environment anomaly detected": "Phát hiện sự cố môi trường mức cảnh báo",
+    "Please follow staff guidance and move calmly to the safe waiting area": "Vui lòng nghe theo hướng dẫn của nhân viên và di chuyển bình tĩnh đến khu vực an toàn",
+    "Create critical AlertEvent, send Cruzr to response point, and request operator acknowledgement": "Tạo sự kiện cảnh báo nguy hiểm, điều động Robot Cruzr và yêu cầu Operator xác nhận",
+}
+
 def translate_to_vietnamese(text: str, use_cache: bool = True) -> str:
     """
     Dịch tiếng Anh sang tiếng Việt
-    
-    Args:
-        text: Văn bản tiếng Anh cần dịch
-        use_cache: Sử dụng cache để tránh dịch lại
-    
-    Returns:
-        str: Văn bản đã dịch sang tiếng Việt
     """
     if not text:
         return text
+    
+    if text in _STATIC_TRANSLATIONS:
+        return _STATIC_TRANSLATIONS[text]
+
+    for en_key, vi_val in _STATIC_TRANSLATIONS.items():
+        if en_key.lower() in text.lower():
+            return text.lower().replace(en_key.lower(), vi_val)
     
     # Kiểm tra cache
     if use_cache and text in _translation_cache:
         return _translation_cache[text]
     
     if not HAS_TRANSLATOR or _translator is None:
-        print(f"   ⚠️ Translator not available, using original: {text[:50]}...")
         return text
     
     try:
         result = _translator.translate(text)
-        # Lưu cache
         if use_cache:
             _translation_cache[text] = result
         return result
-    except Exception as e:
-        print(f"   ⚠️ Translation error: {e}, using original")
+    except Exception:
         return text
 
 

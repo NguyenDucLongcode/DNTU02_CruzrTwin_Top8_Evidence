@@ -70,13 +70,19 @@ function getLogDisplay(title, log, showNormal) {
   }
 
   if (title === 'ORION_STATE') {
-    const room = (log.room || 'System').replace('DNTU_ROOM_', '');
-    const devices = Array.isArray(log.devices?.value) ? log.devices.value : [];
-    const deviceList = devices.map((d) => d.replace('Device:', '')).join(',');
+    const room = (log.room || log.zone_id || 'System').replace('DNTU_ROOM_', '');
+    const status = log.status || log.device_status || 'NORMAL';
+    const temp = log.temperature !== undefined ? `temp:${log.temperature}°C` : '';
+    const co2 = log.co2 !== undefined ? `co2:${log.co2}ppm` : '';
+    const smoke = log.smoke_status !== undefined ? `smoke:${log.smoke_status}` : '';
+    const isCritical = status === 'CRITICAL' || status === 'ERROR';
+    const isWarning = status === 'WARNING';
+
+    const details = [temp, co2, smoke, `status:${status}`].filter(Boolean).join('; ');
     return {
-      message: `${room} | ${deviceList}`,
-      isCritical: false,
-      isWarning: false
+      message: `${room} | ${details}`,
+      isCritical,
+      isWarning
     };
   }
 

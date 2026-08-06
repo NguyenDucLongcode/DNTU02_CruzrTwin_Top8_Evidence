@@ -124,6 +124,10 @@ def get_smart_plugs_in_room(zone_id: str = None) -> list:
                 plug_id = device_name.lower().replace("plug_", "smart_plug_")
                 smart_plugs.append(plug_id)
     
+    if not smart_plugs and zone_id:
+        room_code = zone_id.lower().replace("dntu_room_", "").replace("room_", "")
+        smart_plugs = [f"smart_plug_{room_code}"]
+
     return smart_plugs
 
 
@@ -166,7 +170,11 @@ def get_alarms_in_room(zone_id: str = None) -> list:
                 # Chuyển Device:ALARM_A101 -> audible_alarm_a101
                 alarm_id = device_name.lower().replace("alarm_", "audible_alarm_")
                 alarms.append(alarm_id)
-    
+
+    if not alarms and zone_id:
+        room_code = zone_id.lower().replace("dntu_room_", "").replace("room_", "")
+        alarms = [f"audible_alarm_{room_code}"]
+
     return alarms
 
 

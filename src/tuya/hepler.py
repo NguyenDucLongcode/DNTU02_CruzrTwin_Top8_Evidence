@@ -94,6 +94,8 @@ def control_multiple_devices(
                 raise ValueError(f"Không hỗ trợ loại thiết bị: {device_type}")
             
             # Thực hiện hành động
+            action_str = f"[{device_type.upper()}] Gửi lệnh Tuya -> {action.upper()} ({device_id})"
+            print(f"   🔌 {action_str}")
             if action == "on":
                 if device_type == "alarm":
                     alarm_type = kwargs.get("alarm_type", 10)
@@ -123,13 +125,33 @@ def control_multiple_devices(
                 else:
                     raise ValueError(f"Thiết bị {device_type} không hỗ trợ unlock")
             
+            # Phân tích chính xác phản hồi từ Tuya Cloud API
+            device_executed = False
+            error_reason = ""
+
+            if isinstance(result, dict):
+                if result.get("result") is True:
+                    device_executed = True
+                elif result.get("result") is False:
+                    device_executed = False
+                    error_reason = "Thiết bị Tuya thật không kết nối (OFFLINE / Unreachable)"
+                elif result.get("success") is True and "result" not in result:
+                    device_executed = True
+                else:
+                    error_reason = result.get("msg") or result.get("error") or f"Lỗi phản hồi: {result}"
             else:
-                raise ValueError(f"Hành động không hợp lệ: {action}")
-            
-            return (device_id, {"success": True, "result": result})
+                error_reason = f"Phản hồi không hợp lệ: {result}"
+
+            if device_executed:
+                print(f"   ✅ TUYA THÀNH CÔNG ({device_id}): Thiết bị đã nhận lệnh [{action.upper()}] thành công!")
+                return (device_id, {"success": True, "executed": True, "result": result})
+            else:
+                print(f"   ❌ TUYA THẤT BẠI ({device_id}): {error_reason}")
+                return (device_id, {"success": False, "executed": False, "error": error_reason, "raw_result": result})
         
         except Exception as e:
-            return (device_id, {"success": False, "error": str(e)})
+            print(f"   ❌ LỖI KẾT NỐI TUYA ({device_id}): {e}")
+            return (device_id, {"success": False, "executed": False, "error": str(e)})
     
     # Chạy song song
     results = {}

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import ThreeScene from '../components/ThreeScene';
 import LogPanel from '../components/LogPanel';
 import Map2D from '../components/Map2D';
+import EmergencyPopUpHUD from '../components/EmergencyPopUpHUD';
 
 const LOG_CONFIG = [
   { type: 'sensors', header: 'SENSORS' },
@@ -29,7 +30,15 @@ const DEFAULT_ROBOT_ACTION_ID = 'RobotAction:SCN_CRITICAL_001';
 const DEFAULT_SCENARIO_ID = 'SCN_CRITICAL_001';
 
 function getRoomZoneId(roomId) {
-  return roomId ? ROOM_TO_ZONE[roomId] || roomId : null;
+  if (!roomId) return null;
+  if (ROOM_TO_ZONE[roomId]) return ROOM_TO_ZONE[roomId];
+  const match = String(roomId).match(/L(\d+)-A(\d+)/i);
+  if (match) {
+    const floor = parseInt(match[1]);
+    const num = parseInt(match[2]);
+    return `DNTU_ROOM_A${floor * 100 + num}`;
+  }
+  return roomId;
 }
 
 function logMatchesRoom(log, zoneId) {
@@ -62,6 +71,8 @@ export default function Dashboard() {
   const [isWebhookOnline, setIsWebhookOnline] = useState(false);
   const [networkLatency, setNetworkLatency] = useState(0);
   const [e2eMeasuredLatency, setE2eMeasuredLatency] = useState(null);
+  const [emergencyPopup, setEmergencyPopup] = useState(null);
+  const lastAlertIdRef = useRef(null);
 
   const resetClickCountRef = useRef(0);
   const resetClickTimerRef = useRef(null);
@@ -204,6 +215,9 @@ export default function Dashboard() {
 
   const handleRunScenario = async (scenarioType) => {
     try {
+      if (scenarioType === 'normal' || scenarioType === 'reset_all' || scenarioType === 'undo') {
+        setEmergencyPopup(null);
+      }
       setAckStatus('loading');
       setAckMessage(`Triggering ${scenarioType}...`);
       const t0 = performance.now();
@@ -332,6 +346,38 @@ export default function Dashboard() {
     };
   }, []);
 
+  // Auto-detect CRITICAL/WARNING from AI detection logs and pop the emergency HUD
+  useEffect(() => {
+    const aiLogs = logs.ai || [];
+    if (aiLogs.length === 0) {
+      setEmergencyPopup(null);
+      return;
+    }
+    const latest = aiLogs[aiLogs.length - 1];
+    const severity = String(latest?.predicted_level || latest?.severity || latest?.device_status || '').toUpperCase();
+    const alertId = latest?.source_ai_event_id || latest?.alert_id || latest?.timestamp || '';
+
+    if (severity === 'NORMAL' || severity === 'RESET' || severity === 'OK') {
+      setEmergencyPopup(null);
+      return;
+    }
+
+    if ((severity === 'CRITICAL' || severity === 'WARNING') && alertId !== lastAlertIdRef.current) {
+      lastAlertIdRef.current = alertId;
+      const zoneId = latest?.zone_id || latest?.room || 'DNTU_ROOM_A101';
+      const match = String(zoneId).match(/A(\d+)/);
+      let roomId = 'L1-A1';
+      let floorIdx = 1;
+      if (match) {
+        const num = parseInt(match[1]);
+        floorIdx = Math.floor(num / 100) || 1;
+        const roomNum = num % 100 || num;
+        roomId = `L${floorIdx}-A${roomNum}`;
+      }
+      setEmergencyPopup({ id: roomId, floor: floorIdx });
+    }
+  }, [logs.ai]);
+
   const hasLogError = Object.values(logErrors).some(Boolean);
 
   useEffect(() => {
@@ -408,7 +454,7 @@ export default function Dashboard() {
             </button>
           )}
 
-          {activeRoom.id && (
+          {(activeRoom.id || activeRoom.floor) && (
             <button
               onClick={handleBackToBuilding}
               className="absolute top-20 left-6 px-5 py-2 bg-red-600/90 hover:bg-red-500 text-white font-bold font-mono text-xs rounded shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all border border-red-400 z-40 cursor-pointer"
@@ -417,53 +463,18 @@ export default function Dashboard() {
             </button>
           )}
 
-          {activeRoom.id && (() => {
-            const s = sensorData[activeRoom.id];
-            const smoke = s?.smoke || 0;
-            const co2 = s?.co2 || 0;
-            const temp = s?.temp || 0;
-            const ds = String(s?.device_status || '').toUpperCase();
-            const isCritical = ds === 'CRITICAL' || ds === 'ERROR' || ds === 'FIRE' || temp >= 40 || smoke >= 1 || co2 >= 1000;
-            const isWarning = !isCritical && (ds === 'WARNING' || temp >= 32 || co2 >= 631 || smoke >= 0.5);
-            const statusLabel = isCritical ? 'CRITICAL' : isWarning ? 'WARNING' : 'NORMAL';
-            const borderClass = isCritical ? 'border-red-500/50' : isWarning ? 'border-amber-400/50' : 'border-emerald-500/50';
-            const shadowClass = isCritical ? 'shadow-red-500/20' : isWarning ? 'shadow-amber-400/20' : 'shadow-emerald-500/20';
-            const titleClass = isCritical ? 'text-red-500 border-red-500/30' : isWarning ? 'text-amber-400 border-amber-400/30' : 'text-emerald-500 border-emerald-500/30';
-            const badgeClass = isCritical ? 'border-red-500 text-red-500' : isWarning ? 'border-amber-400 text-amber-400' : 'border-emerald-500 text-emerald-500';
-            return (
-            <div className={`absolute bottom-8 left-6 bg-black/80 backdrop-blur-xl border ${borderClass} rounded-xl p-5 shadow-2xl ${shadowClass} z-40 font-mono min-w-[280px]`}>
-              <div className={`text-xl font-bold ${titleClass} mb-4 border-b pb-2 flex justify-between items-center`}>
-                <span>ROOM {activeRoom.id} (Floor {activeRoom.floor})</span>
-                <span className={`text-xs px-2 py-0.5 rounded border ${badgeClass}`}>{statusLabel}</span>
-              </div>
-
-              {s ? (
-                <div className="flex flex-col gap-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Temperature:</span>
-                    <span className={`font-bold text-lg ${temp >= 40 ? 'text-red-500' : 'text-emerald-400'}`}>
-                      {temp.toFixed(1)} °C
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Smoke:</span>
-                    <span className={`font-bold text-lg ${smoke > 0 ? 'text-red-500' : 'text-emerald-400'}`}>
-                      {smoke.toFixed(1)} %
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400">CO2:</span>
-                    <span className={`font-bold text-lg ${co2 >= 900 ? 'text-red-500' : 'text-emerald-400'}`}>
-                      {co2.toFixed(1)} ppm
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-zinc-500 font-bold">No sensor data</div>
-              )}
+          {activeRoom.floor && !activeRoom.id && (
+            <div className="absolute top-6 left-6 px-4 py-2 bg-blue-900/80 border border-blue-500 text-blue-300 font-mono font-bold text-xs rounded-lg shadow-lg z-40">
+              FLOOR {activeRoom.floor} VIEW
             </div>
-            );
-          })()}
+          )}
+
+          {/* Emergency Pop-up HUD — 3 panels riêng biệt phủ lên vùng 3D */}
+          <EmergencyPopUpHUD
+            roomInfo={emergencyPopup}
+            sensorData={sensorData}
+            onClose={() => setEmergencyPopup(null)}
+          />
         </div>
 
         {!activeRoom.id && (
@@ -572,11 +583,7 @@ export default function Dashboard() {
         className="h-full bg-[#0a0a0c] border-l border-zinc-800 flex flex-col overflow-hidden shadow-[-10px_0_30px_rgba(0,0,0,0.5)] z-40 relative flex-shrink-0"
         style={{ width: sidebarWidth }}
       >
-        <div className="px-3 py-2 border-b border-zinc-800 bg-zinc-950/80 flex items-center justify-between gap-3 select-none">
-          <div className="min-w-0">
-            <div className="text-[10px] tracking-widest text-zinc-500 font-mono">ROOM LOGS</div>
-            <div className="text-xs text-blue-300 font-bold truncate">{displayRoomLabel}</div>
-          </div>
+        <div className="px-3 py-2 border-b border-zinc-800 bg-zinc-950/80 flex items-center justify-end gap-3 select-none">
           <label className="flex items-center gap-1 text-[10px] text-zinc-400 font-mono whitespace-nowrap cursor-pointer">
             <input
               type="checkbox"

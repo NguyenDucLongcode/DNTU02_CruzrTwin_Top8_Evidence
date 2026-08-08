@@ -177,7 +177,7 @@ def main(alert_event: dict) -> dict:
             RobotClient.speak(messageCitical, language="en")
             time.sleep(10.5)  # Căn đủ thời gian đọc hết câu tiếng Anh
 
-            RobotClient.move(turningAngle=90,turningSpeed=60)
+            RobotClient.move(turningAngle=81.5,turningSpeed=60)
 
             print(f"📢 Robot phát thoại tiếng Việt (VI): \"{vi_messageCitical}\"")
             RobotClient.play_action("action://ubtech/wave")
@@ -217,16 +217,16 @@ def main(alert_event: dict) -> dict:
                 fiware_ids=all_alarms,
                 action="on",
                 device_type="alarm",
-                alarm_type=10,
-                duration=60,
+                alarm_type=8,
+                duration=20,
                 max_workers=len(all_alarms)
             )
 
-            RobotClient.move(turningAngle=-180,turningSpeed=80)
+            RobotClient.move(turningAngle=-161,turningSpeed=80)
 
             print(f"📢 Robot thông báo di chuyển ra khỏi khu vực nguy hiểm (EN): \"{messageMoveOut}\"")
             RobotClient.speak(messageMoveOut, language="en")
-            time.sleep(7)
+            time.sleep(14)
 
             print(f"📢 Robot thông báo di chuyển ra khỏi khu vực nguy hiểm (VI): \"{vi_messageMoveOut}\"")
             RobotClient.speak(vi_messageMoveOut, language="vi")
@@ -235,16 +235,16 @@ def main(alert_event: dict) -> dict:
             RobotClient.move(distance=1.0, speed=0.75)
             time.sleep(5.5)
 
-            RobotClient.move(turningAngle=-90,turningSpeed=60)
-            time.sleep(30)
+            RobotClient.move(turningAngle=-81.5,turningSpeed=60)
+            time.sleep(13)
 
-            RobotClient.move(turningAngle=90,turningSpeed=60)
+            RobotClient.move(turningAngle=81.5,turningSpeed=60)
             time.sleep(7)
 
             RobotClient.move(distance=0.5,speed=0.4)
             time.sleep(7)
 
-            RobotClient.move(turningAngle=-90,turningSpeed=45)
+            RobotClient.move(turningAngle=-86.3,turningSpeed=45)
 
 
         except Exception as err:

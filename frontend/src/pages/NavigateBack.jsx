@@ -9,8 +9,8 @@ const BUTTON_CONFIGS = [
 
   { id: 'btn_5', slot: '05', title: '🔴 1. Critical (Chỉ Log)', desc: 'Phát log Báo Động Đỏ Critical & chưa gọi Robot', color: 'from-rose-600/30 to-rose-900/50 border-rose-400/80 hover:border-rose-300 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.3)]' },
   { id: 'btn_6', slot: '06', title: '🤖 2. Kích Hoạt Robot & IoT', desc: 'Gọi Robot Cruzr phát thoại sơ tán & ngắt điện IoT', color: 'from-purple-600/30 to-purple-900/50 border-purple-400/80 hover:border-purple-300 text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.3)]' },
-  { id: 'btn_7', slot: '07', title: 'Script 07', desc: 'Chờ phân công tính năng', color: 'from-slate-600/20 to-slate-900/40 border-slate-500/50 hover:border-slate-400 text-slate-400' },
-  { id: 'btn_8', slot: '08', title: '🎉 Phát Thoại Outro (Cảm Ơn)', desc: 'Robot Cruzr chào cảm ơn & kết thúc phần thi (speak_outro.py)', color: 'from-violet-600/30 to-violet-900/50 border-violet-400/80 hover:border-violet-300 text-violet-300 shadow-[0_0_15px_rgba(139,92,246,0.3)]' },
+  { id: 'btn_7', slot: '07', title: '🎉 Phát Thoại Outro (Cảm Ơn)', desc: 'Robot Cruzr chào cảm ơn & kết thúc phần thi (speak_outro.py)', color: 'from-violet-600/30 to-violet-900/50 border-violet-400/80 hover:border-violet-300 text-violet-300 shadow-[0_0_15px_rgba(139,92,246,0.3)]' },
+  { id: 'btn_8', slot: '08', title: '🛑 Dừng Di Chuyển Robot', desc: 'Ngắt di chuyển bánh xe Robot ngay lập tức (Vẫn giữ thoại, log & IoT)', color: 'from-red-600/30 to-red-900/50 border-red-400/80 hover:border-red-300 text-red-300 shadow-[0_0_15px_rgba(239,68,68,0.3)]' },
 
   { id: 'btn_9', slot: '09', title: '🔄 Reset Demo System', desc: 'Ấn 1 lần: Undo 1 log | Ấn 3 lần nhanh: Reset All System', color: 'from-teal-600/30 to-teal-900/50 border-teal-400/80 hover:border-teal-300 text-teal-300 shadow-[0_0_15px_rgba(20,184,166,0.3)]' },
   { id: 'btn_10', slot: '10', title: '💡 Khôi Phục Điện Tuya Plugs (ON)', desc: 'Bật toàn bộ ổ cắm thông minh Tuya Smart Plugs (Nút 14)', color: 'from-emerald-600/30 to-emerald-900/50 border-emerald-400/80 hover:border-emerald-300 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.3)]' },
@@ -51,9 +51,10 @@ export default function NavigateBack() {
     navigate('/');
   };
 
+  const [isMovementPaused, setIsMovementPaused] = useState(false);
   const [resetClickBadge, setResetClickBadge] = useState('');
 
-  const executeRunScriptApi = async (btn, actionParam = 'reset_all') => {
+  const executeRunScriptApi = async (btn, actionParam = 'normal') => {
     try {
       setLoadingBtn(btn.id);
       setActiveBtn(btn.id);
@@ -74,10 +75,18 @@ export default function NavigateBack() {
       const data = await res.json();
       const isOk = res.ok && data.success !== false;
 
+      // Cập nhật trạng thái Dừng / Tiếp Tục của Nút 8
+      if (btn.id === 'btn_8' && data.is_stopped !== undefined) {
+        setIsMovementPaused(data.is_stopped);
+      }
+      if (btn.id === 'btn_9' && actionParam === 'reset_all') {
+        setIsMovementPaused(false);
+      }
+
       const respObj = {
         button_id: btn.id,
         slot: btn.slot,
-        name: data.name || btn.title,
+        name: data.name || (btn.id === 'btn_8' ? (isMovementPaused ? 'Dừng Di Chuyển Robot' : 'Tiếp Tục Di Chuyển Robot') : btn.title),
         message: data.message || 'Thực thi thành công!',
         success: isOk,
         latencyMs: latency,
@@ -188,6 +197,13 @@ export default function NavigateBack() {
           const isActive = activeBtn === btn.id;
           const isSuccess = successBtns[btn.id];
 
+          const isBtn8Paused = btn.id === 'btn_8' && isMovementPaused;
+          const displayTitle = isBtn8Paused ? '▶️ Tiếp Tục Di Chuyển Robot' : btn.title;
+          const displayDesc = isBtn8Paused ? 'Ấn để TIẾP TỤC cho phép Robot lăn bánh' : btn.desc;
+          const displayColor = isBtn8Paused
+            ? 'from-emerald-600/40 to-emerald-950/70 border-emerald-400 text-emerald-300 ring-2 ring-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.5)] animate-pulse'
+            : btn.color;
+
           return (
             <button
               key={btn.id}
@@ -196,13 +212,13 @@ export default function NavigateBack() {
               className={`relative group rounded-2xl p-4 border bg-gradient-to-br transition-all duration-200 cursor-pointer flex flex-col justify-between overflow-hidden shadow-xl ${
                 isSuccess
                   ? 'from-emerald-600/30 to-emerald-950/60 border-emerald-400 text-emerald-300 ring-2 ring-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.5)] animate-pulse'
-                  : btn.color
+                  : displayColor
               } ${isActive ? 'scale-[0.98]' : 'hover:scale-[1.02]'}`}
             >
               {/* Card Header: Slot Tag & Status indicator */}
               <div className="flex items-center justify-between w-full">
                 <span className={`px-2.5 py-1 text-[10px] font-bold rounded-md border ${
-                  isSuccess ? 'bg-emerald-500/30 border-emerald-400 text-emerald-200' : 'bg-black/60 border-white/10 text-zinc-300'
+                  isSuccess || isBtn8Paused ? 'bg-emerald-500/30 border-emerald-400 text-emerald-200' : 'bg-black/60 border-white/10 text-zinc-300'
                 }`}>
                   SLOT {btn.slot}
                 </span>
@@ -210,6 +226,10 @@ export default function NavigateBack() {
                 {isSuccess ? (
                   <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-emerald-500 text-black animate-bounce">
                     SENT SUCCESS ✅
+                  </span>
+                ) : isBtn8Paused ? (
+                  <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-amber-500/30 border border-amber-400 text-amber-300 animate-pulse">
+                    MOVEMENT PAUSED 🛑
                   </span>
                 ) : (
                   <span className={`w-2.5 h-2.5 rounded-full ${isLoading ? 'bg-amber-400 animate-ping' : isActive ? 'bg-cyan-400 animate-pulse' : 'bg-zinc-600'}`} />
@@ -219,13 +239,13 @@ export default function NavigateBack() {
               {/* Card Body: Title & Subtitle */}
               <div className="text-left my-2">
                 <div className="text-base md:text-lg font-bold tracking-wide text-white group-hover:text-cyan-300 transition-colors">
-                  {btn.title}
+                  {displayTitle}
                 </div>
                 <div className="text-[11px] text-zinc-400 mt-1 line-clamp-1">
                   {btn.id === 'btn_9' && resetClickBadge ? (
                     <span className="text-amber-300 font-bold animate-pulse">{resetClickBadge}</span>
                   ) : (
-                    btn.desc
+                    displayDesc
                   )}
                 </div>
               </div>

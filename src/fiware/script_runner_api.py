@@ -68,11 +68,17 @@ BUTTON_SLOTS: Dict[str, Dict[str, Any]] = {
         "desc": "Gọi Robot Cruzr phát thoại sơ tán & ngắt điện Tuya IoT",
         "scenario": "robot_dispatch"
     },
-    "btn_8": {
-        "id": "btn_8",
+    "btn_7": {
+        "id": "btn_7",
         "name": "Phát Thoại Outro (Cảm Ơn)",
         "desc": "Robot Cruzr chào cảm ơn & phát thoại kết thúc phần thi (src/robot/speak_outro.py)",
         "script": "src/robot/speak_outro.py"
+    },
+    "btn_8": {
+        "id": "btn_8",
+        "name": "Dừng Di Chuyển Robot",
+        "desc": "Ngắt di chuyển bánh xe Robot ngay lập tức (Vẫn giữ thoại, log & IoT)",
+        "scenario": "stop_movement"
     },
     "btn_9": {
         "id": "btn_9",
@@ -235,6 +241,12 @@ def dispatch_robot_emergency_action_async() -> dict:
         except Exception as err:
             print(f"❌ [SLOT 06] Lỗi Robot action: {err}")
 
+    threading.Thread(target=_target, daemon=True).start()
+    return {
+        "success": True,
+        "message": "🚀 Đã kích hoạt Robot Cruzr di chuyển & khống chế IoT khẩn cấp trong background!"
+    }
+
 def test_robot_connection_action() -> dict:
     """Kiểm tra trạng thái kết nối tới Robot Cruzr thật qua WebSocket (Dành cho Slot 12 / Nút 16)"""
     try:
@@ -253,13 +265,41 @@ def test_robot_connection_action() -> dict:
         }
 
 
+def stop_robot_movement_action() -> dict:
+    """Nút 08: Đảo trạng thái dừng / tiếp tục di chuyển bánh xe Robot (Toggle Movement Pause/Resume)"""
+    try:
+        from src.robot.cruzr_client import CruzrRobotClient, toggle_global_movement_stopped
+        # 1. Đảo cờ dừng di chuyển toàn cục (True <-> False)
+        is_stopped = toggle_global_movement_stopped()
+
+        # 2. Nếu vừa đổi sang Tạm Dừng, gửi lệnh ngắt di chuyển tới Robot lập tức
+        if is_stopped:
+            client = CruzrRobotClient()
+            if client.connect(timeout=1.0):
+                client.stop_move()
+                client.disconnect()
+            msg = "🛑 Đã DỪNG di chuyển bánh xe Robot! (Ấn lại Nút 8 để TIẾP TỤC di chuyển)."
+        else:
+            msg = "▶️ Đã TIẾP TỤC cho phép Robot di chuyển!"
+
+        return {
+            "success": True,
+            "is_stopped": is_stopped,
+            "message": msg
+        }
+    except Exception as err:
+        return {"success": False, "error": str(err)}
+
+
 def reset_demo_action() -> dict:
     """Reset toàn bộ hệ thống Demo: xóa sạch 8 file logs, reset cache, khôi phục điện Tuya Plugs ON, tắt còi Alarm OFF"""
     try:
         from src.alerts.alert_service import reset_alert_service_cache
         from src.robot.create_robot_action import reset_robot_action_cache
+        from src.robot.cruzr_client import set_global_movement_stopped
         reset_alert_service_cache()
         reset_robot_action_cache()
+        set_global_movement_stopped(False)
 
         log_files = [
             "sensorReading.jsonl",
@@ -422,10 +462,23 @@ def execute_button_action(button_id: str, payload: Dict[str, Any] = None) -> Dic
             "message": msg
         }
 
-    # Slot 08: Kích hoạt thoại Outro cảm ơn Robot Cruzr
-    if button_id == "btn_8":
+    # Slot 07: Kích hoạt thoại Outro cảm ơn Robot Cruzr
+    if button_id == "btn_7":
         run_python_script_async("src/robot/speak_outro.py")
         msg = "🚀 Đã kích hoạt script Robot Outro Cảm Ơn (src/robot/speak_outro.py)!"
+        log_execution_event(button_id, slot_info["name"], "SUCCESS 200 OK", msg)
+        return {
+            "success": True,
+            "button_id": button_id,
+            "name": slot_info["name"],
+            "desc": slot_info["desc"],
+            "message": msg
+        }
+
+    # Slot 08: Dừng di chuyển bánh xe Robot ngay lập tức (Giữ nguyên âm thanh, thoại & IoT)
+    if button_id == "btn_8":
+        res = stop_robot_movement_action()
+        msg = res.get("message", "Đã gửi lệnh dừng di chuyển bánh xe Robot!")
         log_execution_event(button_id, slot_info["name"], "SUCCESS 200 OK", msg)
         return {
             "success": True,

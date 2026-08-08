@@ -20,6 +20,21 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
+GLOBAL_MOVEMENT_STOPPED = False
+
+def set_global_movement_stopped(status: bool = True):
+    global GLOBAL_MOVEMENT_STOPPED
+    GLOBAL_MOVEMENT_STOPPED = status
+    print(f"🛑 [CRUZR CLIENT] GLOBAL_MOVEMENT_STOPPED = {status}")
+
+def toggle_global_movement_stopped() -> bool:
+    """Đảo trạng thái dừng/tiếp tục di chuyển của Robot (Toggle Movement Pause/Resume)"""
+    global GLOBAL_MOVEMENT_STOPPED
+    GLOBAL_MOVEMENT_STOPPED = not GLOBAL_MOVEMENT_STOPPED
+    status_str = "DỪNG (PAUSED)" if GLOBAL_MOVEMENT_STOPPED else "TIẾP TỤC (RESUMED)"
+    print(f"🔄 [CRUZR CLIENT] Đã chuyển trạng thái di chuyển Robot: {status_str}")
+    return GLOBAL_MOVEMENT_STOPPED
+
 
 class MoveDirection(Enum):
     """Hướng di chuyển"""
@@ -195,15 +210,10 @@ class CruzrRobotClient:
     def move(self, distance=0,movingAngle=0,turningSpeed=0,turningAngle=0, speed= 0,) -> Dict:
         """
         Di chuyển robot
-
-        # Định dạng: options là string JSON
-        # """
-        # if direction == "stop":
-        #    options = json.dumps({"action": "stop"})
-        # else:
-        #    options = json.dumps({"action": direction})
-
-        # print(f"   📡 move: {options}")
+        """
+        if GLOBAL_MOVEMENT_STOPPED:
+            print("🛑 [MOVEMENT STOPPED] Bánh xe đã dừng theo lệnh Nút 8 (Vẫn giữ âm thanh, thoại & IoT).")
+            return {"success": True, "message": "Movement stopped by user"}
         options = json.dumps({"movingSpeed": speed, "movingDistance": distance, "movingAngle":movingAngle,"turningSpeed": turningSpeed,"turningAngle":turningAngle})
         return self.send_command("key_move_input", options)
 
@@ -225,8 +235,14 @@ class CruzrRobotClient:
     def turn_right(self, speed: float = 0.5) -> Dict:
         return self.move("rotate_right", speed)
 
+    def stop_move(self) -> Dict:
+        """Dừng di chuyển bánh xe Robot ngay lập tức (Gửi movingSpeed: 0, turningSpeed: 0)"""
+        options = json.dumps({"movingSpeed": 0.0, "movingDistance": 0.0, "movingAngle": 0.0, "turningSpeed": 0.0, "turningAngle": 0.0})
+        print("🛑 Gửi lệnh dừng di chuyển bánh xe tới Robot...")
+        return self.send_command("key_move_input", options)
+
     def stop(self) -> Dict:
-        return self.move("stop")
+        return self.stop_move()
 
     def _move_for_distance(self, direction: str, distance_m: float, speed: float = 0.5) -> Dict:
         """Di chuyển theo hướng trong khoảng thời gian ước lượng từ quãng đường."""

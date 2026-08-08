@@ -89,7 +89,7 @@ def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happ
         print("❌ Không thể kết nối tới Robot. Vui lòng kiểm tra địa chỉ IP và mạng!")
         print("💡 Text giới thiệu sẽ được in ra màn hình dưới dạng Demo:")
         print(f"\n[EN]: {START_TEXT_EN} {INTRO_TEXT_EN}")
-        print(f"[VI]: {start_vi} {intro_vi}\n")
+        # print(f"[VI]: {start_vi} {intro_vi}\n")
         return False
 
     try:
@@ -113,9 +113,11 @@ def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happ
             "action://ubtech/wave"
         ]
 
+        # START ACTIONS--------------------
+
         client.move(distance=1.46, speed=0.45)
         time.sleep(5)
-        client.move(turningAngle=-90, turningSpeed=60)
+        client.move(turningAngle=-86.3, turningSpeed=45)
         time.sleep(3.7)
         client.move(distance=0.5, speed=0.45)
         time.sleep(2)
@@ -131,7 +133,7 @@ def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happ
                 duration_sec=20,
                 actions=greeting_actions
             )
-            time.sleep(5)
+            time.sleep(4)
             # Bước B: Nói bài giới thiệu + Động tác tay thuyết trình liên tục suốt bài nói (Continuous Presentation)
             print(f"\n📢 Robot phát bài giới thiệu (EN) + Tay di chuyển liên tục:\n\"{INTRO_TEXT_EN}\"")
             speak_with_continuous_gestures(
@@ -141,12 +143,27 @@ def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happ
                 duration_sec=12.0,
                 actions=presentation_actions
             )
+            time.sleep(18)
+            # Mở biểu cảm thẹn thùng & động tác dễ thương
+            print("🎭 Đang mở biểu cảm: emotion://va/face_shy")
+            client.play_emotion("emotion://va/face_shy")
             time.sleep(2)
+            print("👋 Robot thực hiện cử chỉ: action://ubtech/cute")
+            client.play_action("action://ubtrobot/cute")
 
-            client.move(turningAngle=-70, turningSpeed=45)
-            time.sleep(3.7)
-            client.move(distance=0.6, speed=0.45)
-            time.sleep(5)
+            time.sleep(18)
+
+
+        client.move(turningAngle=-176.3, turningSpeed=45)
+        time.sleep(5)
+        client.move(distance=0.6, speed=0.45)
+        time.sleep(5)
+        client.move(turningAngle=86.3, turningSpeed=45)
+        time.sleep(5)
+        client.move(distance=0.4, speed=0.45)
+        time.sleep(5)
+        client.move(turningAngle=-86.3, turningSpeed=45)
+
 
 
 

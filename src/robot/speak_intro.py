@@ -113,11 +113,12 @@ def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happ
             "action://ubtech/wave"
         ]
 
-        RobotClient.move(distance=1.2, speed=0.45)
+        client.move(distance=1.46, speed=0.45)
         time.sleep(5)
-        RobotClient.move(turningAngle=-90, turningSpeed=60)
-
-
+        client.move(turningAngle=-90, turningSpeed=60)
+        time.sleep(3.7)
+        client.move(distance=0.5, speed=0.45)
+        time.sleep(2)
 
         # 2. Phát giọng nói kết hợp cử chỉ tay di chuyển liên tục
         if language in ["en", "both"]:
@@ -140,6 +141,14 @@ def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happ
                 duration_sec=12.0,
                 actions=presentation_actions
             )
+            time.sleep(2)
+
+            client.move(turningAngle=-70, turningSpeed=45)
+            time.sleep(3.7)
+            client.move(distance=0.6, speed=0.45)
+            time.sleep(5)
+
+
 
         # if language in ["vi", "both"]:
         #     # Bước A: Xin phép bắt đầu (VI) + Động tác tay chào
@@ -184,8 +193,8 @@ def main():
     )
     parser.add_argument(
         "--emotion",
-        default="emotion://va/techface_happy",
-        help="Mã biểu cảm khuôn mặt của Robot (mặc định: techface_happy)"
+        default="emotion://va/face_amazing",
+        help="Mã biểu cảm khuôn mặt của Robot (mặc định: face_amazing)"
     )
     args = parser.parse_args()
 

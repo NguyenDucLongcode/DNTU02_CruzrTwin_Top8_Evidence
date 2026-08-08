@@ -170,7 +170,7 @@ def main(alert_event: dict) -> dict:
 
             # Robot di chuyển tiến về phía trước 5 giây
             print("🚗 Robot di chuyển tiến về phía trước (5s)...")
-            RobotClient.move(distance=1.8, speed=0.45)
+            RobotClient.move(distance=1.8, speed=0.7)
 
             # 1. Phát thông báo sơ tán khẩn cấp (Tiếng Anh trước, Tiếng Việt sau)
             print(f"📢 Robot phát thoại tiếng Anh (EN): \"{messageCitical}\"")
@@ -182,17 +182,17 @@ def main(alert_event: dict) -> dict:
             print(f"📢 Robot phát thoại tiếng Việt (VI): \"{vi_messageCitical}\"")
             RobotClient.play_action("action://ubtech/wave")
             RobotClient.speak(vi_messageCitical, language="vi")
-            time.sleep(16)  # Căn đủ thời gian đọc hết câu tiếng Việt
+            time.sleep(15)  # Căn đủ thời gian đọc hết câu tiếng Việt
 
             # 2. Robot thông báo ngắt điện (Tiếng Anh trước, Tiếng Việt sau) -> NGẮT ĐIỆN IOT
             print(f"📢 Robot thông báo ngắt điện (EN): \"{messageSmartPlug}\"")
             RobotClient.play_action("action://ubtech/explain")
             RobotClient.speak(messageSmartPlug, language="en")
-            time.sleep(5)
+            time.sleep(7)
 
             print(f"📢 Robot thông báo ngắt điện (VI): \"{vi_messageSmartPlug}\"")
             RobotClient.speak(vi_messageSmartPlug, language="vi")
-            time.sleep(4.3)
+            time.sleep(4.5)
 
             print(f"⚡ [CRITICAL IOT] Robot đã nói xong câu tắt thiết bị -> Đang ngắt điện {len(all_plugs)} ổ cắm Smart Plug...")
             control_multiple_by_fiware_ids(
@@ -222,7 +222,7 @@ def main(alert_event: dict) -> dict:
                 max_workers=len(all_alarms)
             )
 
-            RobotClient.move(turningAngle=-180,turningSpeed=60)
+            RobotClient.move(turningAngle=-180,turningSpeed=80)
 
             print(f"📢 Robot thông báo di chuyển ra khỏi khu vực nguy hiểm (EN): \"{messageMoveOut}\"")
             RobotClient.speak(messageMoveOut, language="en")
@@ -232,8 +232,8 @@ def main(alert_event: dict) -> dict:
             RobotClient.speak(vi_messageMoveOut, language="vi")
             time.sleep(5)
 
-            RobotClient.move(distance=1.0, speed=0.65)
-            time.sleep(6)
+            RobotClient.move(distance=1.0, speed=0.75)
+            time.sleep(5.5)
 
             RobotClient.move(turningAngle=-90,turningSpeed=60)
             time.sleep(30)
@@ -241,7 +241,10 @@ def main(alert_event: dict) -> dict:
             RobotClient.move(turningAngle=90,turningSpeed=60)
             time.sleep(7)
 
-            RobotClient.move(distance=0.2,speed=0.4)
+            RobotClient.move(distance=0.5,speed=0.4)
+            time.sleep(7)
+
+            RobotClient.move(turningAngle=-90,turningSpeed=45)
 
 
         except Exception as err:

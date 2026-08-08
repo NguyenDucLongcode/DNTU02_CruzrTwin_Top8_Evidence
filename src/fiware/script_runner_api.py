@@ -68,13 +68,17 @@ BUTTON_SLOTS: Dict[str, Dict[str, Any]] = {
         "desc": "Gọi Robot Cruzr phát thoại sơ tán & ngắt điện Tuya IoT",
         "scenario": "robot_dispatch"
     },
-    "btn_7": {"id": "btn_7", "name": "Kịch bản 7", "desc": "Chưa gán tính năng", "type": "script"},
-    "btn_8": {"id": "btn_8", "name": "Kịch bản 8", "desc": "Chưa gán tính năng", "type": "script"},
-    "btn_9": {
-        "id": "btn_9",
+    "btn_8": {
+        "id": "btn_8",
         "name": "Phát Thoại Outro (Cảm Ơn)",
         "desc": "Robot Cruzr chào cảm ơn & phát thoại kết thúc phần thi (src/robot/speak_outro.py)",
         "script": "src/robot/speak_outro.py"
+    },
+    "btn_9": {
+        "id": "btn_9",
+        "name": "Reset Demo System",
+        "desc": "Reset toàn bộ trạng thái Demo: Xóa cache, bật lại điện Tuya Smart Plugs & tắt còi Alarm",
+        "scenario": "reset_all"
     },
     "btn_10": {
         "id": "btn_10",
@@ -231,7 +235,6 @@ def dispatch_robot_emergency_action_async() -> dict:
         except Exception as err:
             print(f"❌ [SLOT 06] Lỗi Robot action: {err}")
 
-    threading.Thread(target=_target, daemon=True).start()
 def test_robot_connection_action() -> dict:
     """Kiểm tra trạng thái kết nối tới Robot Cruzr thật qua WebSocket (Dành cho Slot 12 / Nút 16)"""
     try:
@@ -248,6 +251,54 @@ def test_robot_connection_action() -> dict:
             "connected": False,
             "message": f"❌ Lỗi khi kiểm tra kết nối Robot Cruzr: {err}"
         }
+
+
+def reset_demo_action() -> dict:
+    """Reset toàn bộ hệ thống Demo: xóa sạch 8 file logs, reset cache, khôi phục điện Tuya Plugs ON, tắt còi Alarm OFF"""
+    try:
+        from src.alerts.alert_service import reset_alert_service_cache
+        from src.robot.create_robot_action import reset_robot_action_cache
+        reset_alert_service_cache()
+        reset_robot_action_cache()
+
+        log_files = [
+            "sensorReading.jsonl",
+            "sensor_readings.jsonl",
+            "orion_state.jsonl",
+            "ai_detection.jsonl",
+            "alert_events.jsonl",
+            "robot_actions.jsonl",
+            "operator_ack.jsonl",
+            "operator_acks.jsonl"
+        ]
+        logs_dir = os.path.join(ROOT_DIR, "logs")
+        for filename in log_files:
+            filepath = os.path.join(logs_dir, filename)
+            if os.path.exists(filepath):
+                try:
+                    os.remove(filepath)
+                except Exception as e:
+                    print(f"Error deleting log file {filename}: {e}")
+
+        def _restore_bg():
+            try:
+                from src.tuya import control_multiple_by_fiware_ids
+                all_plugs = ["smart_plug_a101", "smart_plug_a102", "smart_plug_a103", "smart_plug_a104", "smart_plug_a105", "smart_plug_a106"]
+                all_alarms = ["audible_alarm_a101"]
+                print(f"🔌 [RESET DEMO] Đang bật lại toàn bộ điện {len(all_plugs)} ổ cắm Tuya...")
+                control_multiple_by_fiware_ids(all_plugs, action="on", device_type="smart_plug", max_workers=len(all_plugs))
+                print(f"🔕 [RESET DEMO] Đang tắt toàn bộ {len(all_alarms)} còi báo động Alarm...")
+                control_multiple_by_fiware_ids(all_alarms, action="off", device_type="alarm", max_workers=len(all_alarms))
+            except Exception as err:
+                print(f"Reset Tuya note: {err}")
+
+        threading.Thread(target=_restore_bg, daemon=True).start()
+        return {
+            "success": True,
+            "message": "💥 Reset All System: Đã xóa sạch toàn bộ logs, reset cache & khôi phục điện 6 ổ cắm Tuya Plugs ON, tắt còi Alarm OFF!"
+        }
+    except Exception as err:
+        return {"success": False, "error": str(err)}
 
 
 EXECUTION_LOGS = []
@@ -371,10 +422,33 @@ def execute_button_action(button_id: str, payload: Dict[str, Any] = None) -> Dic
             "message": msg
         }
 
-    # Slot 09: Kích hoạt thoại Outro cảm ơn Robot Cruzr
-    if button_id == "btn_9":
+    # Slot 08: Kích hoạt thoại Outro cảm ơn Robot Cruzr
+    if button_id == "btn_8":
         run_python_script_async("src/robot/speak_outro.py")
         msg = "🚀 Đã kích hoạt script Robot Outro Cảm Ơn (src/robot/speak_outro.py)!"
+        log_execution_event(button_id, slot_info["name"], "SUCCESS 200 OK", msg)
+        return {
+            "success": True,
+            "button_id": button_id,
+            "name": slot_info["name"],
+            "desc": slot_info["desc"],
+            "message": msg
+        }
+
+    # Slot 09: Reset Demo (Ấn 1 lần = Undo log gần nhất | Ấn 3 lần = Reset All System)
+    if button_id == "btn_9":
+        sub_action = (payload or {}).get("action") or (payload or {}).get("scenario") or "reset_all"
+        if sub_action == "undo":
+            try:
+                from src.fiware.webhook_receiver import remove_last_log_line
+                remove_last_log_line()
+                msg = "↩️ Undo: Đã xóa 1 dòng log vừa thực hiện gần nhất khỏi hệ thống!"
+            except Exception as e:
+                msg = f"↩️ Undo log note: {e}"
+        else:
+            res = reset_demo_action()
+            msg = res.get("message", "Đã Reset toàn bộ trạng thái Demo thành công!")
+
         log_execution_event(button_id, slot_info["name"], "SUCCESS 200 OK", msg)
         return {
             "success": True,

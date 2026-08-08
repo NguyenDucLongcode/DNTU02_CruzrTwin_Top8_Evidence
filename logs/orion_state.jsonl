@@ -1,2 +1,0 @@
-{"demo_run_id": "DNTU02_TOP8_RUN_2026_001", "timestamp": "2026-08-08T04:19:29.212Z", "scenario_id": "SCN_NORMAL_001", "zone_id": "DNTU_ROOM_A101", "temperature": 24.1, "humidity": 53.4, "co2": 403.0, "smoke_status": 0, "energy_consumption": 338.0, "status": "NORMAL"}
-{"demo_run_id": "DNTU02_TOP8_RUN_2026_001", "timestamp": "2026-08-08T04:21:18.774Z", "scenario_id": "SCN_CRITICAL_001", "zone_id": "DNTU_ROOM_A101", "temperature": 68.5, "humidity": 32.4, "co2": 2850.0, "smoke_status": 1, "energy_consumption": 1450.0, "status": "CRITICAL"}

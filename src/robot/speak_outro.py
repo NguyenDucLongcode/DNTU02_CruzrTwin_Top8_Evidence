@@ -18,6 +18,7 @@ if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
     except Exception:
         pass
 
+
 # Đoạn văn bản Outro chuẩn (Tập trung 1 câu duy nhất theo yêu cầu)
 OUTRO_TEXT_EN = "CruzrTwin ASEAN — closing the last meter of smart-city response."
 OUTRO_TEXT_VI = "CruzrTwin ASEAN — giải pháp rút ngắn mét cuối cùng trong ứng phó đô thị thông minh."
@@ -68,6 +69,16 @@ def speak_outro(language: str = "en", emotion: str = "emotion://va/techface_happ
         client.play_action("action://ubtech/greeting")
         time.sleep(1.5)
 
+        # Di chuyển theo hành trình Outro
+        client.move(turningAngle=-90, turningSpeed=60)
+        time.sleep(3.7)
+        client.move(distance=1.5, speed=0.6)
+        time.sleep(4.4)
+        client.move(turningAngle=90, turningSpeed=60)
+        time.sleep(3.7)
+        client.move(distance=1.8, speed=0.45)
+        time.sleep(5)
+
         # Danh sách các động tác cử chỉ tay chào kết thúc Outro
         closing_actions = [
             "action://ubtech/presentation",
@@ -86,15 +97,15 @@ def speak_outro(language: str = "en", emotion: str = "emotion://va/techface_happ
                 actions=closing_actions
             )
 
-        if language in ["vi", "both"]:
-            print(f"\n📢 Robot phát Outro (VI):\n\"{OUTRO_TEXT_VI}\"")
-            speak_with_continuous_gestures(
-                client=client,
-                text=OUTRO_TEXT_VI,
-                language="vi",
-                duration_sec=8.0,
-                actions=closing_actions
-            )
+        # if language in ["vi", "both"]:
+        #     print(f"\n📢 Robot phát Outro (VI):\n\"{OUTRO_TEXT_VI}\"")
+        #     speak_with_continuous_gestures(
+        #         client=client,
+        #         text=OUTRO_TEXT_VI,
+        #         language="vi",
+        #         duration_sec=8.0,
+        #         actions=closing_actions
+        #     )
 
         print("\n✅ Đã hoàn thành phát thoại Outro: CruzrTwin ASEAN — closing the last meter of smart-city response.")
         return True
@@ -118,8 +129,8 @@ def main():
     )
     parser.add_argument(
         "--emotion",
-        default="emotion://va/techface_happy",
-        help="Mã biểu cảm khuôn mặt của Robot (mặc định: techface_happy)"
+        default="emotion://va/face_amazing",
+        help="Mã biểu cảm khuôn mặt của Robot (mặc định: face_amazing)"
     )
     args = parser.parse_args()
 

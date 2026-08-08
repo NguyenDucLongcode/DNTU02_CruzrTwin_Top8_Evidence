@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const BUTTON_CONFIGS = [
@@ -10,9 +10,9 @@ const BUTTON_CONFIGS = [
   { id: 'btn_5', slot: '05', title: '🔴 1. Critical (Chỉ Log)', desc: 'Phát log Báo Động Đỏ Critical & chưa gọi Robot', color: 'from-rose-600/30 to-rose-900/50 border-rose-400/80 hover:border-rose-300 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.3)]' },
   { id: 'btn_6', slot: '06', title: '🤖 2. Kích Hoạt Robot & IoT', desc: 'Gọi Robot Cruzr phát thoại sơ tán & ngắt điện IoT', color: 'from-purple-600/30 to-purple-900/50 border-purple-400/80 hover:border-purple-300 text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.3)]' },
   { id: 'btn_7', slot: '07', title: 'Script 07', desc: 'Chờ phân công tính năng', color: 'from-slate-600/20 to-slate-900/40 border-slate-500/50 hover:border-slate-400 text-slate-400' },
-  { id: 'btn_8', slot: '08', title: 'Script 08', desc: 'Chờ phân công tính năng', color: 'from-zinc-600/20 to-zinc-900/40 border-zinc-500/50 hover:border-zinc-400 text-zinc-400' },
+  { id: 'btn_8', slot: '08', title: '🎉 Phát Thoại Outro (Cảm Ơn)', desc: 'Robot Cruzr chào cảm ơn & kết thúc phần thi (speak_outro.py)', color: 'from-violet-600/30 to-violet-900/50 border-violet-400/80 hover:border-violet-300 text-violet-300 shadow-[0_0_15px_rgba(139,92,246,0.3)]' },
 
-  { id: 'btn_9', slot: '09', title: '🎉 Phát Thoại Outro (Cảm Ơn)', desc: 'Robot Cruzr chào cảm ơn & kết thúc phần thi (speak_outro.py)', color: 'from-violet-600/30 to-violet-900/50 border-violet-400/80 hover:border-violet-300 text-violet-300 shadow-[0_0_15px_rgba(139,92,246,0.3)]' },
+  { id: 'btn_9', slot: '09', title: '🔄 Reset Demo System', desc: 'Ấn 1 lần: Undo 1 log | Ấn 3 lần nhanh: Reset All System', color: 'from-teal-600/30 to-teal-900/50 border-teal-400/80 hover:border-teal-300 text-teal-300 shadow-[0_0_15px_rgba(20,184,166,0.3)]' },
   { id: 'btn_10', slot: '10', title: '💡 Khôi Phục Điện Tuya Plugs (ON)', desc: 'Bật toàn bộ ổ cắm thông minh Tuya Smart Plugs (Nút 14)', color: 'from-emerald-600/30 to-emerald-900/50 border-emerald-400/80 hover:border-emerald-300 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.3)]' },
   { id: 'btn_11', slot: '11', title: '⚡ Ngắt Điện Tuya Plugs (OFF)', desc: 'Tắt toàn bộ ổ cắm thông minh Tuya Smart Plugs (Nút 15)', color: 'from-amber-600/30 to-amber-900/50 border-amber-400/80 hover:border-amber-300 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.3)]' },
   { id: 'btn_12', slot: '12', title: '🔌 Test Kết Nối Robot', desc: 'Kiểm tra trạng thái ping & kết nối tới Robot Cruzr (Nút 16)', color: 'from-pink-600/30 to-pink-900/50 border-pink-400/80 hover:border-pink-300 text-pink-300 shadow-[0_0_15px_rgba(236,72,153,0.3)]' },
@@ -25,6 +25,9 @@ export default function NavigateBack() {
   const [loadingBtn, setLoadingBtn] = useState(null);
   const [successBtns, setSuccessBtns] = useState({}); // { btn_id: boolean }
   const [commandHistory, setCommandHistory] = useState([]);
+
+  const resetClickCountRef = useRef(0);
+  const resetClickTimerRef = useRef(null);
 
   // Fetch command history periodically
   useEffect(() => {
@@ -48,7 +51,9 @@ export default function NavigateBack() {
     navigate('/');
   };
 
-  const handleTriggerScript = async (btn) => {
+  const [resetClickBadge, setResetClickBadge] = useState('');
+
+  const executeRunScriptApi = async (btn, actionParam = 'reset_all') => {
     try {
       setLoadingBtn(btn.id);
       setActiveBtn(btn.id);
@@ -57,7 +62,11 @@ export default function NavigateBack() {
       const res = await fetch('/api/script/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ button_id: btn.id, timestamp: new Date().toISOString() })
+        body: JSON.stringify({
+          button_id: btn.id,
+          action: actionParam,
+          timestamp: new Date().toISOString()
+        })
       });
       const t1 = performance.now();
       const latency = Math.round(t1 - t0);
@@ -78,7 +87,7 @@ export default function NavigateBack() {
       setLastResponse(respObj);
 
       if (isOk) {
-        // Đánh dấu nút vừa kích hoạt thành công trong 3 giây
+        // Đánh dấu nút vừa kích hoạt thành công trong 3.5 giây
         setSuccessBtns(prev => ({ ...prev, [btn.id]: true }));
         setTimeout(() => {
           setSuccessBtns(prev => ({ ...prev, [btn.id]: false }));
@@ -103,6 +112,39 @@ export default function NavigateBack() {
     } finally {
       setLoadingBtn(null);
     }
+  };
+
+  const handleTriggerScript = (btn) => {
+    // Nếu là Nút 9 (Reset Demo System): Đếm số lần click trong 650ms (giống Dashboard.jsx)
+    if (btn.id === 'btn_9') {
+      resetClickCountRef.current += 1;
+      const count = resetClickCountRef.current;
+
+      if (count >= 3) {
+        setResetClickBadge('🔥 TRIPLE CLICK: RESET ALL SYSTEM!');
+      } else {
+        setResetClickBadge(`⚡ CLICK ${count}/3 (CHỜ CLICK TIẾP...)`);
+      }
+
+      if (resetClickTimerRef.current) clearTimeout(resetClickTimerRef.current);
+
+      resetClickTimerRef.current = setTimeout(async () => {
+        const clicks = resetClickCountRef.current;
+        resetClickCountRef.current = 0;
+        setResetClickBadge('');
+
+        if (clicks >= 3) {
+          // Ấn 3 lần nhanh -> Reset toàn bộ hệ thống
+          await executeRunScriptApi(btn, 'reset_all');
+        } else {
+          // Ấn 1 lần -> Undo 1 dòng log vừa thực hiện gần nhất
+          await executeRunScriptApi(btn, 'undo');
+        }
+      }, 650);
+      return;
+    }
+
+    executeRunScriptApi(btn, 'normal');
   };
 
   return (
@@ -180,7 +222,11 @@ export default function NavigateBack() {
                   {btn.title}
                 </div>
                 <div className="text-[11px] text-zinc-400 mt-1 line-clamp-1">
-                  {btn.desc}
+                  {btn.id === 'btn_9' && resetClickBadge ? (
+                    <span className="text-amber-300 font-bold animate-pulse">{resetClickBadge}</span>
+                  ) : (
+                    btn.desc
+                  )}
                 </div>
               </div>
 
@@ -188,7 +234,15 @@ export default function NavigateBack() {
               <div className="flex items-center justify-between w-full pt-2 border-t border-white/10 text-[10px]">
                 <span className="text-zinc-500 font-mono">ID: {btn.id}</span>
                 <span className={`text-xs font-bold ${isSuccess ? 'text-emerald-300' : 'text-zinc-300'} group-hover:translate-x-1 transition-transform`}>
-                  {isLoading ? '⏳ EXECUTING...' : isSuccess ? '✅ EXECUTED 200 OK' : 'RUN SCRIPT ➔'}
+                  {btn.id === 'btn_9' && resetClickBadge ? (
+                    <span className="text-amber-300 animate-bounce">{resetClickBadge.includes('TRIPLE') ? '🔥 RESET ALL...' : '⚡ CLICKING...'}</span>
+                  ) : isLoading ? (
+                    '⏳ EXECUTING...'
+                  ) : isSuccess ? (
+                    '✅ EXECUTED 200 OK'
+                  ) : (
+                    'RUN SCRIPT ➔'
+                  )}
                 </span>
               </div>
             </button>

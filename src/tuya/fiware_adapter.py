@@ -22,13 +22,8 @@ class TuyaFiwareAdapter:
         """
         if config_path is None:
             current_file = Path(__file__).resolve()
-            root_dir = current_file.parents[3]
+            root_dir = current_file.parents[2]
             config_path = root_dir / "docker" / "tuya2mqtt.yaml"
-            
-            if not config_path.exists():
-                for candidate in root_dir.rglob("tuya2mqtt.yaml"):
-                    config_path = candidate
-                    break
         
         self.config_path = Path(config_path)
         

@@ -187,7 +187,8 @@ def run_critical_scenario_logs_only() -> dict:
                 "humidity": device_values.get("humid_sensor_a101", 32.4),
                 "smoke": device_values.get("smoke_sensor_a101", 1.0),
                 "co2": device_values.get("air_sensor_a101", 2850.0),
-                "power": device_values.get("energy_sensor_e101", 1450.0)
+                "power": device_values.get("energy_sensor_e101", 1450.0),
+                "skip_robot_dispatch": True
             }
             process_sensor_event(payload)
             generated_count += 1

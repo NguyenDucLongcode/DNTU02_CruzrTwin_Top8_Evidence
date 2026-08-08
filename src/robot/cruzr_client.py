@@ -57,7 +57,7 @@ class CruzrRobotClient:
             port: Cổng WebSocket (mặc định 5000)
             token: Token xác thực (mặc định MY_SECRET_TOKEN)
         """
-        self.ip = ip or os.getenv("CRUZR_IP", "192.168.1.109")
+        self.ip = ip or os.getenv("CRUZR_IP", "192.168.1.107")
         self.port = port
         self.token = token or os.getenv("CRUZR_TOKEN", "MY_SECRET_TOKEN")
         self.url = f"ws://{self.ip}:{self.port}?token={self.token}"

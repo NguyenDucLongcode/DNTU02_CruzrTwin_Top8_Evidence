@@ -1,3 +1,10 @@
+import sys
+if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
 from .client import TuyaCloudClient
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict
@@ -73,6 +80,7 @@ def control_multiple_devices(
     device_type: str = "smart_plug",
     max_workers: int = 6,
     timeout: float = 30.0,
+    async_exec: bool = False,
     **kwargs
 ) -> Dict[str, Dict]:
     """
@@ -153,19 +161,41 @@ def control_multiple_devices(
             print(f"   ❌ LỖI KẾT NỐI TUYA ({device_id}): {e}")
             return (device_id, {"success": False, "executed": False, "error": str(e)})
     
-    # Chạy song song
-    results = {}
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {
-            executor.submit(_control_one, device_id): device_id
+    # Hàm phát lệnh song song
+    def _execute_parallel():
+        import time
+        t_overall_start = time.perf_counter()
+        results = {}
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(_control_one, device_id): device_id
+                for device_id in device_ids
+            }
+
+            for future in as_completed(futures, timeout=timeout):
+                device_id, result = future.result()
+                results[device_id] = result
+
+        t_overall_end = time.perf_counter()
+        overall_elapsed_ms = (t_overall_end - t_overall_start) * 1000
+        print(f"⏱️ [OVERALL TUYA TIMING] Điều khiển song song {len(device_ids)} thiết bị hoàn tất trong: {overall_elapsed_ms:.2f} ms ({overall_elapsed_ms/1000:.2f}s)")
+        return results
+
+    if async_exec:
+        import threading
+        print(f"⚡ [NON-BLOCKING ASYNC] Phát lệnh Tuya [{action.upper()}] tức thì cho {len(device_ids)} thiết bị trong background thread...")
+        threading.Thread(target=_execute_parallel, daemon=True).start()
+        return {
+            device_id: {
+                "success": True,
+                "executed": True,
+                "async": True,
+                "message": f"⚡ Lệnh Tuya {action.upper()} đã được phát đi tức thì (Non-blocking)!"
+            }
             for device_id in device_ids
         }
-        
-        for future in as_completed(futures, timeout=timeout):
-            device_id, result = future.result()
-            results[device_id] = result
-    
-    return results
+    else:
+        return _execute_parallel()
 
 # ============================================================
 # HÀM TIỆN ÍCH CHO FIWARE ID (tự động mapping)
@@ -203,25 +233,28 @@ def control_multiple_by_fiware_ids(
     device_type: str = "smart_plug",
     max_workers: int = 6,
     timeout: float = 30.0,
+    async_exec: bool = False,
     **kwargs
 ) -> Dict[str, Dict]:
     """
     Điều khiển nhiều thiết bị từ FIWARE device_id (tự động mapping)
-    
+
     Args:
         fiware_ids: Danh sách FIWARE device_id
         action: Hành động cần thực hiện
         device_type: Loại thiết bị
         max_workers: Số luồng tối đa
         timeout: Thời gian chờ tối đa
-    
+        async_exec: Thực thi bất đồng bộ không làm block caller (mặc định True)
+
     Returns:
         Dict: Kết quả từng thiết bị với FIWARE ID
     """
     from .fiware_adapter import get_adapter
-    
+
     adapter = get_adapter()
-    
+    results = {}
+
     # Chuyển đổi FIWARE ID -> Tuya ID
     tuya_ids = []
     for fiware_id in fiware_ids:
@@ -230,19 +263,20 @@ def control_multiple_by_fiware_ids(
             tuya_ids.append((fiware_id, tuya_id))
         else:
             results[fiware_id] = {"success": False, "error": f"Không tìm thấy mapping cho {fiware_id}"}
-    
+
     # Điều khiển các thiết bị đã mapping được
     if tuya_ids:
         # Lấy danh sách Tuya IDs
         tuya_only_ids = [tid for _, tid in tuya_ids]
-        
-        # Gọi hàm điều khiển song song
+
+        # Gọi hàm điều khiển song song bất đồng bộ
         tuya_results = control_multiple_devices(
             device_ids=tuya_only_ids,
             action=action,
             device_type=device_type,
             max_workers=max_workers,
             timeout=timeout,
+            async_exec=async_exec,
             **kwargs
         )
         

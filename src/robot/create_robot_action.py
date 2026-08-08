@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -92,6 +93,9 @@ def main(alert_event: dict) -> dict:
     messageAlarm = "activate the alarm.."
     vi_messageAlarm = translate_to_vietnamese(messageAlarm)
 
+    messageMoveOut = "Now, please follow me to the safe waiting area.."
+    vi_messageMoveOut = translate_to_vietnamese(messageMoveOut)
+
     languages = ["vi", "en"]
     robot_action_id = f"RobotAction:{scenario_id}"
 
@@ -165,61 +169,68 @@ def main(alert_event: dict) -> dict:
             # Robot di chuyển tiến về phía trước 5 giây
             print("🚗 Robot di chuyển tiến về phía trước (5s)...")
             RobotClient.move(distance=1.8, speed=0.45)
-            # RobotClient.stop()
-            # time.sleep(1)
-            # RobotClient.move(turningAngle=90,turningSpeed=30)
-
-
-
 
             # 1. Phát thông báo sơ tán khẩn cấp (Tiếng Anh trước, Tiếng Việt sau)
-            # print(f"📢 Robot phát thoại tiếng Anh (EN): \"{messageCitical}\"")
-            # RobotClient.play_action("action://ubtech/presentation")
-            # RobotClient.speak(messageCitical, language="en")
-            # time.sleep(11)  # Căn đủ thời gian đọc hết câu tiếng Anh
+            print(f"📢 Robot phát thoại tiếng Anh (EN): \"{messageCitical}\"")
+            RobotClient.speak(messageCitical, language="en")
+            time.sleep(11)  # Căn đủ thời gian đọc hết câu tiếng Anh
 
-            # print(f"📢 Robot phát thoại tiếng Việt (VI): \"{vi_messageCitical}\"")
-            # RobotClient.play_action("action://ubtech/wave")
-            # RobotClient.speak(vi_messageCitical, language="vi")
-            # time.sleep(13)  # Căn đủ thời gian đọc hết câu tiếng Việt
+            RobotClient.move(turningAngle=90,turningSpeed=60)
 
-            # # 2. Robot thông báo ngắt điện (Tiếng Anh trước, Tiếng Việt sau) -> NGẮT ĐIỆN IOT
-            # print(f"📢 Robot thông báo ngắt điện (EN): \"{messageSmartPlug}\"")
-            # RobotClient.play_action("action://ubtech/explain")
-            # RobotClient.speak(messageSmartPlug, language="en")
-            # time.sleep(4)
+            print(f"📢 Robot phát thoại tiếng Việt (VI): \"{vi_messageCitical}\"")
+            RobotClient.play_action("action://ubtech/wave")
+            RobotClient.speak(vi_messageCitical, language="vi")
+            time.sleep(16)  # Căn đủ thời gian đọc hết câu tiếng Việt
 
-            # print(f"📢 Robot thông báo ngắt điện (VI): \"{vi_messageSmartPlug}\"")
-            # RobotClient.speak(vi_messageSmartPlug, language="vi")
-            # time.sleep(4)
+            # 2. Robot thông báo ngắt điện (Tiếng Anh trước, Tiếng Việt sau) -> NGẮT ĐIỆN IOT
+            print(f"📢 Robot thông báo ngắt điện (EN): \"{messageSmartPlug}\"")
+            RobotClient.play_action("action://ubtech/explain")
+            RobotClient.speak(messageSmartPlug, language="en")
+            time.sleep(5)
 
-            # print(f"⚡ [CRITICAL IOT] Robot đã nói xong câu tắt thiết bị -> Đang ngắt điện {len(all_plugs)} ổ cắm Smart Plug...")
-            # control_multiple_by_fiware_ids(
-            #     fiware_ids=all_plugs,
-            #     action="off",
-            #     device_type="smart_plug",
-            #     max_workers=len(all_plugs)
-            # )
+            print(f"📢 Robot thông báo ngắt điện (VI): \"{vi_messageSmartPlug}\"")
+            RobotClient.speak(vi_messageSmartPlug, language="vi")
+            time.sleep(4.3)
 
-            # # 3. Robot thông báo bật còi báo động (Tiếng Anh trước, Tiếng Việt sau) -> BẬT CÒI ALARM
-            # print(f"📢 Robot thông báo bật còi (EN): \"{messageAlarm}\"")
-            # RobotClient.play_action("action://ubtech/presentation")
-            # RobotClient.speak(messageAlarm, language="en")
-            # time.sleep(4)
+            print(f"⚡ [CRITICAL IOT] Robot đã nói xong câu tắt thiết bị -> Đang ngắt điện {len(all_plugs)} ổ cắm Smart Plug...")
+            control_multiple_by_fiware_ids(
+                fiware_ids=all_plugs,
+                action="off",
+                device_type="smart_plug",
+                max_workers=len(all_plugs)
+            )
 
-            # print(f"📢 Robot thông báo bật còi (VI): \"{vi_messageAlarm}\"")
-            # RobotClient.speak(vi_messageAlarm, language="vi")
-            # time.sleep(4)
+            # 3. Robot thông báo bật còi báo động (Tiếng Anh trước, Tiếng Việt sau) -> BẬT CÒI ALARM
+            print(f"📢 Robot thông báo bật còi (EN): \"{messageAlarm}\"")
+            RobotClient.play_action("action://ubtech/presentation")
+            RobotClient.speak(messageAlarm, language="en")
+            time.sleep(3.7)
 
-            # print(f"🚨 [CRITICAL IOT] Robot đã nói xong câu bật còi -> Đang kích hoạt chuông còi báo động Alarm ({len(all_alarms)} thiết bị)...")
-            # control_multiple_by_fiware_ids(
-            #     fiware_ids=all_alarms,
-            #     action="on",
-            #     device_type="alarm",
-            #     alarm_type=10,
-            #     duration=60,
-            #     max_workers=len(all_alarms)
-            # )
+            print(f"📢 Robot thông báo bật còi (VI): \"{vi_messageAlarm}\"")
+            RobotClient.speak(vi_messageAlarm, language="vi")
+            time.sleep(4)
+
+            print(f"🚨 [CRITICAL IOT] Robot đã nói xong câu bật còi -> Đang kích hoạt chuông còi báo động Alarm ({len(all_alarms)} thiết bị)...")
+            control_multiple_by_fiware_ids(
+                fiware_ids=all_alarms,
+                action="on",
+                device_type="alarm",
+                alarm_type=10,
+                duration=60,
+                max_workers=len(all_alarms)
+            )
+
+            RobotClient.move(turningAngle=-180,turningSpeed=60)
+
+            print(f"📢 Robot thông báo di chuyển ra khỏi khu vực nguy hiểm (EN): \"{messageMoveOut}\"")
+            RobotClient.speak(messageMoveOut, language="en")
+            time.sleep(5)
+
+            print(f"📢 Robot thông báo di chuyển ra khỏi khu vực nguy hiểm (VI): \"{vi_messageMoveOut}\"")
+            RobotClient.speak(vi_messageMoveOut, language="vi")
+            time.sleep(5)
+
+            RobotClient.move(distance=1.0, speed=0.45)
 
         except Exception as err:
             print(f"   ⚠️ Robot execution note: {err}")
@@ -273,3 +284,29 @@ if __name__ == "__main__":
 
     result = main(event)
     print(json.dumps(result, indent=2, ensure_ascii=False))
+
+
+def test_robot_connection() -> dict:
+    """
+    Kiểm tra trạng thái kết nối tới Robot Cruzr thật (WebSocket).
+    Nếu không kết nối được (Robot Offline), tự động chuyển sang chế độ Mô Phỏng (Simulator).
+    """
+    try:
+        robot = CruzrRobotClient()
+        connected = robot.connect(timeout=2.0)
+        if connected:
+            robot.disconnect()
+            return {
+                "connected": True,
+                "message": f"🤖 Đã kết nối thành công tới Robot Cruzr thật tại IP: {robot.ip}:{robot.port}"
+            }
+        else:
+            return {
+                "connected": False,
+                "message": f"⚠️ Không thể kết nối tới Robot Cruzr tại IP: {robot.ip}:{robot.port}. Hệ thống chuyển sang chế độ mô phỏng Offline."
+            }
+    except Exception as err:
+        return {
+            "connected": False,
+            "message": f"⚠️ Robot Cruzr đang Offline hoặc chưa mở WebSocket server ({err}). Đang dùng Simulator Offline."
+        }

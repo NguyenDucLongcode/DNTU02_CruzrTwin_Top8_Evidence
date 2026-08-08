@@ -105,6 +105,8 @@ def process_ai_detector_event(orion_payload: dict, scenario_id: str = None,) -> 
     
     # 6. Run Isolation Forest + Rule engine
     ai_result = detect_anomaly(sensor_features)
+    if "skip_robot_dispatch" in parsed_data:
+        ai_result["skip_robot_dispatch"] = parsed_data["skip_robot_dispatch"]
     lvl = ai_result["predicted_level"]
     
     # Determine expected_label

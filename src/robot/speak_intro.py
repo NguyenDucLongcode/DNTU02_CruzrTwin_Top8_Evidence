@@ -56,19 +56,18 @@ def play_gestures_continuously(client, duration_sec: float, actions: list, stop_
 
 def speak_with_continuous_gestures(client, text: str, language: str, duration_sec: float, actions: list):
     """
-    Phát âm thanh đồng thời kích hoạt luồng cử chỉ tay di chuyển liên tục
+    Phát giọng nói TTS trước, sau đó phát các cử chỉ tay tuần tự
     """
-    stop_event = threading.Event()
-    t = threading.Thread(
-        target=play_gestures_continuously,
-        args=(client, duration_sec, actions, stop_event),
-        daemon=True
-    )
-    t.start()
+    print(f"📢 Robot phát giọng nói: \"{text[:50]}...\"")
     client.speak(text, language=language)
-    time.sleep(duration_sec)
-    stop_event.set()
-    t.join(timeout=0.5)
+
+    # Sau khi phát lệnh giọng nói, phát cử chỉ tay theo chuỗi tuần tự
+    for act in actions:
+        try:
+            client.play_action(act)
+            time.sleep(2.5)
+        except Exception as e:
+            print(f"   ⚠️ Lỗi phát cử chỉ {act}: {e}")
 
 
 def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happy"):

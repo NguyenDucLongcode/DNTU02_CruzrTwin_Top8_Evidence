@@ -144,11 +144,11 @@ def create_alert_event(ai_result: dict, demo_run_id: str = None, scenario_id: st
         alert_log_path = os.path.join(cfg["log_dir"], "alert_events.jsonl")
         append_jsonl(alert_log_path, log_entry)
 
-        # Trigger RobotAction in background thread if critical
-        if level == "critical":
+        # Trigger RobotAction in background thread if critical and not explicitly skipped
+        if level == "critical" and not ai_result.get("skip_robot_dispatch"):
             import threading
             threading.Thread(target=create_robot_action, args=(event,), daemon=True).start()
-            
+
     return event
 
 

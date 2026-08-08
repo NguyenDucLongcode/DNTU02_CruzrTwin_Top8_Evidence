@@ -13,6 +13,14 @@ import threading
 from typing import Dict, Any
 from flask import Blueprint, request, jsonify
 
+# Đảm bảo console Windows luôn in emoji và tiếng Việt bằng mã hóa UTF-8 an toàn
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 # Khai báo Flask Blueprint cho Controller Script Runner
@@ -62,7 +70,12 @@ BUTTON_SLOTS: Dict[str, Dict[str, Any]] = {
     },
     "btn_7": {"id": "btn_7", "name": "Kịch bản 7", "desc": "Chưa gán tính năng", "type": "script"},
     "btn_8": {"id": "btn_8", "name": "Kịch bản 8", "desc": "Chưa gán tính năng", "type": "script"},
-    "btn_9": {"id": "btn_9", "name": "Kịch bản 9", "desc": "Chưa gán tính năng", "type": "script"},
+    "btn_9": {
+        "id": "btn_9",
+        "name": "Phát Thoại Outro (Cảm Ơn)",
+        "desc": "Robot Cruzr chào cảm ơn & phát thoại kết thúc phần thi (src/robot/speak_outro.py)",
+        "script": "src/robot/speak_outro.py"
+    },
     "btn_10": {
         "id": "btn_10",
         "name": "Khôi Phục Điện Tuya Plugs (ON)",
@@ -93,7 +106,7 @@ def run_python_script_async(script_relative_path: str, args: list = None) -> Non
             full_path = os.path.join(ROOT_DIR, script_relative_path)
             cmd = [sys.executable, full_path] + (args or [])
             print(f"🚀 [SCRIPT RUNNER] Đang chạy script: {' '.join(cmd)}")
-            res = subprocess.run(cmd, cwd=ROOT_DIR, capture_output=True, text=True)
+            res = subprocess.run(cmd, cwd=ROOT_DIR, capture_output=True, text=True, encoding="utf-8", errors="replace")
             if res.returncode == 0:
                 print(f"✅ [SCRIPT RUNNER] Thành công: {script_relative_path}")
             else:
@@ -219,10 +232,22 @@ def dispatch_robot_emergency_action_async() -> dict:
             print(f"❌ [SLOT 06] Lỗi Robot action: {err}")
 
     threading.Thread(target=_target, daemon=True).start()
-    return {
-        "success": True,
-        "message": "🤖 [BƯỚC 2] Đã phát lệnh kích hoạt Robot Cruzr thoại sơ tán & ngắt điện Tuya IoT khẩn cấp!"
-    }
+def test_robot_connection_action() -> dict:
+    """Kiểm tra trạng thái kết nối tới Robot Cruzr thật qua WebSocket (Dành cho Slot 12 / Nút 16)"""
+    try:
+        from src.robot.create_robot_action import test_robot_connection
+        res = test_robot_connection()
+        return {
+            "success": True,
+            "connected": res.get("connected", False),
+            "message": res.get("message", "Đã kiểm tra kết nối Robot thành công!")
+        }
+    except Exception as err:
+        return {
+            "success": False,
+            "connected": False,
+            "message": f"❌ Lỗi khi kiểm tra kết nối Robot Cruzr: {err}"
+        }
 
 
 EXECUTION_LOGS = []
@@ -245,6 +270,13 @@ def execute_button_action(button_id: str, payload: Dict[str, Any] = None) -> Dic
     """
     Hàm xử lý chính khi người dùng click vào 1 trong 12 nút từ giao diện Controller
     """
+    # Chuẩn hóa Alias nút bấm tương thích (btn_14 -> btn_10, btn_15 -> btn_11, btn_16 -> btn_12)
+    alias_map = {
+        "btn_14": "btn_10",
+        "btn_15": "btn_11",
+        "btn_16": "btn_12"
+    }
+    button_id = alias_map.get(button_id, button_id)
     slot_info = BUTTON_SLOTS.get(button_id)
     if not slot_info:
         res = {
@@ -330,6 +362,19 @@ def execute_button_action(button_id: str, payload: Dict[str, Any] = None) -> Dic
     if button_id == "btn_6":
         res = dispatch_robot_emergency_action_async()
         msg = res.get("message", "Đã gửi lệnh kích hoạt Robot & IoT khẩn cấp!")
+        log_execution_event(button_id, slot_info["name"], "SUCCESS 200 OK", msg)
+        return {
+            "success": True,
+            "button_id": button_id,
+            "name": slot_info["name"],
+            "desc": slot_info["desc"],
+            "message": msg
+        }
+
+    # Slot 09: Kích hoạt thoại Outro cảm ơn Robot Cruzr
+    if button_id == "btn_9":
+        run_python_script_async("src/robot/speak_outro.py")
+        msg = "🚀 Đã kích hoạt script Robot Outro Cảm Ơn (src/robot/speak_outro.py)!"
         log_execution_event(button_id, slot_info["name"], "SUCCESS 200 OK", msg)
         return {
             "success": True,

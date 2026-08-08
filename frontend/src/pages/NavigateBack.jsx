@@ -12,7 +12,7 @@ const BUTTON_CONFIGS = [
   { id: 'btn_7', slot: '07', title: 'Script 07', desc: 'Chờ phân công tính năng', color: 'from-slate-600/20 to-slate-900/40 border-slate-500/50 hover:border-slate-400 text-slate-400' },
   { id: 'btn_8', slot: '08', title: 'Script 08', desc: 'Chờ phân công tính năng', color: 'from-zinc-600/20 to-zinc-900/40 border-zinc-500/50 hover:border-zinc-400 text-zinc-400' },
 
-  { id: 'btn_9', slot: '09', title: 'Script 09', desc: 'Chờ phân công tính năng', color: 'from-neutral-600/20 to-neutral-900/40 border-neutral-500/50 hover:border-neutral-400 text-neutral-400' },
+  { id: 'btn_9', slot: '09', title: '🎉 Phát Thoại Outro (Cảm Ơn)', desc: 'Robot Cruzr chào cảm ơn & kết thúc phần thi (speak_outro.py)', color: 'from-violet-600/30 to-violet-900/50 border-violet-400/80 hover:border-violet-300 text-violet-300 shadow-[0_0_15px_rgba(139,92,246,0.3)]' },
   { id: 'btn_10', slot: '10', title: '💡 Khôi Phục Điện Tuya Plugs (ON)', desc: 'Bật toàn bộ ổ cắm thông minh Tuya Smart Plugs (Nút 14)', color: 'from-emerald-600/30 to-emerald-900/50 border-emerald-400/80 hover:border-emerald-300 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.3)]' },
   { id: 'btn_11', slot: '11', title: '⚡ Ngắt Điện Tuya Plugs (OFF)', desc: 'Tắt toàn bộ ổ cắm thông minh Tuya Smart Plugs (Nút 15)', color: 'from-amber-600/30 to-amber-900/50 border-amber-400/80 hover:border-amber-300 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.3)]' },
   { id: 'btn_12', slot: '12', title: '🔌 Test Kết Nối Robot', desc: 'Kiểm tra trạng thái ping & kết nối tới Robot Cruzr (Nút 16)', color: 'from-pink-600/30 to-pink-900/50 border-pink-400/80 hover:border-pink-300 text-pink-300 shadow-[0_0_15px_rgba(236,72,153,0.3)]' },
@@ -196,42 +196,68 @@ export default function NavigateBack() {
         })}
       </main>
 
-      {/* Footer Execution Log Bar */}
-      <footer className="z-10 bg-zinc-950/90 p-3 rounded-xl border border-zinc-800/80 text-xs font-mono flex flex-col gap-2 shadow-2xl">
+      {/* Footer Execution Log Terminal & System Monitor */}
+      <footer className="z-10 bg-zinc-950/95 p-4 rounded-2xl border border-zinc-800/90 text-xs font-mono flex flex-col gap-3 shadow-2xl backdrop-blur-md max-h-56">
+        {/* Top Status Summary Bar */}
         <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
           <div className="flex items-center gap-3">
-            <span className="text-zinc-500 font-bold">TRẠNG THÁI GỬI LỆNH GẦN NHẤT:</span>
-            {lastResponse ? (
-              <span className={`font-bold flex items-center gap-2 ${lastResponse.success ? 'text-emerald-400' : 'text-red-400'}`}>
-                <span className="px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-700">[{lastResponse.time}]</span>
-                <span className="text-cyan-400">SLOT {lastResponse.slot} ({lastResponse.name}):</span>
-                <span>{lastResponse.message}</span>
+            <span className="flex items-center gap-2 text-cyan-400 font-bold tracking-wider">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+              <span>TERMINAL KẾT QUẢ GỬI LỆNH REAL-TIME</span>
+            </span>
+            {lastResponse && (
+              <span className={`px-2.5 py-0.5 rounded text-[11px] font-bold border ${
+                lastResponse.success ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+              }`}>
+                [{lastResponse.time}] SLOT {lastResponse.slot} - {lastResponse.name}
               </span>
-            ) : (
-              <span className="text-zinc-600 italic">Chưa gửi lệnh nào. Click vào 1 trong 12 nút ở trên để gửi lệnh kích chạy script.</span>
             )}
           </div>
 
           {lastResponse && (
-            <div className="text-[11px] text-zinc-400 font-bold bg-zinc-900 px-2.5 py-1 rounded-lg border border-zinc-800">
-              HTTP STATUS: <span className="text-emerald-400">200 OK</span> | LATENCY: <span className="text-cyan-400">{lastResponse.latencyMs} ms</span>
+            <div className="text-[11px] text-zinc-400 font-bold flex items-center gap-3 bg-zinc-900 px-3 py-1 rounded-xl border border-zinc-800">
+              <span>STATUS: <span className={lastResponse.success ? 'text-emerald-400' : 'text-rose-400'}>{lastResponse.success ? '200 OK SUCCESS' : '500 ERROR'}</span></span>
+              <span className="text-zinc-600">|</span>
+              <span>LATENCY: <span className="text-cyan-400">{lastResponse.latencyMs} ms</span></span>
             </div>
           )}
         </div>
 
-        {/* Live Execution History Log */}
-        {commandHistory.length > 0 && (
-          <div className="flex items-center gap-2 text-[11px] overflow-x-auto custom-scrollbar pt-1 text-zinc-400">
-            <span className="text-zinc-500 font-bold flex-shrink-0">LỊCH SỬ GỬI:</span>
-            <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap">
-              {commandHistory.slice(0, 3).map((item, idx) => (
-                <span key={idx} className="px-2 py-0.5 bg-zinc-900/90 rounded border border-emerald-500/30 text-emerald-300 text-[10px]">
-                  [{item.timestamp}] {item.button_id} ({item.name}): {item.status}
-                </span>
+        {/* Live Detail Message Output Box */}
+        <div className="bg-black/90 p-3 rounded-xl border border-zinc-800/80 overflow-y-auto max-h-32 font-mono text-[11px] text-zinc-300 space-y-1.5 custom-scrollbar">
+          {lastResponse ? (
+            <div className="p-2 rounded bg-zinc-900/80 border border-zinc-800 flex flex-col gap-1">
+              <div className="flex items-center justify-between text-cyan-300 font-bold border-b border-zinc-800/60 pb-1">
+                <span>{'>'} [SLOT {lastResponse.slot}] {lastResponse.name}</span>
+                <span className="text-zinc-500">{lastResponse.time}</span>
+              </div>
+              <div className="text-emerald-300 font-semibold leading-relaxed pt-0.5 whitespace-pre-wrap">
+                {lastResponse.message}
+              </div>
+            </div>
+          ) : (
+            <div className="text-zinc-600 italic py-2 text-center">
+              💡 Chưa có lệnh nào được thực thi. Hãy nhấp vào 1 trong 12 nút bấm phía trên để kiểm tra kết nối Robot hoặc kích chạy kịch bản.
+            </div>
+          )}
+
+          {/* Execution History Log List */}
+          {commandHistory.length > 0 && (
+            <div className="pt-2 border-t border-zinc-800/60 space-y-1">
+              <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">📜 Lịch Sử 5 Lệnh Gần Nhất:</div>
+              {commandHistory.slice(0, 5).map((item, idx) => (
+                <div key={idx} className="flex items-center justify-between text-[10px] px-2 py-1 rounded bg-zinc-900/60 border border-zinc-800/50 text-zinc-400">
+                  <span className="flex items-center gap-2">
+                    <span className="text-zinc-600">[{item.timestamp}]</span>
+                    <span className="text-cyan-400 font-bold">{item.button_id}</span>
+                    <span className="text-zinc-300">({item.name})</span>
+                  </span>
+                  <span className="text-emerald-400 font-mono truncate max-w-md">{item.details || item.status}</span>
+                </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </footer>
     </div>
   );

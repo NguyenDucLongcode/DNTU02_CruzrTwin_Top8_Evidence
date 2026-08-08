@@ -8,11 +8,15 @@ import time
 import threading
 import logging
 import queue
+from pathlib import Path
 from typing import Dict, Any, Optional, Callable
 from dataclasses import dataclass, field
 from enum import Enum
-import json
 import websocket
+from dotenv import load_dotenv
+
+# Tự động nạp file .env từ thư mục gốc dự án
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 

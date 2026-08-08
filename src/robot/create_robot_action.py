@@ -1,7 +1,6 @@
 import os
 import sys
 import json
-
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -163,6 +162,9 @@ def main(alert_event: dict) -> dict:
     isConnected = RobotClient.connect(timeout=1.0)
     if isConnected:
         try:
+
+            RobotClient.set_volume(90)
+
             print("🎭 Robot mở biểu cảm khẩn cấp...")
             # RobotClient.play_emotion("emotion://va/techface_upset")
 
@@ -173,7 +175,7 @@ def main(alert_event: dict) -> dict:
             # 1. Phát thông báo sơ tán khẩn cấp (Tiếng Anh trước, Tiếng Việt sau)
             print(f"📢 Robot phát thoại tiếng Anh (EN): \"{messageCitical}\"")
             RobotClient.speak(messageCitical, language="en")
-            time.sleep(11)  # Căn đủ thời gian đọc hết câu tiếng Anh
+            time.sleep(10.5)  # Căn đủ thời gian đọc hết câu tiếng Anh
 
             RobotClient.move(turningAngle=90,turningSpeed=60)
 
@@ -224,13 +226,23 @@ def main(alert_event: dict) -> dict:
 
             print(f"📢 Robot thông báo di chuyển ra khỏi khu vực nguy hiểm (EN): \"{messageMoveOut}\"")
             RobotClient.speak(messageMoveOut, language="en")
-            time.sleep(5)
+            time.sleep(7)
 
             print(f"📢 Robot thông báo di chuyển ra khỏi khu vực nguy hiểm (VI): \"{vi_messageMoveOut}\"")
             RobotClient.speak(vi_messageMoveOut, language="vi")
             time.sleep(5)
 
-            RobotClient.move(distance=1.0, speed=0.45)
+            RobotClient.move(distance=1.0, speed=0.65)
+            time.sleep(6)
+
+            RobotClient.move(turningAngle=-90,turningSpeed=60)
+            time.sleep(30)
+
+            RobotClient.move(turningAngle=90,turningSpeed=60)
+            time.sleep(7)
+
+            RobotClient.move(distance=0.2,speed=0.4)
+
 
         except Exception as err:
             print(f"   ⚠️ Robot execution note: {err}")
@@ -310,3 +322,17 @@ def test_robot_connection() -> dict:
             "connected": False,
             "message": f"⚠️ Robot Cruzr đang Offline hoặc chưa mở WebSocket server ({err}). Đang dùng Simulator Offline."
         }
+
+
+def run_robot_action_async(event: dict = None) -> dict:
+    """
+    Kích hoạt kịch bản Robot sơ tán & ngắt điện IoT bất đồng bộ trong background thread.
+    Trả phản hồi về cho caller/Web UI tức thì (< 5ms).
+    """
+    import threading
+    thread = threading.Thread(target=main, args=(event,), daemon=True)
+    thread.start()
+    return {
+        "success": True,
+        "message": "⚡ Kịch bản Robot Cruzr & Tuya IoT đã được phát đi bất đồng bộ tức thì (Non-blocking)!"
+    }

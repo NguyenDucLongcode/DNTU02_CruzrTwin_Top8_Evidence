@@ -21,7 +21,10 @@ if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
 
 # Đoạn xin phép bắt đầu (Greeting / Start Text)
 # START_TEXT_VI = "Đội DNTU CruzrTwin xin được phép bắt đầu."
-START_TEXT_EN = "Ladies and Gentlemen, dear judges and all the audience. The DNTU CruzrTwin team would like to begin our presentation now."
+START_TEXT_EN = (
+    "Ladies and Gentlemen, dear judges and all the audience."
+    "The DNTU CruzrTwin team would like to begin our presentation now."
+)
 
 # Đoạn văn bản giới thiệu bằng Tiếng Anh (English Intro Text)
 INTRO_TEXT_EN = (
@@ -86,20 +89,21 @@ def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happ
         print("❌ Không thể kết nối tới Robot. Vui lòng kiểm tra địa chỉ IP và mạng!")
         print("💡 Text giới thiệu sẽ được in ra màn hình dưới dạng Demo:")
         print(f"\n[EN]: {START_TEXT_EN} {INTRO_TEXT_EN}")
-        print(f"[VI]: {START_TEXT_VI} {INTRO_TEXT_VI}\n")
+        print(f"[VI]: {start_vi} {intro_vi}\n")
         return False
 
     try:
-        # 1. Phát biểu cảm khuôn mặt + Cử chỉ giơ tay chào (Greeting Action)
-        if emotion:
-            print(f"🎭 Đang mở biểu cảm: {emotion}")
-            client.play_emotion(emotion)
+        # # 1. Phát biểu cảm khuôn mặt + Cử chỉ giơ tay chào (Greeting Action)
+        # if emotion:
+        #     print(f"🎭 Đang mở biểu cảm: {emotion}")
+        #     client.play_emotion(emotion)
 
-        print("👋 Robot giơ tay chào mở đầu...")
-        client.play_action("action://ubtech/greeting")
-        time.sleep(1.5)
+        # print("👋 Robot giơ tay chào mở đầu...")
+        # client.play_action("action://ubtech/greeting")
+        # time.sleep(1.5)
 
         # Danh sách các động tác cử chỉ tay thay đổi liên tục khi thuyết trình
+
         greeting_actions = ["action://ubtech/wave", "action://ubtech/greeting"]
         presentation_actions = [
             "action://ubtech/presentation",
@@ -109,6 +113,12 @@ def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happ
             "action://ubtech/wave"
         ]
 
+        RobotClient.move(distance=1.2, speed=0.45)
+        time.sleep(5)
+        RobotClient.move(turningAngle=-90, turningSpeed=60)
+
+
+
         # 2. Phát giọng nói kết hợp cử chỉ tay di chuyển liên tục
         if language in ["en", "both"]:
             # Bước A: Xin phép bắt đầu + Động tác vẫy tay chào (Wave gestures)
@@ -117,10 +127,10 @@ def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happ
                 client=client,
                 text=START_TEXT_EN,
                 language="en",
-                duration_sec=7.0,
+                duration_sec=20,
                 actions=greeting_actions
             )
-
+            time.sleep(5)
             # Bước B: Nói bài giới thiệu + Động tác tay thuyết trình liên tục suốt bài nói (Continuous Presentation)
             print(f"\n📢 Robot phát bài giới thiệu (EN) + Tay di chuyển liên tục:\n\"{INTRO_TEXT_EN}\"")
             speak_with_continuous_gestures(
@@ -131,26 +141,26 @@ def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happ
                 actions=presentation_actions
             )
 
-        if language in ["vi", "both"]:
-            # Bước A: Xin phép bắt đầu (VI) + Động tác tay chào
-            print(f"\n📢 Robot chào xin phép bắt đầu (VI):\n\"{START_TEXT_VI}\"")
-            speak_with_continuous_gestures(
-                client=client,
-                text=START_TEXT_VI,
-                language="vi",
-                duration_sec=4.5,
-                actions=greeting_actions
-            )
+        # if language in ["vi", "both"]:
+        #     # Bước A: Xin phép bắt đầu (VI) + Động tác tay chào
+        #     print(f"\n📢 Robot chào xin phép bắt đầu (VI):\n\"{START_TEXT_VI}\"")
+        #     speak_with_continuous_gestures(
+        #         client=client,
+        #         text=START_TEXT_VI,
+        #         language="vi",
+        #         duration_sec=4.5,
+        #         actions=greeting_actions
+        #     )
 
-            # Bước B: Nói bài giới thiệu (VI) + Động tác tay thuyết trình liên tục suốt bài nói
-            print(f"\n📢 Robot phát bài giới thiệu (VI) + Tay di chuyển liên tục:\n\"{INTRO_TEXT_VI}\"")
-            speak_with_continuous_gestures(
-                client=client,
-                text=INTRO_TEXT_VI,
-                language="vi",
-                duration_sec=14.0,
-                actions=presentation_actions
-            )
+        #     # Bước B: Nói bài giới thiệu (VI) + Động tác tay thuyết trình liên tục suốt bài nói
+        #     print(f"\n📢 Robot phát bài giới thiệu (VI) + Tay di chuyển liên tục:\n\"{INTRO_TEXT_VI}\"")
+        #     speak_with_continuous_gestures(
+        #         client=client,
+        #         text=INTRO_TEXT_VI,
+        #         language="vi",
+        #         duration_sec=14.0,
+        #         actions=presentation_actions
+        #     )
 
         print("\n✅ Đã hoàn thành bài giới thiệu CruzrTwin ASEAN với tay di chuyển liên tục suốt bài nói!")
         return True

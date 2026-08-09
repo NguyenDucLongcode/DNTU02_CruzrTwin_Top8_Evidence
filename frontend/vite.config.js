@@ -18,7 +18,7 @@ function startWebhookPlugin() {
             const rootDir = path.resolve(__dirname, '..')
             const pyScript = path.join(rootDir, 'src', 'fiware', 'webhook_receiver.py')
 
-            let pythonCmd = 'python'
+            let pythonCmd = 'py'
             const envPy = path.join(rootDir, 'env', 'Scripts', 'python.exe')
             const venvPy = path.join(rootDir, '.venv', 'Scripts', 'python.exe')
 
@@ -28,17 +28,18 @@ function startWebhookPlugin() {
               pythonCmd = venvPy
             }
 
-            console.log(`[Vite Webhook Launcher] Starting: ${pythonCmd} ${pyScript}`)
+            console.log(`[Vite Webhook Launcher] Opening new CMD Terminal for: "${pythonCmd}" "${pyScript}"`)
 
-            const child = spawn(pythonCmd, [pyScript], {
+            const launchCmd = `start "CruzrTwin Webhook Receiver" cmd.exe /k ""${pythonCmd}" "${pyScript}""`
+            const child = spawn(launchCmd, [], {
               cwd: rootDir,
               detached: true,
-              stdio: 'ignore'
+              shell: true
             })
             child.unref()
 
             res.setHeader('Content-Type', 'application/json')
-            res.end(JSON.stringify({ success: true, message: 'Webhook server spawned successfully' }))
+            res.end(JSON.stringify({ success: true, message: '🖥️ Đã mở cửa sổ Terminal CMD mới cho Webhook Receiver!' }))
           } catch (e) {
             console.error(`[Vite Webhook Launcher Error]:`, e)
             res.statusCode = 500

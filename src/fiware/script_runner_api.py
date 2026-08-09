@@ -8,6 +8,7 @@ Flask Blueprint & Handler xử lý kích chạy các script Python, kịch bản
 
 import os
 import sys
+import time
 import subprocess
 import threading
 from typing import Dict, Any
@@ -571,6 +572,54 @@ def run_script_button():
         res = execute_button_action(button_id, req_data)
         status_code = 200 if res.get("success") else 400
         return jsonify(res), status_code
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@script_runner_bp.route('/api/system/restart', methods=['POST'])
+def restart_webhook_server():
+    """Tắt và chạy lại py src/fiware/webhook_receiver.py (tương đương Ctrl+C rồi py...)"""
+    def _restart():
+        time.sleep(0.3)
+        print("\n🔄 [SERVER RESTART] Đang ngắt và khởi chạy lại py src/fiware/webhook_receiver.py...")
+        script_path = os.path.join(ROOT_DIR, "src", "fiware", "webhook_receiver.py")
+        os.execv(sys.executable, [sys.executable, script_path])
+
+    threading.Thread(target=_restart, daemon=True).start()
+    return jsonify({
+        "success": True,
+        "message": "🔄 Đã gửi lệnh Restart Webhook Server! (Đang chạy lại py src/fiware/webhook_receiver.py...)"
+    }), 200
+
+
+@script_runner_bp.route('/api/system/stop', methods=['POST'])
+def stop_webhook_server():
+    """Tắt hẳn Server Webhook Receiver (tương đương Ctrl+C ngắt tiến trình Python)"""
+    def _stop():
+        time.sleep(0.3)
+        print("\n🔴 [SERVER STOP] Đã nhận lệnh TẮT SERVER! Đang ngắt tiến trình (Ctrl+C)...")
+        os._exit(0)
+
+    threading.Thread(target=_stop, daemon=True).start()
+    return jsonify({
+        "success": True,
+        "message": "🔴 Đã TẮT Webhook Receiver Server thành công! (Tiến trình đã ngắt giống Ctrl+C)."
+    }), 200
+
+
+@script_runner_bp.route('/api/system/start', methods=['POST'])
+def start_webhook_server():
+    """Bật Server Webhook Receiver và bật mở cửa sổ CMD Terminal hiển thị log trực tiếp"""
+    try:
+        script_path = os.path.join(ROOT_DIR, "src", "fiware", "webhook_receiver.py")
+        py_cmd = sys.executable
+        launch_cmd = f'start "CruzrTwin Webhook Receiver" cmd.exe /k ""{py_cmd}" "{script_path}""'
+        print(f"\n🖥️ [SERVER START] Đang mở cửa sổ CMD Terminal: {launch_cmd}")
+        subprocess.Popen(launch_cmd, shell=True, cwd=ROOT_DIR)
+        return jsonify({
+            "success": True,
+            "message": "🖥️ Đã mở cửa sổ Terminal CMD mới và khởi chạy Webhook Receiver thành công!"
+        }), 200
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 

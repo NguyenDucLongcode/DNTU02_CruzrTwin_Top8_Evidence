@@ -104,10 +104,26 @@ def aggregate_sensor_data(device_data: dict) -> dict:
     return {}  # Chưa đủ dữ liệu
 
 
+WEBHOOK_RECEIVER_ENABLED = True
+
+def set_webhook_receiver_enabled(status: bool) -> bool:
+    global WEBHOOK_RECEIVER_ENABLED
+    WEBHOOK_RECEIVER_ENABLED = status
+    print(f"📡 [WEBHOOK RECEIVER] Status set to: {'ENABLED (BẬT)' if status else 'DISABLED (TẮT)'}")
+    return WEBHOOK_RECEIVER_ENABLED
+
+def get_webhook_receiver_enabled() -> bool:
+    return WEBHOOK_RECEIVER_ENABLED
+
+
 @app.route('/webhook/notify', methods=['POST'])
 def webhook_notify():
     """Nhận notification từ Orion"""
     global _sensor_cache
+
+    if not WEBHOOK_RECEIVER_ENABLED:
+        print("⚠️ [WEBHOOK RECEIVER] Đã tạm dừng nhận notification do Nút Tắt Webhook đang kích hoạt.")
+        return jsonify({"status": "disabled", "message": "Webhook receiver is currently disabled"}), 200
 
     data = request.get_json(silent=True) or {}
     entity = data.get("data", [{}])[0] if data.get("data") else {}

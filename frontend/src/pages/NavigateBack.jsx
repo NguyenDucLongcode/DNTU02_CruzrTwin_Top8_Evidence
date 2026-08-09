@@ -29,30 +29,122 @@ export default function NavigateBack() {
   const resetClickCountRef = useRef(0);
   const resetClickTimerRef = useRef(null);
 
-  // Fetch command history periodically
+  // Fetch command history periodically & auto detect Server status
   useEffect(() => {
-    const fetchHistory = async () => {
+    const checkServerStatus = async () => {
       try {
         const res = await fetch('/api/script/history');
         if (res.ok) {
+          setIsServerRunning(true);
           const data = await res.json();
           if (data.history) setCommandHistory(data.history);
+        } else {
+          setIsServerRunning(false);
         }
       } catch (err) {
-        // ignore offline errors
+        setIsServerRunning(false);
       }
     };
-    fetchHistory();
-    const interval = setInterval(fetchHistory, 3000);
+    checkServerStatus();
+    const interval = setInterval(checkServerStatus, 2500);
     return () => clearInterval(interval);
   }, []);
 
-  const handleBackToDashboard = () => {
-    navigate('/');
+  const [isMovementPaused, setIsMovementPaused] = useState(false);
+  const [isRestarting, setIsRestarting] = useState(false);
+  const [isServerRunning, setIsServerRunning] = useState(true);
+  const [resetClickBadge, setResetClickBadge] = useState('');
+
+  const handleStopServer = async () => {
+    try {
+      // Gọi Flask API /api/system/stop để ngắt (kill) tiến trình Python py src/fiware/webhook_receiver.py (giống Ctrl+C)
+      await fetch('/api/system/stop', { method: 'POST' });
+    } catch (err) {
+      // Bỏ qua lỗi ngắt kết nối do tiến trình ngắt tức thì
+    }
+    setIsServerRunning(false);
+    setLastResponse({
+      button_id: 'sys_stop',
+      slot: 'SYS',
+      name: 'Tắt Webhook Server (Ctrl+C)',
+      message: '🔴 Đã TẮT (Kill) tiến trình py src/fiware/webhook_receiver.py thành công! (Tương đương Ctrl+C)',
+      success: true,
+      latencyMs: 0,
+      time: new Date().toLocaleTimeString()
+    });
   };
 
-  const [isMovementPaused, setIsMovementPaused] = useState(false);
-  const [resetClickBadge, setResetClickBadge] = useState('');
+  const handleStartServer = async () => {
+    try {
+      // Gọi Vite Middleware /start-webhook-server để thực sự spawn tiến trình py src/fiware/webhook_receiver.py trên OS
+      const res = await fetch('/start-webhook-server', { method: 'POST' });
+      const data = await res.json();
+      setIsServerRunning(true);
+      setLastResponse({
+        button_id: 'sys_start',
+        slot: 'SYS',
+        name: 'Bật Webhook Server',
+        message: data.message || '🚀 Đã khởi chạy lại py src/fiware/webhook_receiver.py thành công!',
+        success: true,
+        latencyMs: 0,
+        time: new Date().toLocaleTimeString()
+      });
+    } catch (err) {
+      setLastResponse({
+        button_id: 'sys_start',
+        slot: 'SYS',
+        name: 'Bật Webhook Server',
+        message: `Lỗi khi khởi chạy server: ${err.message}`,
+        success: false,
+        latencyMs: 0,
+        time: new Date().toLocaleTimeString()
+      });
+    }
+  };
+
+  const handleRestartServer = async () => {
+    if (isRestarting) return;
+    setIsRestarting(true);
+    try {
+      // Bước 1: Kill tiến trình cũ qua /api/system/stop
+      try {
+        await fetch('/api/system/stop', { method: 'POST' });
+      } catch (e) {
+        // bỏ qua nếu server đã ngắt trước đó
+      }
+
+      // Đợi 400ms để tiến trình ngắt hẳn
+      await new Promise((r) => setTimeout(r, 400));
+
+      // Bước 2: Spawn tiến trình mới qua Vite middleware /start-webhook-server
+      const res = await fetch('/start-webhook-server', { method: 'POST' });
+      const data = await res.json();
+      setIsServerRunning(true);
+      setLastResponse({
+        button_id: 'sys_restart',
+        slot: 'SYS',
+        name: 'Restart Webhook Server',
+        message: '🔄 Đã TẮT và CHẠY LẠI py src/fiware/webhook_receiver.py thành công! (Ctrl+C rồi py...)',
+        success: true,
+        latencyMs: 0,
+        time: new Date().toLocaleTimeString()
+      });
+    } catch (err) {
+      setLastResponse({
+        button_id: 'sys_restart',
+        slot: 'SYS',
+        name: 'Restart Webhook Server',
+        message: `Lỗi restart: ${err.message}`,
+        success: false,
+        latencyMs: 0,
+        time: new Date().toLocaleTimeString()
+      });
+    } finally {
+      setTimeout(() => {
+        setIsRestarting(false);
+      }, 1500);
+    }
+  };
 
   const executeRunScriptApi = async (btn, actionParam = 'normal') => {
     try {
@@ -164,14 +256,6 @@ export default function NavigateBack() {
 
       {/* Header Bar */}
       <header className="flex items-center justify-between z-10 bg-zinc-950/80 p-4 rounded-2xl border border-zinc-800/80 shadow-2xl backdrop-blur-md">
-        <button
-          onClick={handleBackToDashboard}
-          className="px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-cyan-400 hover:text-white font-bold text-xs rounded-xl border border-cyan-500/40 hover:border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.2)] transition-all cursor-pointer flex items-center gap-2"
-        >
-          <span className="text-sm">🖥️</span>
-          <span>BACK TO DASHBOARD</span>
-        </button>
-
         <div className="flex items-center gap-3">
           <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
           <h1 className="text-base md:text-lg font-bold tracking-wider text-white">
@@ -182,11 +266,60 @@ export default function NavigateBack() {
           </span>
         </div>
 
-        <div className="text-xs text-zinc-400 flex items-center gap-2">
-          <span>SERVER STATUS:</span>
-          <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-bold text-[11px]">
-            CONNECTED (PORT 5000)
-          </span>
+        <div className="flex items-center gap-2.5">
+          {/* Nút 1: BẬT WEBHOOK */}
+          <button
+            onClick={handleStartServer}
+            disabled={isServerRunning}
+            className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 shadow-lg ${
+              isServerRunning
+                ? 'bg-zinc-900/50 border-zinc-800 text-zinc-500 cursor-not-allowed opacity-60'
+                : 'bg-emerald-600 hover:bg-emerald-500 border-emerald-400 text-white shadow-[0_0_12px_rgba(16,185,129,0.4)] cursor-pointer'
+            }`}
+            title="Khởi chạy lệnh py src/fiware/webhook_receiver.py"
+          >
+            <span>▶️</span>
+            <span>BẬT WEBHOOK</span>
+          </button>
+
+          {/* Nút 2: TẮT WEBHOOK */}
+          <button
+            onClick={handleStopServer}
+            disabled={!isServerRunning}
+            className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 shadow-lg ${
+              !isServerRunning
+                ? 'bg-zinc-900/50 border-zinc-800 text-zinc-500 cursor-not-allowed opacity-60'
+                : 'bg-rose-600 hover:bg-rose-500 border-rose-400 text-white shadow-[0_0_12px_rgba(244,63,94,0.4)] cursor-pointer'
+            }`}
+            title="Tắt tiến trình Server (tương đương Ctrl+C)"
+          >
+            <span>⏹️</span>
+            <span>TẮT WEBHOOK</span>
+          </button>
+
+          {/* Nút 3: RESTART WEBHOOK */}
+          <button
+            onClick={handleRestartServer}
+            disabled={isRestarting}
+            className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 shadow-lg ${
+              isRestarting
+                ? 'bg-amber-500/20 border-amber-400 text-amber-300 animate-pulse cursor-wait'
+                : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-700 hover:border-cyan-400 text-cyan-400 hover:text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.25)] cursor-pointer'
+            }`}
+            title="Tắt và chạy lại py src/fiware/webhook_receiver.py (Ctrl+C rồi py...)"
+          >
+            <span className={isRestarting ? 'animate-spin' : ''}>🔄</span>
+            <span>{isRestarting ? 'RESTARTING...' : 'RESTART'}</span>
+          </button>
+
+          <div className="text-xs text-zinc-400 flex items-center gap-2 ml-1">
+            <span>STATUS:</span>
+            <span className={`px-2 py-0.5 rounded border font-bold text-[11px] ${
+              isServerRunning ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' : 'bg-rose-500/20 text-rose-400 border-rose-500/40'
+            }`}>
+              {isServerRunning ? 'CONNECTED (PORT 5001)' : 'STOPPED (OFFLINE)'}
+            </span>
+          </div>
         </div>
       </header>
 

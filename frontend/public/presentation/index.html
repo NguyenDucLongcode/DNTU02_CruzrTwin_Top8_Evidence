@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CruzrTwin Presentation</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0;
+            background-color: #000; 
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .slide-container { 
+            width: 100%; 
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .slide-container img { 
+            width: 100%; 
+            height: 100%;
+            object-fit: contain;
+            display: none; 
+        }
+        .slide-container img.active { 
+            display: block; 
+        }
+    </style>
+</head>
+<body>
+    <div class="slide-container" id="slides">
+        <img src="Bản chiếu1.PNG" alt="Bản chiếu1.PNG">
+        <img src="Bản chiếu2.PNG" alt="Bản chiếu2.PNG">
+        <img src="Bản chiếu3.PNG" alt="Bản chiếu3.PNG">
+        <img src="Bản chiếu4.PNG" alt="Bản chiếu4.PNG">
+        <img src="Bản chiếu5.PNG" alt="Bản chiếu5.PNG">
+    <script>
+        let currentIndex = 0;
+        const slides = document.querySelectorAll('#slides img');
+        function updateSlide() {
+            slides.forEach((s, i) => {
+                s.classList.remove('active');
+                if(i === currentIndex) s.classList.add('active');
+            });
+        }
+        
+        function nextSlide() {
+            if (currentIndex < slides.length - 1) {
+                currentIndex++;
+                updateSlide();
+            }
+        }
+
+        function prevSlide() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                updateSlide();
+            }
+        }
+
+        // Receive remote commands via BroadcastChannel
+        const channel = new BroadcastChannel('cruzrtwin_sync');
+        channel.onmessage = (event) => {
+            if (event.data?.type === 'SLIDE_NEXT') nextSlide();
+            if (event.data?.type === 'SLIDE_PREV') prevSlide();
+        };
+
+        // Local keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') nextSlide();
+            if (e.key === 'ArrowLeft') prevSlide();
+        });
+
+        // Init
+        if(slides.length > 0) updateSlide();
+    </script>
+</body>
+</html>

@@ -21,7 +21,6 @@ if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
 
 # Đoạn văn bản Outro chuẩn (Tập trung 1 câu duy nhất theo yêu cầu)
 OUTRO_TEXT_EN = "CruzrTwin ASEAN — closing the last meter of smart-city response."
-OUTRO_TEXT_VI = "CruzrTwin ASEAN — giải pháp rút ngắn mét cuối cùng trong ứng phó đô thị thông minh."
 
 
 def speak_with_continuous_gestures(client, text: str, language: str, duration_sec: float, actions: list):
@@ -68,23 +67,9 @@ def speak_with_continuous_gestures(client, text: str, language: str, duration_se
 
 
 def speak_outro(language: str = "en", emotion: str = "emotion://va/techface_happy"):
-    """
-    Kết nối và điều khiển Robot Cruzr phát câu Outro chốt kịch bản
-    """
-    print("\n" + "=" * 60)
-    print("🤖 CRUZR ROBOT OUTRO SPEECH SCRIPT")
-    print("=" * 60)
 
     client = CruzrRobotClient()
-    print(f"📡 Đang kết nối tới Robot Cruzr ({client.ip}:{client.port})...")
-
     connected = client.connect(timeout=1.0)
-    if not connected:
-        print("❌ Không thể kết nối tới Robot. Vui lòng kiểm tra địa chỉ IP và mạng!")
-        print("💡 Text Outro sẽ được in ra màn hình dưới dạng Demo:")
-        print(f"\n[EN]: {OUTRO_TEXT_EN}")
-        print(f"[VI]: {OUTRO_TEXT_VI}\n")
-        return False
 
     try:
         # 1. Phát biểu cảm khuôn mặt + Cử chỉ giơ tay chào
@@ -114,16 +99,7 @@ def speak_outro(language: str = "en", emotion: str = "emotion://va/techface_happ
         ]
 
         # 2. Phát duy nhất câu slogan Outro
-        if language in ["en", "both"]:
-            print(f"\n📢 Robot phát Outro (EN):\n\"{OUTRO_TEXT_EN}\"")
-            speak_with_continuous_gestures(
-                client=client,
-                text=OUTRO_TEXT_EN,
-                language="en",
-                duration_sec=7.0,
-                actions=closing_actions
-            )
-
+        client.speak(text=OUTRO_TEXT_EN, language="en")
 
         print("\n✅ Đã hoàn thành phát thoại Outro: CruzrTwin ASEAN — closing the last meter of smart-city response.")
         return True

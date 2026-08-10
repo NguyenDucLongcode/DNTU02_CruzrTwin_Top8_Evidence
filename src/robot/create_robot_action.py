@@ -86,11 +86,11 @@ def main(alert_event: dict) -> dict:
     )
 
     # message tắt smart plug và bật alarm
-    messageSmartPlug = "Turn off all electrical devices."
-    vi_messageSmartPlug = "Tắt tất cả các thiết bị điện"
+    messageSmartPlug = "I will turn off all electrical devices."
+    vi_messageSmartPlug = "Tôi sẽ tiến hành tắt tất cả các thiết bị điện"
 
-    messageAlarm = "activate the alarm.."
-    vi_messageAlarm = "Bật còi báo động"
+    messageAlarm = "and activate the alarm.."
+    vi_messageAlarm = "Và bật còi báo động"
 
     messageMoveOut = "Now, please follow me to the safe waiting area.."
     vi_messageMoveOut = "Bây giờ, xin hãy đi theo tôi đến khu vực chờ an toàn."
@@ -171,12 +171,13 @@ def main(alert_event: dict) -> dict:
             # Robot di chuyển tiến về phía trước 5 giây
             print("🚗 Robot di chuyển tiến về phía trước (5s)...")
             RobotClient.move(distance=1.8, speed=0.7)
+            time.sleep(4.5)
+            RobotClient.move(turningAngle=81.5,turningSpeed=60)
+            time.sleep(1.5)
 
             # 1. Phát thông báo sơ tán khẩn cấp (Tiếng Anh trước, Tiếng Việt sau)
             print(f"📢 Robot phát thoại tiếng Anh (EN): \"{messageCitical}\"")
             RobotClient.speak_and_wait(messageCitical, language="en")
-
-            RobotClient.move(turningAngle=81.5,turningSpeed=60)
 
             print(f"📢 Robot phát thoại tiếng Việt (VI): \"{vi_messageCitical}\"")
             RobotClient.play_action("action://ubtech/wave")

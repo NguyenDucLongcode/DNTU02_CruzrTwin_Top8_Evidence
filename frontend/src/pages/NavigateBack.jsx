@@ -50,6 +50,22 @@ export default function NavigateBack() {
     return () => clearInterval(interval);
   }, []);
 
+  // Điều khiển Slide HTML bằng phím mũi tên từ trang NavigateBack
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const channel = new BroadcastChannel('cruzrtwin_sync');
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        channel.postMessage({ type: 'SLIDE_NEXT' });
+      } else if (e.key === 'ArrowLeft') {
+        channel.postMessage({ type: 'SLIDE_PREV' });
+      }
+      // Clean up channel after send
+      channel.close();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const [isMovementPaused, setIsMovementPaused] = useState(false);
   const [isRestarting, setIsRestarting] = useState(false);
   const [isServerRunning, setIsServerRunning] = useState(true);
@@ -267,6 +283,44 @@ export default function NavigateBack() {
         </div>
 
         <div className="flex items-center gap-2.5">
+          {/* Nút Điều Khiển Màn Hình TV (BroadcastChannel) */}
+          <div className="flex items-center bg-zinc-900 border border-zinc-700 rounded-xl overflow-hidden mr-2 shadow-lg">
+            <button
+              onClick={() => {
+                const ch = new BroadcastChannel('cruzrtwin_sync');
+                ch.postMessage({type: 'SWITCH_VIEW', view: 'dashboard'});
+                ch.close();
+              }}
+              className="px-3 py-1.5 text-xs font-bold hover:bg-zinc-800 text-cyan-400 border-r border-zinc-700 transition-colors"
+              title="Quay về màn hình Dashboard"
+            >
+              🖥️ DASHBOARD
+            </button>
+            <button
+              onClick={() => {
+                const ch = new BroadcastChannel('cruzrtwin_sync');
+                ch.postMessage({type: 'SLIDE_PREV'});
+                ch.close();
+              }}
+              className="px-2.5 py-1.5 text-xs font-bold hover:bg-zinc-800 text-amber-500/70 border-r border-zinc-700 transition-colors"
+              title="Lùi lại 1 Slide"
+            >
+              ◀
+            </button>
+            <button
+              onClick={() => {
+                const ch = new BroadcastChannel('cruzrtwin_sync');
+                ch.postMessage({type: 'SWITCH_VIEW', view: 'slide'});
+                ch.postMessage({type: 'SLIDE_NEXT'});
+                ch.close();
+              }}
+              className="px-3 py-1.5 text-xs font-bold hover:bg-zinc-800 text-amber-400 transition-colors flex items-center gap-1"
+              title="Mở Slide / Chuyển sang Slide tiếp theo"
+            >
+              📊 SLIDE (NEXT) <span className="text-[10px]">▶</span>
+            </button>
+          </div>
+
           {/* Nút 1: BẬT WEBHOOK */}
           <button
             onClick={handleStartServer}

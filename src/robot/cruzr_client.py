@@ -391,7 +391,7 @@ class CruzrRobotClient:
     def play_action(self, action_id: str) -> Dict:
         """Chơi cử chỉ/động tác tay (action/gesture)"""
         print(f"   👋 play_action: {action_id}")
-        return self.send_command("play_action", json.dumps({"path": action_id}))
+        return self.send_command("play_action", json.dumps({"uri": action_id}))
 
     def dismiss_emotion(self) -> Dict:
         """Tắt emotion hiện tại"""

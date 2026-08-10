@@ -578,32 +578,51 @@ def run_script_button():
 
 @script_runner_bp.route('/api/system/restart', methods=['POST'])
 def restart_webhook_server():
-    """Tắt và chạy lại py src/fiware/webhook_receiver.py (tương đương Ctrl+C rồi py...)"""
+    """Mở một cửa sổ Terminal mới và tắt cửa sổ hiện tại để Restart"""
     def _restart():
         time.sleep(0.3)
-        print("\n🔄 [SERVER RESTART] Đang ngắt và khởi chạy lại py src/fiware/webhook_receiver.py...")
+        print("\n🔄 [SERVER RESTART] Đang mở terminal mới và đóng terminal cũ...")
+        
+        # 1. Bật terminal mới giống như nút Start (dùng /c để tự động đóng khi kết thúc)
         script_path = os.path.join(ROOT_DIR, "src", "fiware", "webhook_receiver.py")
-        os.execv(sys.executable, [sys.executable, script_path])
+        py_cmd = sys.executable
+        launch_cmd = f'start "CruzrTwin Webhook Receiver" cmd.exe /c ""{py_cmd}" "{script_path}""'
+        subprocess.Popen(launch_cmd, shell=True, cwd=ROOT_DIR)
+        
+        # 2. Đóng cửa sổ terminal hiện tại
+        import ctypes
+        hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+        if hwnd:
+            ctypes.windll.user32.PostMessageW(hwnd, 0x0010, 0, 0) # WM_CLOSE
+        
+        os._exit(0)
 
     threading.Thread(target=_restart, daemon=True).start()
     return jsonify({
         "success": True,
-        "message": "🔄 Đã gửi lệnh Restart Webhook Server! (Đang chạy lại py src/fiware/webhook_receiver.py...)"
+        "message": "🔄 Đã gửi lệnh Restart! (Sẽ mở cửa sổ Terminal mới và đóng cái cũ)"
     }), 200
 
 
 @script_runner_bp.route('/api/system/stop', methods=['POST'])
 def stop_webhook_server():
-    """Tắt hẳn Server Webhook Receiver (tương đương Ctrl+C ngắt tiến trình Python)"""
+    """Tắt hẳn Server Webhook Receiver và đóng luôn Terminal"""
     def _stop():
         time.sleep(0.3)
-        print("\n🔴 [SERVER STOP] Đã nhận lệnh TẮT SERVER! Đang ngắt tiến trình (Ctrl+C)...")
+        print("\n🔴 [SERVER STOP] Đã nhận lệnh TẮT SERVER! Đang ngắt tiến trình và đóng terminal...")
+        
+        # Đóng cửa sổ terminal hiện tại
+        import ctypes
+        hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+        if hwnd:
+            ctypes.windll.user32.PostMessageW(hwnd, 0x0010, 0, 0) # WM_CLOSE
+            
         os._exit(0)
 
     threading.Thread(target=_stop, daemon=True).start()
     return jsonify({
         "success": True,
-        "message": "🔴 Đã TẮT Webhook Receiver Server thành công! (Tiến trình đã ngắt giống Ctrl+C)."
+        "message": "🔴 Đã TẮT Webhook Receiver Server thành công! (Cửa sổ terminal đã được đóng)."
     }), 200
 
 

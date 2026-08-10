@@ -26,18 +26,45 @@ OUTRO_TEXT_VI = "CruzrTwin ASEAN — giải pháp rút ngắn mét cuối cùng 
 
 def speak_with_continuous_gestures(client, text: str, language: str, duration_sec: float, actions: list):
     """
-    Phát giọng nói TTS trước, sau đó phát các cử chỉ tay tuần tự
+    Phát giọng nói TTS trước, phát cử chỉ tay song song, rồi chờ speech xong.
     """
+    import queue as _queue
+
     print(f"📢 Robot phát giọng nói Outro ({language.upper()}): \"{text}\"")
     client.speak(text, language=language)
+    time.sleep(0.3)  # Buffer nhỏ để robot bắt đầu TTS trước khi nhận lệnh cử chỉ
 
-    # Sau khi phát lệnh giọng nói, phát cử chỉ tay theo chuỗi tuần tự
+    # Phát cử chỉ tay song song với speech
+    gesture_start = time.monotonic()
     for act in actions:
         try:
             client.play_action(act)
             time.sleep(2.5)
         except Exception as e:
             print(f"   ⚠️ Lỗi phát cử chỉ {act}: {e}")
+    gesture_elapsed = time.monotonic() - gesture_start
+
+    # Sau khi cử chỉ xong, chờ speech hoàn thành (nếu robot vẫn đang nói)
+    estimated = client._estimate_speak_duration(text, language)
+    remaining = max(0, estimated - gesture_elapsed)
+
+    if remaining > 0:
+        print(f"   ⏳ [SPEAK] Chờ speech còn lại ({remaining:.1f}s)...")
+        deadline = time.monotonic() + remaining
+        while time.monotonic() < deadline:
+            rem = deadline - time.monotonic()
+            if rem <= 0:
+                break
+            try:
+                resp = client._response_queue.get(timeout=min(rem, 0.5))
+                if resp.get("status") == "completed":
+                    print(f"   ✅ [SPEAK] Robot nói xong!")
+                    time.sleep(0.3)
+                    return
+            except _queue.Empty:
+                continue
+        print(f"   ⏱️ [SPEAK] Đã chờ hết {remaining:.1f}s (fallback)")
+
 
 
 def speak_outro(language: str = "en", emotion: str = "emotion://va/techface_happy"):
@@ -72,11 +99,11 @@ def speak_outro(language: str = "en", emotion: str = "emotion://va/techface_happ
         # Di chuyển theo hành trình Outro
         client.move(turningAngle=-81.5, turningSpeed=60)
         time.sleep(3.7)
-        client.move(distance=1.5, speed=0.6)
+        client.move(distance=1.1, speed=0.5)
         time.sleep(4.4)
         client.move(turningAngle=81.5, turningSpeed=60)
         time.sleep(3.7)
-        client.move(distance=1.8, speed=0.45)
+        client.move(distance=2.2, speed=0.45)
         time.sleep(5)
 
         # Danh sách các động tác cử chỉ tay chào kết thúc Outro
@@ -97,15 +124,6 @@ def speak_outro(language: str = "en", emotion: str = "emotion://va/techface_happ
                 actions=closing_actions
             )
 
-        # if language in ["vi", "both"]:
-        #     print(f"\n📢 Robot phát Outro (VI):\n\"{OUTRO_TEXT_VI}\"")
-        #     speak_with_continuous_gestures(
-        #         client=client,
-        #         text=OUTRO_TEXT_VI,
-        #         language="vi",
-        #         duration_sec=8.0,
-        #         actions=closing_actions
-        #     )
 
         print("\n✅ Đã hoàn thành phát thoại Outro: CruzrTwin ASEAN — closing the last meter of smart-city response.")
         return True

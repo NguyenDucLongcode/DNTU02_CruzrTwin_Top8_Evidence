@@ -184,6 +184,17 @@ class CruzrRobotClient:
             payload["options"] = options
 
         with self._command_lock:
+            # ★ FIX: Flush response cũ bị kẹt trong queue trước khi gửi lệnh mới
+            flushed = 0
+            while not self._response_queue.empty():
+                try:
+                    self._response_queue.get_nowait()
+                    flushed += 1
+                except queue.Empty:
+                    break
+            if flushed:
+                print(f"   \U0001f9f9 [QUEUE] Flush {flushed} stale response(s) trước '{command}'")
+
             try:
                 self._ws.send(json.dumps(payload))
 
@@ -267,6 +278,62 @@ class CruzrRobotClient:
         options = json.dumps({"language": language, "text": text})
         print(f"gửi lệnh speak: {options}")
         return self.send_command("play_voice_response", options)
+
+    def speak_and_wait(self, text: str, language: str = "vi", fallback_timeout: float = None) -> Dict:
+        """
+        Phát giọng nói (TTS) và CHỜ robot nói xong.
+        Kết hợp: chờ response 'completed' từ robot + ước lượng thời gian dựa trên text.
+        Dùng thay cho speak() + time.sleep() cố định.
+        """
+        result = self.speak(text, language)
+
+        if not result.get("success", False):
+            print(f"   ❌ [SPEAK] Lệnh speak thất bại: {result.get('message', 'Unknown')}")
+            return result
+
+        # Ước lượng thời gian dựa trên text
+        estimated = self._estimate_speak_duration(text, language)
+        wait_time = max(estimated, fallback_timeout) if fallback_timeout is not None else estimated
+
+        print(f"   ⏳ [SPEAK] Chờ robot nói ({wait_time:.1f}s, ước lượng={estimated:.1f}s)...")
+
+        # Chờ và kiểm tra response 'completed' từ robot để thoát sớm
+        deadline = time.monotonic() + wait_time
+        while time.monotonic() < deadline:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            try:
+                resp = self._response_queue.get(timeout=min(remaining, 0.5))
+                resp_status = resp.get("status", "")
+                if resp_status == "completed":
+                    elapsed = wait_time - remaining
+                    print(f"   ✅ [SPEAK] Robot nói xong! (sau {elapsed:.1f}s, sớm hơn {remaining:.1f}s)")
+                    time.sleep(0.3)  # Buffer nhỏ để robot ổn định
+                    return result
+            except queue.Empty:
+                continue
+
+        print(f"   ⏱️ [SPEAK] Đã chờ hết {wait_time:.1f}s (fallback timeout)")
+        time.sleep(0.2)  # Buffer nhỏ
+        return result
+
+    @staticmethod
+    def _estimate_speak_duration(text: str, language: str = "vi") -> float:
+        """
+        Ước lượng thời gian robot nói dựa trên độ dài text.
+        - Tiếng Việt: ~0.55 giây/từ
+        - Tiếng Anh: ~0.45 giây/từ
+        - Cộng thêm startup TTS + ngắt nghỉ dấu câu
+        """
+        import re
+        word_count = len(text.split())
+        sec_per_word = 0.55 if language.lower() == "vi" else 0.45
+        startup = 1.5  # Thời gian khởi động engine TTS
+        estimated = (word_count * sec_per_word) + startup
+        punct_count = len(re.findall(r'[.,!?;:\-()]', text))
+        estimated += punct_count * 0.3
+        return max(2.0, round(estimated, 1))
 
     def set_volume(self, volume: int) -> Dict:
         """Đặt âm lượng (0-100)"""

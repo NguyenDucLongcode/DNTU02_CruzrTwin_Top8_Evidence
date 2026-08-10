@@ -87,13 +87,13 @@ def main(alert_event: dict) -> dict:
 
     # message tắt smart plug và bật alarm
     messageSmartPlug = "Turn off all electrical devices."
-    vi_messageSmartPlug = translate_to_vietnamese(messageSmartPlug)
+    vi_messageSmartPlug = "Tắt tất cả các thiết bị điện"
 
     messageAlarm = "activate the alarm.."
-    vi_messageAlarm = translate_to_vietnamese(messageAlarm)
+    vi_messageAlarm = "Bật còi báo động"
 
     messageMoveOut = "Now, please follow me to the safe waiting area.."
-    vi_messageMoveOut = translate_to_vietnamese(messageMoveOut)
+    vi_messageMoveOut = "Bây giờ, xin hãy đi theo tôi đến khu vực chờ an toàn."
 
     languages = ["vi", "en"]
     robot_action_id = f"RobotAction:{scenario_id}"
@@ -174,25 +174,21 @@ def main(alert_event: dict) -> dict:
 
             # 1. Phát thông báo sơ tán khẩn cấp (Tiếng Anh trước, Tiếng Việt sau)
             print(f"📢 Robot phát thoại tiếng Anh (EN): \"{messageCitical}\"")
-            RobotClient.speak(messageCitical, language="en")
-            time.sleep(10.5)  # Căn đủ thời gian đọc hết câu tiếng Anh
+            RobotClient.speak_and_wait(messageCitical, language="en")
 
             RobotClient.move(turningAngle=81.5,turningSpeed=60)
 
             print(f"📢 Robot phát thoại tiếng Việt (VI): \"{vi_messageCitical}\"")
             RobotClient.play_action("action://ubtech/wave")
-            RobotClient.speak(vi_messageCitical, language="vi")
-            time.sleep(15)  # Căn đủ thời gian đọc hết câu tiếng Việt
+            RobotClient.speak_and_wait(vi_messageCitical, language="vi")
 
             # 2. Robot thông báo ngắt điện (Tiếng Anh trước, Tiếng Việt sau) -> NGẮT ĐIỆN IOT
             print(f"📢 Robot thông báo ngắt điện (EN): \"{messageSmartPlug}\"")
             RobotClient.play_action("action://ubtech/explain")
-            RobotClient.speak(messageSmartPlug, language="en")
-            time.sleep(7)
+            RobotClient.speak_and_wait(messageSmartPlug, language="en")
 
             print(f"📢 Robot thông báo ngắt điện (VI): \"{vi_messageSmartPlug}\"")
-            RobotClient.speak(vi_messageSmartPlug, language="vi")
-            time.sleep(4.5)
+            RobotClient.speak_and_wait(vi_messageSmartPlug, language="vi")
 
             print(f"⚡ [CRITICAL IOT] Robot đã nói xong câu tắt thiết bị -> Đang ngắt điện {len(all_plugs)} ổ cắm Smart Plug...")
             control_multiple_by_fiware_ids(
@@ -205,12 +201,10 @@ def main(alert_event: dict) -> dict:
             # 3. Robot thông báo bật còi báo động (Tiếng Anh trước, Tiếng Việt sau) -> BẬT CÒI ALARM
             print(f"📢 Robot thông báo bật còi (EN): \"{messageAlarm}\"")
             RobotClient.play_action("action://ubtech/presentation")
-            RobotClient.speak(messageAlarm, language="en")
-            time.sleep(3.7)
+            RobotClient.speak_and_wait(messageAlarm, language="en")
 
             print(f"📢 Robot thông báo bật còi (VI): \"{vi_messageAlarm}\"")
-            RobotClient.speak(vi_messageAlarm, language="vi")
-            time.sleep(4)
+            RobotClient.speak_and_wait(vi_messageAlarm, language="vi")
 
             print(f"🚨 [CRITICAL IOT] Robot đã nói xong câu bật còi -> Đang kích hoạt chuông còi báo động Alarm ({len(all_alarms)} thiết bị)...")
             control_multiple_by_fiware_ids(
@@ -225,26 +219,24 @@ def main(alert_event: dict) -> dict:
             RobotClient.move(turningAngle=-161,turningSpeed=80)
 
             print(f"📢 Robot thông báo di chuyển ra khỏi khu vực nguy hiểm (EN): \"{messageMoveOut}\"")
-            RobotClient.speak(messageMoveOut, language="en")
-            time.sleep(14)
+            RobotClient.speak_and_wait(messageMoveOut, language="en")
 
             print(f"📢 Robot thông báo di chuyển ra khỏi khu vực nguy hiểm (VI): \"{vi_messageMoveOut}\"")
-            RobotClient.speak(vi_messageMoveOut, language="vi")
-            time.sleep(5)
+            RobotClient.speak_and_wait(vi_messageMoveOut, language="vi")
 
-            RobotClient.move(distance=1.0, speed=0.75)
-            time.sleep(5.5)
+            RobotClient.move(distance=1.5, speed=0.75)
+            time.sleep(6)
 
             RobotClient.move(turningAngle=-81.5,turningSpeed=60)
-            time.sleep(13)
+            # time.sleep(13)
 
-            RobotClient.move(turningAngle=81.5,turningSpeed=60)
-            time.sleep(7)
+            # RobotClient.move(turningAngle=81.5,turningSpeed=60)
+            # time.sleep(7)
 
-            RobotClient.move(distance=0.5,speed=0.4)
-            time.sleep(7)
+            # RobotClient.move(distance=0.5,speed=0.4)
+            # time.sleep(7)
 
-            RobotClient.move(turningAngle=-86.3,turningSpeed=45)
+            # RobotClient.move(turningAngle=-86.3,turningSpeed=45)
 
 
         except Exception as err:

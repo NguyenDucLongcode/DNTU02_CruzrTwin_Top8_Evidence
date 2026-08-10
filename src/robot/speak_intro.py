@@ -23,7 +23,7 @@ if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
 # START_TEXT_VI = "Đội DNTU CruzrTwin xin được phép bắt đầu."
 START_TEXT_EN = (
     "Ladies and Gentlemen, dear judges and all the audience."
-    "The DNTU CruzrTwin team would like to begin our presentation now."
+    "The DNTU CruzTwin team would like to begin our presentation now."
 )
 
 # Đoạn văn bản giới thiệu bằng Tiếng Anh (English Intro Text)
@@ -59,18 +59,45 @@ def play_gestures_continuously(client, duration_sec: float, actions: list, stop_
 
 def speak_with_continuous_gestures(client, text: str, language: str, duration_sec: float, actions: list):
     """
-    Phát giọng nói TTS trước, sau đó phát các cử chỉ tay tuần tự
+    Phát giọng nói TTS trước, phát cử chỉ tay song song, rồi chờ speech xong.
     """
+    import queue as _queue
+
     print(f"📢 Robot phát giọng nói: \"{text[:50]}...\"")
     client.speak(text, language=language)
+    time.sleep(0.3)  # Buffer nhỏ để robot bắt đầu TTS trước khi nhận lệnh cử chỉ
 
-    # Sau khi phát lệnh giọng nói, phát cử chỉ tay theo chuỗi tuần tự
+    # Phát cử chỉ tay song song với speech
+    gesture_start = time.monotonic()
     for act in actions:
         try:
             client.play_action(act)
             time.sleep(2.5)
         except Exception as e:
             print(f"   ⚠️ Lỗi phát cử chỉ {act}: {e}")
+    gesture_elapsed = time.monotonic() - gesture_start
+
+    # Sau khi cử chỉ xong, chờ speech hoàn thành (nếu robot vẫn đang nói)
+    estimated = client._estimate_speak_duration(text, language)
+    remaining = max(0, estimated - gesture_elapsed)
+
+    if remaining > 0:
+        print(f"   ⏳ [SPEAK] Chờ speech còn lại ({remaining:.1f}s)...")
+        deadline = time.monotonic() + remaining
+        while time.monotonic() < deadline:
+            rem = deadline - time.monotonic()
+            if rem <= 0:
+                break
+            try:
+                resp = client._response_queue.get(timeout=min(rem, 0.5))
+                if resp.get("status") == "completed":
+                    print(f"   ✅ [SPEAK] Robot nói xong!")
+                    time.sleep(0.3)
+                    return
+            except _queue.Empty:
+                continue
+        print(f"   ⏱️ [SPEAK] Đã chờ hết {remaining:.1f}s (fallback)")
+
 
 
 def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happy"):
@@ -93,15 +120,6 @@ def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happ
         return False
 
     try:
-        # # 1. Phát biểu cảm khuôn mặt + Cử chỉ giơ tay chào (Greeting Action)
-        # if emotion:
-        #     print(f"🎭 Đang mở biểu cảm: {emotion}")
-        #     client.play_emotion(emotion)
-
-        # print("👋 Robot giơ tay chào mở đầu...")
-        # client.play_action("action://ubtech/greeting")
-        # time.sleep(1.5)
-
         # Danh sách các động tác cử chỉ tay thay đổi liên tục khi thuyết trình
 
         greeting_actions = ["action://ubtech/wave", "action://ubtech/greeting"]
@@ -116,6 +134,7 @@ def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happ
         # START ACTIONS--------------------
 
         client.move(distance=1.46, speed=0.45)
+        client.play_action("action://ubtech/goodbye")
         time.sleep(5)
         client.move(turningAngle=-86.3, turningSpeed=45)
         time.sleep(3.7)
@@ -143,15 +162,15 @@ def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happ
                 duration_sec=12.0,
                 actions=presentation_actions
             )
-            time.sleep(18)
+            time.sleep(20)
+
             # Mở biểu cảm thẹn thùng & động tác dễ thương
-            print("🎭 Đang mở biểu cảm: emotion://va/face_shy")
-            client.play_emotion("emotion://va/face_shy")
+            print("🎭 Đang mở biểu cảm: emotion://va/face_love")
+            client.play_emotion("emotion://va/face_love")
             time.sleep(2)
             print("👋 Robot thực hiện cử chỉ: action://ubtech/cute")
             client.play_action("action://ubtrobot/cute")
-
-            time.sleep(18)
+            time.sleep(23)
 
 
         client.move(turningAngle=-176.3, turningSpeed=45)
@@ -164,29 +183,6 @@ def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happ
         time.sleep(5)
         client.move(turningAngle=-86.3, turningSpeed=45)
 
-
-
-
-        # if language in ["vi", "both"]:
-        #     # Bước A: Xin phép bắt đầu (VI) + Động tác tay chào
-        #     print(f"\n📢 Robot chào xin phép bắt đầu (VI):\n\"{START_TEXT_VI}\"")
-        #     speak_with_continuous_gestures(
-        #         client=client,
-        #         text=START_TEXT_VI,
-        #         language="vi",
-        #         duration_sec=4.5,
-        #         actions=greeting_actions
-        #     )
-
-        #     # Bước B: Nói bài giới thiệu (VI) + Động tác tay thuyết trình liên tục suốt bài nói
-        #     print(f"\n📢 Robot phát bài giới thiệu (VI) + Tay di chuyển liên tục:\n\"{INTRO_TEXT_VI}\"")
-        #     speak_with_continuous_gestures(
-        #         client=client,
-        #         text=INTRO_TEXT_VI,
-        #         language="vi",
-        #         duration_sec=14.0,
-        #         actions=presentation_actions
-        #     )
 
         print("\n✅ Đã hoàn thành bài giới thiệu CruzrTwin ASEAN với tay di chuyển liên tục suốt bài nói!")
         return True

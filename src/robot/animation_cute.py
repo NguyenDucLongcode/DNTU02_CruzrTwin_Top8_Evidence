@@ -79,13 +79,13 @@ def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happ
 
 
         client.move(turningAngle=-176.3, turningSpeed=45)
-        time.sleep(5)
+        time.sleep(3.7)
         client.move(distance=0.6, speed=0.45)
-        time.sleep(5)
+        time.sleep(4.3)
         client.move(turningAngle=86.3, turningSpeed=45)
-        time.sleep(5)
+        time.sleep(3.5)
         client.move(distance=0.4, speed=0.45)
-        time.sleep(5)
+        time.sleep(4)
         client.move(turningAngle=-86.3, turningSpeed=45)
 
 

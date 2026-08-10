@@ -579,10 +579,11 @@ export default function Dashboard() {
 
   return (
     <div className="w-full h-full flex flex-col md:flex-row overflow-hidden bg-black">
-      {/* HTML SLIDE OVERLAY (if active) */}
-      {showSlideView && (
-        <iframe src="/presentation/index.html" className="absolute top-0 left-0 w-full h-full z-[9999] border-none bg-black" />
-      )}
+      {/* HTML SLIDE OVERLAY (luôn render nhưng ẩn/hiện bằng CSS để không bị reset slide) */}
+      <iframe 
+        src="/presentation/index.html" 
+        className={`absolute top-0 left-0 w-full h-full z-[9999] border-none bg-black ${showSlideView ? 'visible pointer-events-auto' : 'invisible pointer-events-none'}`} 
+      />
       <main className="flex-1 relative h-full flex flex-col min-w-0">
         <div className="flex-1 relative w-full overflow-hidden">
           <ThreeScene

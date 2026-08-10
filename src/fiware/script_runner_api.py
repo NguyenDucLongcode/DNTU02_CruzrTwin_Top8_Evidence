@@ -395,10 +395,16 @@ def execute_button_action(button_id: str, payload: Dict[str, Any] = None) -> Dic
     if button_id != "btn_2":
         GLOBAL_CONTROLLER_STATE["ai_detection_focus"] = False
 
-    # Slot 01: Kích hoạt thoại giới thiệu Robot Cruzr
+    # Slot 01: Kích hoạt thoại giới thiệu hoặc Cử chỉ đáng yêu
     if button_id == "btn_1":
-        run_python_script_async("src/robot/speak_intro.py")
-        msg = "🚀 Đã kích hoạt chạy script Robot Giới Thiệu (src/robot/speak_intro.py)!"
+        action = (payload or {}).get("action")
+        if action == "animation_cute.py":
+            run_python_script_async("src/robot/animation_cute.py")
+            msg = "🚀 Đã kích hoạt chạy script Animation Cute (src/robot/animation_cute.py)!"
+        else:
+            run_python_script_async("src/robot/speak_intro.py")
+            msg = "🚀 Đã kích hoạt chạy script Robot Giới Thiệu (src/robot/speak_intro.py)!"
+            
         log_execution_event(button_id, slot_info["name"], "SUCCESS 200 OK", msg)
         return {
             "success": True,

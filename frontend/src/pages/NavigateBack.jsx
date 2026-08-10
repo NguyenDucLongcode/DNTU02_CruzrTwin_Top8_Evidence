@@ -33,9 +33,10 @@ export default function NavigateBack() {
   const [commandHistory, setCommandHistory] = useState([]);
   const [openDropdown, setOpenDropdown] = useState(null);
 
+  // Danh sách các file âm thanh có sẵn trong thư mục VoiceBackup
   const VOICE_FILES = [
-    'full_action_multilingual.mp3',
     'intro_speech.mp3',
+    'full_action_multilingual.mp3',
     'outro_en_google_female.mp3'
   ];
 
@@ -215,11 +216,11 @@ export default function NavigateBack() {
       setLastResponse(respObj);
 
       if (isOk) {
-        // Đánh dấu nút vừa kích hoạt thành công trong 3.5 giây
+        // Đánh dấu nút vừa kích hoạt thành công trong 1 giây (đã giảm từ 3.5s để UI không có cảm giác bị treo)
         setSuccessBtns(prev => ({ ...prev, [btn.id]: true }));
         setTimeout(() => {
           setSuccessBtns(prev => ({ ...prev, [btn.id]: false }));
-        }, 3500);
+        }, 1000);
 
         // Add to local history instantly
         setCommandHistory(prev => [
@@ -275,25 +276,35 @@ export default function NavigateBack() {
             <button
               onClick={() => {
                 const ch = new BroadcastChannel('cruzrtwin_sync');
-                ch.postMessage({ type: 'SLIDE_PREV' });
+                ch.postMessage({ type: 'SWITCH_VIEW', view: 'slide' });
                 ch.close();
               }}
-              className="px-2.5 py-1.5 text-xs font-bold hover:bg-zinc-800 text-amber-500/70 border-r border-zinc-700 transition-colors"
-              title="Lùi lại 1 Slide"
+              className="px-3 py-1.5 text-xs font-bold hover:bg-zinc-800 text-amber-400 border-r border-zinc-700 transition-colors"
+              title="Mở màn hình Slide (giữ nguyên trang hiện tại)"
             >
-              <ChevronLeft className="w-3 h-3 mr-1" />
+              SLIDE
             </button>
             <button
               onClick={() => {
                 const ch = new BroadcastChannel('cruzrtwin_sync');
-                ch.postMessage({ type: 'SWITCH_VIEW', view: 'slide' });
+                ch.postMessage({ type: 'SLIDE_PREV' });
+                ch.close();
+              }}
+              className="px-2.5 py-1.5 text-xs font-bold hover:bg-zinc-800 text-amber-500/70 border-r border-zinc-700 transition-colors"
+              title="Lùi lại 1 Slide (Prev)"
+            >
+              <ChevronLeft className="w-3 h-3" />
+            </button>
+            <button
+              onClick={() => {
+                const ch = new BroadcastChannel('cruzrtwin_sync');
                 ch.postMessage({ type: 'SLIDE_NEXT' });
                 ch.close();
               }}
-              className="px-3 py-1.5 text-xs font-bold hover:bg-zinc-800 text-amber-400 transition-colors flex items-center gap-1"
-              title="Mở Slide / Chuyển sang Slide tiếp theo"
+              className="px-2.5 py-1.5 text-xs font-bold hover:bg-zinc-800 text-amber-500/70 transition-colors"
+              title="Tiến tới 1 Slide (Next)"
             >
-              SLIDE (NEXT)
+              <ChevronRight className="w-3 h-3" />
             </button>
           </div>
 
@@ -768,10 +779,6 @@ export default function NavigateBack() {
         {/* Top Status Summary Bar */}
         <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
           <div className="flex items-center gap-3">
-            <span className="flex items-center gap-2 text-cyan-400 font-bold tracking-wider">
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-              <span>TERMINAL KẾT QUẢ GỬI LỆNH REAL-TIME</span>
-            </span>
             {lastResponse && (
               <span className={`px-2.5 py-0.5 rounded text-[11px] font-bold border ${lastResponse.success ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
                 }`}>

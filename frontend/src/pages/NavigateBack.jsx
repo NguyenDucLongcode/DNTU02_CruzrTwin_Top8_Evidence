@@ -510,6 +510,49 @@ export default function NavigateBack() {
             );
           }
 
+          if (btn.id === 'btn_2') {
+            return (
+              <div key={btn.id} className="relative h-full flex flex-col gap-1.5 p-1 bg-[#0a0a0c] border border-cyan-900/50 rounded-2xl shadow-[0_0_15px_rgba(6,182,212,0.15)]">
+                <div className="flex gap-1.5 h-1/2">
+                  <button
+                    onClick={() => executeRunScriptApi(btn, 'sensor')}
+                    disabled={isLoading}
+                    className={`w-1/2 relative group rounded-xl p-2 border bg-gradient-to-br transition-all duration-200 cursor-pointer flex flex-col justify-between shadow-md from-cyan-600/20 to-cyan-900/40 border-cyan-500/50 hover:border-cyan-400 text-cyan-300 hover:scale-[1.02]`}
+                  >
+                    <span className="px-1.5 py-0.5 text-[8px] font-bold rounded border bg-black/60 border-white/10 w-fit">2A. SENSOR</span>
+                    <span className="text-[10px] md:text-[11px] font-bold leading-tight group-hover:text-cyan-100 mt-1">Zoom Sensor</span>
+                  </button>
+                  <button
+                    onClick={() => executeRunScriptApi(btn, 'orion')}
+                    disabled={isLoading}
+                    className={`w-1/2 relative group rounded-xl p-2 border bg-gradient-to-br transition-all duration-200 cursor-pointer flex flex-col justify-between shadow-md from-cyan-600/20 to-cyan-900/40 border-cyan-500/50 hover:border-cyan-400 text-cyan-300 hover:scale-[1.02]`}
+                  >
+                    <span className="px-1.5 py-0.5 text-[8px] font-bold rounded border bg-black/60 border-white/10 w-fit">2B. ORION</span>
+                    <span className="text-[10px] md:text-[11px] font-bold leading-tight group-hover:text-cyan-100 mt-1">Zoom Orion</span>
+                  </button>
+                </div>
+                <div className="flex gap-1.5 h-1/2">
+                  <button
+                    onClick={() => executeRunScriptApi(btn, 'ai_detection')}
+                    disabled={isLoading}
+                    className={`w-1/2 relative group rounded-xl p-2 border bg-gradient-to-br transition-all duration-200 cursor-pointer flex flex-col justify-between shadow-md from-cyan-600/20 to-cyan-900/40 border-cyan-500/50 hover:border-cyan-400 text-cyan-300 hover:scale-[1.02]`}
+                  >
+                    <span className="px-1.5 py-0.5 text-[8px] font-bold rounded border bg-black/60 border-white/10 w-fit">2C. AI DETECT</span>
+                    <span className="text-[10px] md:text-[11px] font-bold leading-tight group-hover:text-cyan-100 mt-1">Zoom AI</span>
+                  </button>
+                  <button
+                    onClick={() => executeRunScriptApi(btn, 'robot')}
+                    disabled={isLoading}
+                    className={`w-1/2 relative group rounded-xl p-2 border bg-gradient-to-br transition-all duration-200 cursor-pointer flex flex-col justify-between shadow-md from-cyan-600/20 to-cyan-900/40 border-cyan-500/50 hover:border-cyan-400 text-cyan-300 hover:scale-[1.02]`}
+                  >
+                    <span className="px-1.5 py-0.5 text-[8px] font-bold rounded border bg-black/60 border-white/10 w-fit">2D. ROBOT</span>
+                    <span className="text-[10px] md:text-[11px] font-bold leading-tight group-hover:text-cyan-100 mt-1">Zoom Robot</span>
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
           if (btn.id === 'btn_11' || btn.id === 'btn_alarm_off') {
             return null; // Đã được gộp
           }

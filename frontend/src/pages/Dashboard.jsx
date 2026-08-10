@@ -179,7 +179,7 @@ export default function Dashboard() {
     return () => channel.close();
   }, []);
 
-// Poll Controller State từ Remote Controller (/api/script/state) định kỳ 1s
+  // Poll Controller State từ Remote Controller (/api/script/state) định kỳ 1s
   useEffect(() => {
     const pollControllerState = async () => {
       try {
@@ -197,21 +197,25 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  const [aiFocusRendered, setAiFocusRendered] = useState(false);
-  const [aiFocusVisible, setAiFocusVisible] = useState(false);
+  const [focusPanel, setFocusPanel] = useState(null);
+  const [focusVisible, setFocusVisible] = useState(false);
 
-  // Điều khiển hiệu ứng mượt mà Zoom-In khi mở và Zoom-Out khi đóng Modal
   useEffect(() => {
-    if (controllerState.ai_detection_focus) {
-      setAiFocusRendered(true);
-      const timer = setTimeout(() => setAiFocusVisible(true), 20);
-      return () => clearTimeout(timer);
+    let activePanel = null;
+    if (controllerState.sensor_focus) activePanel = 'sensor';
+    else if (controllerState.orion_focus) activePanel = 'orion';
+    else if (controllerState.ai_detection_focus) activePanel = 'ai_detection';
+    else if (controllerState.robot_focus) activePanel = 'robot';
+
+    if (activePanel) {
+      setFocusPanel(activePanel);
+      requestAnimationFrame(() => requestAnimationFrame(() => setFocusVisible(true)));
     } else {
-      setAiFocusVisible(false);
-      const timer = setTimeout(() => setAiFocusRendered(false), 300);
-      return () => clearTimeout(timer);
+      setFocusVisible(false);
+      const t = setTimeout(() => setFocusPanel(null), 300);
+      return () => clearTimeout(t);
     }
-  }, [controllerState.ai_detection_focus]);
+  }, [controllerState]);
 
   const resetClickCountRef = useRef(0);
   const resetClickTimerRef = useRef(null);
@@ -580,9 +584,9 @@ export default function Dashboard() {
   return (
     <div className="w-full h-full flex flex-col md:flex-row overflow-hidden bg-black">
       {/* HTML SLIDE OVERLAY (luôn render nhưng ẩn/hiện bằng CSS để không bị reset slide) */}
-      <iframe 
-        src="/presentation/index.html" 
-        className={`absolute top-0 left-0 w-full h-full z-[9999] border-none bg-black ${showSlideView ? 'visible pointer-events-auto' : 'invisible pointer-events-none'}`} 
+      <iframe
+        src="/presentation/index.html"
+        className={`absolute top-0 left-0 w-full h-full z-[9999] border-none bg-black ${showSlideView ? 'visible pointer-events-auto' : 'invisible pointer-events-none'}`}
       />
       <main className="flex-1 relative h-full flex flex-col min-w-0">
         <div className="flex-1 relative w-full overflow-hidden">
@@ -646,112 +650,111 @@ export default function Dashboard() {
                 />
               )}
             </div>
-              <div
-                className="w-1.5 cursor-col-resize bg-zinc-800 hover:bg-blue-500/40 transition-colors flex-shrink-0"
-                onMouseDown={handleMapDragStart}
-              />
-              <div className="flex-1 p-3 flex flex-col justify-center items-center gap-2 relative overflow-hidden bg-zinc-950 min-w-[220px]">
-                {/* Thanh thông số độ trễ Mạng (NET RTT) & Toàn luồng (E2E LATENCY) */}
-                <div className="w-full max-w-[260px] flex items-center justify-between px-2.5 py-1 bg-zinc-900/90 border border-zinc-800 rounded-md font-mono text-[9px] text-zinc-400 select-none shadow-inner">
-                  <div className="flex items-center gap-1.5" title="Độ trễ mạng RTT (Round-Trip Time)">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                    <span className="text-zinc-500">NET RTT:</span>
-                    <span className="text-emerald-400 font-bold">{networkLatency} ms</span>
-                  </div>
-                  <div className="flex items-center gap-1.5" title="Độ trễ toàn luồng End-to-End (Sensor -> AI -> Robot)">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-                    <span className="text-zinc-500">E2E LATENCY:</span>
-                    <span className="text-blue-400 font-bold">{calculatedE2eLatency !== null ? `${calculatedE2eLatency} ms` : '-- ms'}</span>
-                  </div>
+            <div
+              className="w-1.5 cursor-col-resize bg-zinc-800 hover:bg-blue-500/40 transition-colors flex-shrink-0"
+              onMouseDown={handleMapDragStart}
+            />
+            <div className="flex-1 p-3 flex flex-col justify-center items-center gap-2 relative overflow-hidden bg-zinc-950 min-w-[220px]">
+              {/* Thanh thông số độ trễ Mạng (NET RTT) & Toàn luồng (E2E LATENCY) */}
+              <div className="w-full max-w-[260px] flex items-center justify-between px-2.5 py-1 bg-zinc-900/90 border border-zinc-800 rounded-md font-mono text-[9px] text-zinc-400 select-none shadow-inner">
+                <div className="flex items-center gap-1.5" title="Độ trễ mạng RTT (Round-Trip Time)">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                  <span className="text-zinc-500">NET RTT:</span>
+                  <span className="text-emerald-400 font-bold">{networkLatency} ms</span>
                 </div>
-
-                <div className="grid grid-cols-2 gap-2 w-full max-w-[260px]">
-                  {/* Cột 1 (Trái) */}
-                  <button
-                    onClick={() => handleOperatorAck('ACK')}
-                    disabled={ackStatus === 'loading'}
-                    className="h-7 bg-emerald-950/60 hover:bg-emerald-600/80 border border-emerald-500/50 text-emerald-300 hover:text-white font-mono font-bold text-[10px] rounded-md shadow-[0_0_10px_rgba(16,185,129,0.2)] transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    ACK
-                  </button>
-                  {/* Cột 2 (Phải) */}
-                  <button
-                    onClick={() => handleRunScenario('normal')}
-                    disabled={ackStatus === 'loading'}
-                    className="h-7 bg-blue-950/60 hover:bg-blue-600/80 border border-blue-500/50 text-blue-300 hover:text-white font-mono font-bold text-[10px] rounded-md shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    Normal
-                  </button>
-
-                  <button
-                    onClick={() => handleRunScenario('robot_retry')}
-                    disabled={ackStatus === 'loading'}
-                    className="h-7 bg-amber-950/60 hover:bg-amber-600/80 border border-amber-500/50 text-amber-300 hover:text-white font-mono font-bold text-[10px] rounded-md shadow-[0_0_10px_rgba(245,158,11,0.2)] transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    Robot Retry
-                  </button>
-                  <button
-                    onClick={() => handleRunScenario('warning')}
-                    disabled={ackStatus === 'loading'}
-                    className="h-7 bg-yellow-950/60 hover:bg-yellow-600/80 border border-yellow-500/50 text-yellow-300 hover:text-white font-mono font-bold text-[10px] rounded-md shadow-[0_0_10px_rgba(234,179,8,0.2)] transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    Warning
-                  </button>
-
-                  <button
-                    onClick={handleResetDemoClick}
-                    disabled={ackStatus === 'loading'}
-                    title="Bấm 1 lần: Undo dòng log vừa thực hiện | Bấm 3 lần nhanh: Xóa toàn bộ log"
-                    className="h-7 bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-600 text-zinc-300 hover:text-white font-mono font-bold text-[10px] rounded-md shadow-[0_0_10px_rgba(113,113,122,0.2)] transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    Reset Demo
-                  </button>
-                  <button
-                    onClick={() => handleRunScenario('critical')}
-                    disabled={ackStatus === 'loading'}
-                    className="h-7 bg-red-950/60 hover:bg-red-600/80 border border-red-500/50 text-red-300 hover:text-white font-mono font-bold text-[10px] rounded-md shadow-[0_0_10px_rgba(239,68,68,0.2)] transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    Critical
-                  </button>
-
-                  {/* Nút Khởi động Webhook - nằm ngay trong cụm nút */}
-                  {!isWebhookOnline && (
-                    <button
-                      onClick={handleStartWebhookServer}
-                      disabled={ackStatus === 'loading'}
-                      className="col-span-2 h-8 bg-red-600/90 hover:bg-red-500 text-white font-mono font-bold text-[10px] rounded-md shadow-[0_0_15px_rgba(220,38,38,0.6)] border border-red-400 animate-pulse transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
-                    >
-<span className="flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> WEBHOOK OFFLINE - CLICK TO START SERVER</span>
-                    </button>
-                  )}
+                <div className="flex items-center gap-1.5" title="Độ trễ toàn luồng End-to-End (Sensor -> AI -> Robot)">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                  <span className="text-zinc-500">E2E LATENCY:</span>
+                  <span className="text-blue-400 font-bold">{calculatedE2eLatency !== null ? `${calculatedE2eLatency} ms` : '-- ms'}</span>
                 </div>
-
-                {ackMessage && (
-                  <div className={`w-full max-w-[260px] text-[10px] font-mono text-center ${ackStatus === 'error' ? 'text-red-400' : ackStatus === 'success' ? 'text-emerald-400' : 'text-zinc-500'}`}>
-                    {ackMessage}
-                  </div>
-                )}
               </div>
+
+              <div className="grid grid-cols-2 gap-2 w-full max-w-[260px]">
+                {/* Cột 1 (Trái) */}
+                <button
+                  onClick={() => handleOperatorAck('ACK')}
+                  disabled={ackStatus === 'loading'}
+                  className="h-7 bg-emerald-950/60 hover:bg-emerald-600/80 border border-emerald-500/50 text-emerald-300 hover:text-white font-mono font-bold text-[10px] rounded-md shadow-[0_0_10px_rgba(16,185,129,0.2)] transition-all cursor-pointer disabled:opacity-50"
+                >
+                  ACK
+                </button>
+                {/* Cột 2 (Phải) */}
+                <button
+                  onClick={() => handleRunScenario('normal')}
+                  disabled={ackStatus === 'loading'}
+                  className="h-7 bg-blue-950/60 hover:bg-blue-600/80 border border-blue-500/50 text-blue-300 hover:text-white font-mono font-bold text-[10px] rounded-md shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all cursor-pointer disabled:opacity-50"
+                >
+                  Normal
+                </button>
+
+                <button
+                  onClick={() => handleRunScenario('robot_retry')}
+                  disabled={ackStatus === 'loading'}
+                  className="h-7 bg-amber-950/60 hover:bg-amber-600/80 border border-amber-500/50 text-amber-300 hover:text-white font-mono font-bold text-[10px] rounded-md shadow-[0_0_10px_rgba(245,158,11,0.2)] transition-all cursor-pointer disabled:opacity-50"
+                >
+                  Robot Retry
+                </button>
+                <button
+                  onClick={() => handleRunScenario('warning')}
+                  disabled={ackStatus === 'loading'}
+                  className="h-7 bg-yellow-950/60 hover:bg-yellow-600/80 border border-yellow-500/50 text-yellow-300 hover:text-white font-mono font-bold text-[10px] rounded-md shadow-[0_0_10px_rgba(234,179,8,0.2)] transition-all cursor-pointer disabled:opacity-50"
+                >
+                  Warning
+                </button>
+
+                <button
+                  onClick={handleResetDemoClick}
+                  disabled={ackStatus === 'loading'}
+                  title="Bấm 1 lần: Undo dòng log vừa thực hiện | Bấm 3 lần nhanh: Xóa toàn bộ log"
+                  className="h-7 bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-600 text-zinc-300 hover:text-white font-mono font-bold text-[10px] rounded-md shadow-[0_0_10px_rgba(113,113,122,0.2)] transition-all cursor-pointer disabled:opacity-50"
+                >
+                  Reset Demo
+                </button>
+                <button
+                  onClick={() => handleRunScenario('critical')}
+                  disabled={ackStatus === 'loading'}
+                  className="h-7 bg-red-950/60 hover:bg-red-600/80 border border-red-500/50 text-red-300 hover:text-white font-mono font-bold text-[10px] rounded-md shadow-[0_0_10px_rgba(239,68,68,0.2)] transition-all cursor-pointer disabled:opacity-50"
+                >
+                  Critical
+                </button>
+
+                {/* Nút Khởi động Webhook - nằm ngay trong cụm nút */}
+                {!isWebhookOnline && (
+                  <button
+                    onClick={handleStartWebhookServer}
+                    disabled={ackStatus === 'loading'}
+                    className="col-span-2 h-8 bg-red-600/90 hover:bg-red-500 text-white font-mono font-bold text-[10px] rounded-md shadow-[0_0_15px_rgba(220,38,38,0.6)] border border-red-400 animate-pulse transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    <span className="flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> WEBHOOK OFFLINE - CLICK TO START SERVER</span>
+                  </button>
+                )}
+
+              </div>
+
+              <label className="flex items-center gap-1 text-[10px] text-zinc-400 font-mono whitespace-nowrap cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showNormalLogs}
+                  onChange={(event) => setShowNormalLogs(event.target.checked)}
+                  className="accent-blue-500"
+                />
+                Normal
+              </label>
+
+              {ackMessage && (
+                <div className={`w-full max-w-[260px] text-[10px] font-mono text-center ${ackStatus === 'error' ? 'text-red-400' : ackStatus === 'success' ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                  {ackMessage}
+                </div>
+              )}
             </div>
           </div>
+        </div>
       </main>
 
       <div
         className="h-full bg-[#0a0a0c] border-l border-zinc-800 flex flex-col overflow-hidden shadow-[-10px_0_30px_rgba(0,0,0,0.5)] z-40 relative flex-shrink-0"
         style={{ width: sidebarWidth }}
       >
-        <div className="px-3 py-2 border-b border-zinc-800 bg-zinc-950/80 flex items-center justify-end gap-3 select-none">
-          <label className="flex items-center gap-1 text-[10px] text-zinc-400 font-mono whitespace-nowrap cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showNormalLogs}
-              onChange={(event) => setShowNormalLogs(event.target.checked)}
-              className="accent-blue-500"
-            />
-            Normal
-          </label>
-        </div>
-
         {hasLogError && (
           <div className="px-3 py-2 text-[10px] text-red-300 bg-red-950/40 border-b border-red-900 font-mono">
             Some API logs failed to fetch. Check Flask backend on port 5000.
@@ -780,29 +783,32 @@ export default function Dashboard() {
         onMouseDown={handleSidebarDragStart}
       />
 
-      {/* FULL-SCREEN FOCUS MODAL FOR AI DETECTION LOG (Hiệu ứng Zoom-In khi mở & Zoom-Out khi đóng) */}
-      {aiFocusRendered && (
+      {/* FULL-SCREEN FOCUS MODAL FOR LOG PANELS (Sensor, Orion, AI, Robot) */}
+      {focusPanel && (
         <div
-          className={`fixed inset-0 z-[100] flex items-center justify-center p-6 transition-all duration-300 ease-out ${
-            aiFocusVisible
-              ? 'bg-black/80 backdrop-blur-md opacity-100'
-              : 'bg-black/0 backdrop-blur-none opacity-0'
-          }`}
+          className={`fixed inset-0 z-[100] flex items-center justify-center p-6 transition-all duration-300 ease-out ${focusVisible
+            ? 'bg-black/80 backdrop-blur-md opacity-100'
+            : 'bg-black/0 backdrop-blur-none opacity-0'
+            }`}
         >
           <div
-            className={`bg-[#0c0c0e] border border-zinc-800 rounded-xl p-4 w-full max-w-4xl shadow-2xl flex flex-col h-[75vh] max-h-[80vh] overflow-hidden transition-all duration-350 cubic-bezier(0.16, 1, 0.3, 1) transform origin-[85%_55%] ${
-              aiFocusVisible
-                ? 'scale-100 opacity-100 translate-x-0 translate-y-0'
-                : 'scale-0 opacity-0 translate-x-24 translate-y-8 pointer-events-none'
-            }`}
+            className={`bg-[#0c0c0e] border border-zinc-800 rounded-xl p-4 w-full max-w-4xl shadow-2xl flex flex-col h-[75vh] max-h-[80vh] overflow-hidden transition-all duration-350 cubic-bezier(0.16, 1, 0.3, 1) transform origin-[85%_55%] ${focusVisible
+              ? 'scale-100 opacity-100 translate-x-0 translate-y-0'
+              : 'scale-0 opacity-0 translate-x-24 translate-y-8 pointer-events-none'
+              }`}
           >
-            <LogPanel
-              title="AI_DETECTION"
-              data={logs.ai}
-              height="100%"
-              showNormal={showNormalLogs}
-              emptyMessage="Chưa có dữ liệu AI Detection..."
-            />
+            {focusPanel === 'sensor' && (
+              <LogPanel title="SENSORS" data={roomLogs.sensors} height="100%" showNormal={showNormalLogs} emptyMessage="Chưa có dữ liệu Sensor..." />
+            )}
+            {focusPanel === 'orion' && (
+              <LogPanel title="ORION_STATE" data={roomLogs.state} height="100%" showNormal={showNormalLogs} emptyMessage="Chưa có dữ liệu Orion..." />
+            )}
+            {focusPanel === 'ai_detection' && (
+              <LogPanel title="AI_DETECTION" data={logs.ai} height="100%" showNormal={showNormalLogs} emptyMessage="Chưa có dữ liệu AI Detection..." />
+            )}
+            {focusPanel === 'robot' && (
+              <LogPanel title="ROBOT_ACTION" data={roomLogs.robot} height="100%" showNormal={showNormalLogs} emptyMessage="Chưa có dữ liệu Robot Action..." />
+            )}
           </div>
         </div>
       )}

@@ -28,7 +28,10 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 script_runner_bp = Blueprint('script_runner', __name__)
 
 GLOBAL_CONTROLLER_STATE = {
-    "ai_detection_focus": False
+    "ai_detection_focus": False,
+    "sensor_focus": False,
+    "orion_focus": False,
+    "robot_focus": False
 }
 
 # Registry chứa cấu hình 12 nút bấm (Sẵn sàng cập nhật tính năng từng nút khi User mô tả)
@@ -394,6 +397,9 @@ def execute_button_action(button_id: str, payload: Dict[str, Any] = None) -> Dic
     # Nếu không phải nút Slot 02 (Focus AI Detection), tự động tắt Focus Mode trên Dashboard để trả lại độ sáng thường
     if button_id != "btn_2":
         GLOBAL_CONTROLLER_STATE["ai_detection_focus"] = False
+        GLOBAL_CONTROLLER_STATE["sensor_focus"] = False
+        GLOBAL_CONTROLLER_STATE["orion_focus"] = False
+        GLOBAL_CONTROLLER_STATE["robot_focus"] = False
 
     # Slot 01: Kích hoạt thoại giới thiệu hoặc Cử chỉ đáng yêu
     if button_id == "btn_1":
@@ -414,11 +420,24 @@ def execute_button_action(button_id: str, payload: Dict[str, Any] = None) -> Dic
             "message": msg
         }
 
-    # Slot 02: Toggle Modal Focus AI Detection Log trên Dashboard
+    # Slot 02: Toggle Modal Focus Panels trên Dashboard (Sensor, Orion, AI, Robot)
     if button_id == "btn_2":
-        GLOBAL_CONTROLLER_STATE["ai_detection_focus"] = not GLOBAL_CONTROLLER_STATE["ai_detection_focus"]
-        is_on = GLOBAL_CONTROLLER_STATE["ai_detection_focus"]
-        status_text = "ĐÃ BẬT Focus AI Detection Panel trên Dashboard!" if is_on else "ĐÃ TẮT Focus AI Detection Panel (Trở về giao diện thường)!"
+        action = (payload or {}).get("action", "ai_detection")
+        
+        # Turn off all other focus states
+        for key in ["ai_detection_focus", "sensor_focus", "orion_focus", "robot_focus"]:
+            if key != f"{action}_focus":
+                GLOBAL_CONTROLLER_STATE[key] = False
+                
+        target_key = f"{action}_focus"
+        if target_key not in GLOBAL_CONTROLLER_STATE:
+            target_key = "ai_detection_focus"
+            
+        GLOBAL_CONTROLLER_STATE[target_key] = not GLOBAL_CONTROLLER_STATE[target_key]
+        
+        is_on = GLOBAL_CONTROLLER_STATE[target_key]
+        panel_name = action.upper().replace("_", " ")
+        status_text = f"ĐÃ BẬT Focus {panel_name} Panel trên Dashboard!" if is_on else f"ĐÃ TẮT Focus {panel_name} Panel (Trở về giao diện thường)!"
         msg = f"👁️ [{status_text}]"
         log_execution_event(button_id, slot_info["name"], "TOGGLE 200 OK", msg)
         return {

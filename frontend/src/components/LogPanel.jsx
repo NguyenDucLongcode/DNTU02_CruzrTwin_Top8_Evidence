@@ -72,6 +72,9 @@ function getLogDisplay(title, log, showNormal) {
   if (title === 'ORION_STATE') {
     const room = (log.room || log.zone_id || 'System').replace('DNTU_ROOM_', '');
     const status = log.status || log.device_status || 'NORMAL';
+    
+    if (!showNormal && (status === 'NORMAL' || status === 'normal')) return null;
+
     const temp = log.temperature !== undefined ? `temp:${log.temperature}°C` : '';
     const co2 = log.co2 !== undefined ? `co2:${log.co2}ppm` : '';
     const smoke = log.smoke_status !== undefined ? `smoke:${log.smoke_status}` : '';
@@ -107,7 +110,7 @@ function getLogDisplay(title, log, showNormal) {
     add('src_event', log.source_ai_event_id);
   }
 
-  if (title === 'ROBOT_ACTIONS') {
+  if (title === 'ROBOT_ACTION' || title === 'ROBOT_ACTIONS') {
     add('action_type', log.action_type);
     add('status', log.status);
     add('target', log.target_device);

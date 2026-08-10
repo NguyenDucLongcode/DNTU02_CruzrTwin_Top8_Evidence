@@ -19,19 +19,6 @@ if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
     except Exception:
         pass
 
-# Đoạn xin phép bắt đầu (Greeting / Start Text)
-START_TEXT_EN = (
-    "Ladies and Gentlemen, dear judges and all the audience."
-    "The DNTU CruzTwin team would like to begin our presentation now."
-)
-
-# Đoạn văn bản giới thiệu bằng Tiếng Anh (English Intro Text)
-INTRO_TEXT_EN = (
-    "In many ASEAN public buildings, digital systems can detect danger—"
-    "but they cannot reach the people who need help. "
-)
-
-
 # def play_gestures_continuously(client, duration_sec: float, actions: list, stop_event: threading.Event):
 #     """
 #     Phát cử chỉ tay liên tục lặp lại trong suốt thời gian Robot đang phát thoại
@@ -80,31 +67,27 @@ def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happ
     #     return False
 
     try:
-        # Danh sách các động tác cử chỉ tay thay đổi liên tục khi thuyết trình
-
-        greeting_actions = ["action://ubtech/wave", "action://ubtech/greeting"]
-        presentation_actions = [
-            "action://ubtech/presentation",
-            "action://ubtech/explain",
-            "action://ubtech/gesture_right",
-            "action://ubtech/gesture_left",
-            "action://ubtech/wave"
-        ]
-        # START ACTIONS--------------------
-
-        client.move(distance=1.46, speed=0.45)
-        time.sleep(3)
-        client.play_action("action://ubtrobot/goodbye")
-        client.move(turningAngle=-86.3, turningSpeed=45)
-        time.sleep(3)
-        client.play_emotion("emotion://va/face_love")
-        client.move(distance=0.5, speed=0.45)
-
         if language in ["en", "both"]:
 
-            client.speak(text=START_TEXT_EN, language="en")
-            time.sleep(11.5)
-            client.speak(text=INTRO_TEXT_EN, language="en")
+            # Mở biểu cảm thẹn thùng & động tác dễ thương
+            print("🎭 Đang mở biểu cảm: emotion://va/face_love")
+            client.play_emotion("emotion://va/face_love")
+            time.sleep(2)
+            print("👋 Robot thực hiện cử chỉ: action://ubtech/cute")
+            client.play_action("action://ubtrobot/cute")
+            time.sleep(23)
+
+
+        client.move(turningAngle=-176.3, turningSpeed=45)
+        time.sleep(5)
+        client.move(distance=0.6, speed=0.45)
+        time.sleep(5)
+        client.move(turningAngle=86.3, turningSpeed=45)
+        time.sleep(5)
+        client.move(distance=0.4, speed=0.45)
+        time.sleep(5)
+        client.move(turningAngle=-86.3, turningSpeed=45)
+
 
         print("\n✅ Đã hoàn thành bài giới thiệu CruzrTwin ASEAN với tay di chuyển liên tục suốt bài nói!")
         return True
@@ -119,13 +102,13 @@ def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happ
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Script giới thiệu Robot CruzrTwin ASEAN kèm tay di chuyển liên tục")
-    parser.add_argument(
-        "--lang",
-        choices=["en", "vi", "both"],
-        default="en",
-        help="Ngôn ngữ phát thoại: en (Tiếng Anh), vi (Tiếng Việt), both (Cả hai). Mặc định: en"
-    )
+    # parser = argparse.ArgumentParser(description="Script giới thiệu Robot CruzrTwin ASEAN kèm tay di chuyển liên tục")
+    # parser.add_argument(
+    #     "--lang",
+    #     choices=["en", "vi", "both"],
+    #     default="en",
+    #     help="Ngôn ngữ phát thoại: en (Tiếng Anh), vi (Tiếng Việt), both (Cả hai). Mặc định: en"
+    # )
     parser.add_argument(
         "--emotion",
         default="emotion://va/face_amazing",

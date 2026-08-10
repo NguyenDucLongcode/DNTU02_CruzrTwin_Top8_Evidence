@@ -55,24 +55,13 @@ def get_utc_timestamp() -> str:
         .replace("+00:00", "Z")
     )
 
-
-
-
 def main(alert_event: dict) -> dict:
-    """
-    Khi có cảnh báo critical:
-    - Tắt tất cả smart plug trong phòng
-    - Bật tất cả alarm
-    - Ghi log RobotAction
-    - Không thực hiện lại nếu action đã được tạo
-    """
 
     demo_run_id = alert_event["demo_run_id"]
     alert_id = alert_event["alert_id"]
     scenario_id = alert_event["scenario_id"]
     zone_id = alert_event["zone_id"]
     severity = alert_event.get("severity", "critical")
-    # message cảnh báo của ai
 
     room_name = zone_id.split("_")[-1]
     # messageCitical = alert_event.get("message", "")
@@ -207,15 +196,7 @@ def main(alert_event: dict) -> dict:
             print(f"📢 Robot thông báo bật còi (VI): \"{vi_messageAlarm}\"")
             RobotClient.speak_and_wait(vi_messageAlarm, language="vi")
 
-            print(f"🚨 [CRITICAL IOT] Robot đã nói xong câu bật còi -> Đang kích hoạt chuông còi báo động Alarm ({len(all_alarms)} thiết bị)...")
-            control_multiple_by_fiware_ids(
-                fiware_ids=all_alarms,
-                action="on",
-                device_type="alarm",
-                alarm_type=8,
-                duration=20,
-                max_workers=len(all_alarms)
-            )
+            # Bật còi báo động Alarm đã được tách sang nút điều khiển độc lập trên giao diện (btn_11A)
 
             RobotClient.move(turningAngle=-161,turningSpeed=80)
 

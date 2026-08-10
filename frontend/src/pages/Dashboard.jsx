@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { Building, Flame, BarChart3, Thermometer, Wind, Activity, Bot, AlertTriangle } from 'lucide-react';
 import ThreeScene from '../components/ThreeScene';
 import LogPanel from '../components/LogPanel';
 import Map2D from '../components/Map2D';
@@ -11,7 +12,7 @@ class ErrorBoundary extends React.Component {
     this.state = { hasError: false };
   }
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError() {
     return { hasError: true };
   }
 
@@ -103,7 +104,7 @@ function RoomDetailBottomBar({ roomId, floorIdx, sensorData }) {
       {/* Mục 1: Mô hình Tầng chứa phòng */}
       <div className="relative rounded-lg overflow-hidden border border-blue-500/30 bg-black/40 flex flex-col h-full">
         <div className="px-2 py-0.5 bg-blue-950/60 border-b border-blue-500/30 text-[10px] font-bold text-blue-400 flex items-center justify-between">
-          <span>🏛️ FLOOR {floorIdx || 1} VIEW</span>
+          <span className="flex items-center gap-1"><Building className="w-3 h-3" /> FLOOR {floorIdx || 1} VIEW</span>
           <span className="text-[9px] text-zinc-400">3D MODEL</span>
         </div>
         <div className="flex-1 relative w-full h-full">
@@ -114,7 +115,7 @@ function RoomDetailBottomBar({ roomId, floorIdx, sensorData }) {
       {/* Mục 2: Mô hình Phòng 3D */}
       <div className={`relative rounded-lg overflow-hidden border ${isCritical ? 'border-red-500/40 bg-red-950/20' : isWarning ? 'border-amber-500/40 bg-amber-950/20' : 'border-emerald-500/40 bg-emerald-950/20'} flex flex-col h-full`}>
         <div className={`px-2 py-0.5 border-b text-[10px] font-bold flex items-center justify-between ${isCritical ? 'bg-red-950/60 border-red-500/30 text-red-400' : isWarning ? 'bg-amber-950/60 border-amber-500/30 text-amber-400' : 'bg-emerald-950/60 border-emerald-500/30 text-emerald-400'}`}>
-          <span>🔥 ROOM {roomId} 3D</span>
+          <span className="flex items-center gap-1"><Flame className="w-3 h-3" /> ROOM {roomId} 3D</span>
           <span className="text-[9px] px-1 py-0.5 rounded bg-black/40">{deviceStatus}</span>
         </div>
         <div className="flex-1 relative w-full h-full">
@@ -125,26 +126,26 @@ function RoomDetailBottomBar({ roomId, floorIdx, sensorData }) {
       {/* Mục 3: Bảng Thông số Cảm biến từ Log */}
       <div className="relative rounded-lg border border-emerald-500/30 bg-zinc-900/90 p-2 flex flex-col justify-between text-[11px] h-full overflow-y-auto">
         <div className="font-bold text-emerald-400 border-b border-zinc-800 pb-1 flex justify-between items-center">
-          <span>📊 SENSOR TELEMETRY</span>
+          <span className="flex items-center gap-1"><BarChart3 className="w-3 h-3" /> SENSOR TELEMETRY</span>
           <span className="text-[9px] text-zinc-400">ROOM {roomId}</span>
         </div>
         <div className="space-y-1 my-1">
           <div className="flex justify-between items-center bg-zinc-950/80 px-2 py-0.5 rounded border border-zinc-800/60">
-            <span className="text-zinc-400">🌡️ Nhiệt độ</span>
+            <span className="text-zinc-400 flex items-center gap-1"><Thermometer className="w-3 h-3" /> Nhiệt độ</span>
             <span className={`font-bold ${temp >= 40 ? 'text-red-400 animate-pulse' : temp >= 32 ? 'text-amber-400' : 'text-emerald-400'}`}>{temp.toFixed(1)} °C</span>
           </div>
           <div className="flex justify-between items-center bg-zinc-950/80 px-2 py-0.5 rounded border border-zinc-800/60">
-            <span className="text-zinc-400">💨 Khói</span>
+            <span className="text-zinc-400 flex items-center gap-1"><Wind className="w-3 h-3" /> Khói</span>
             <span className={`font-bold ${smoke >= 0.5 ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`}>{smoke.toFixed(1)} %</span>
           </div>
           <div className="flex justify-between items-center bg-zinc-950/80 px-2 py-0.5 rounded border border-zinc-800/60">
-            <span className="text-zinc-400">🫁 CO₂</span>
+            <span className="text-zinc-400 flex items-center gap-1"><Activity className="w-3 h-3" /> CO₂</span>
             <span className={`font-bold ${co2 >= 1000 ? 'text-red-400 animate-pulse' : co2 >= 631 ? 'text-amber-400' : 'text-emerald-400'}`}>{co2.toFixed(0)} ppm</span>
           </div>
         </div>
         <div className="flex justify-between items-center text-[10px] text-zinc-400 pt-1 border-t border-zinc-800/60">
-          <span>🤖 Robot: <strong className="text-cyan-400">DISPATCHED</strong></span>
-          <span>🔌 Plug: <strong className={isCritical ? 'text-red-400' : 'text-emerald-400'}>{isCritical ? 'POWER OFF' : 'ON'}</strong></span>
+          <span className="flex items-center gap-1"><Bot className="w-3 h-3" /> Robot: <strong className="text-cyan-400">DISPATCHED</strong></span>
+          <span className="flex items-center gap-1">Plug: <strong className={isCritical ? 'text-red-400' : 'text-emerald-400'}>{isCritical ? 'POWER OFF' : 'ON'}</strong></span>
         </div>
       </div>
     </div>
@@ -178,7 +179,7 @@ export default function Dashboard() {
     return () => channel.close();
   }, []);
 
-  // Poll Controller State từ Remote Controller (/api/script/state) định kỳ 1s
+// Poll Controller State từ Remote Controller (/api/script/state) định kỳ 1s
   useEffect(() => {
     const pollControllerState = async () => {
       try {
@@ -187,8 +188,8 @@ export default function Dashboard() {
           const data = await res.json();
           if (data.state) setControllerState(data.state);
         }
-      } catch (err) {
-        // ignore offline
+      } catch {
+        // ignore offline errors - empty catch is intentional
       }
     };
     pollControllerState();
@@ -719,7 +720,7 @@ export default function Dashboard() {
                       disabled={ackStatus === 'loading'}
                       className="col-span-2 h-8 bg-red-600/90 hover:bg-red-500 text-white font-mono font-bold text-[10px] rounded-md shadow-[0_0_15px_rgba(220,38,38,0.6)] border border-red-400 animate-pulse transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
                     >
-                      <span>⚡ WEBHOOK OFFLINE - CLICK TO START SERVER</span>
+<span className="flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> WEBHOOK OFFLINE - CLICK TO START SERVER</span>
                     </button>
                   )}
                 </div>

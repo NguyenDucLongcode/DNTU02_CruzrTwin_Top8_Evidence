@@ -2,7 +2,7 @@
   "normal_case_trace": {
     "processing_status": "SUCCESS",
     "ai_result": {
-      "timestamp": "2026-08-06T06:21:06.890Z",
+      "timestamp": "2026-08-10T15:22:01.726Z",
       "features": {
         "temperature": 25.0,
         "humidity": 60.0,
@@ -26,7 +26,7 @@
   "warning_case_trace": {
     "processing_status": "SUCCESS",
     "ai_result": {
-      "timestamp": "2026-08-06T06:21:06.921Z",
+      "timestamp": "2026-08-10T15:22:01.745Z",
       "features": {
         "temperature": 34.0,
         "humidity": 65.0,
@@ -57,8 +57,8 @@
     },
     "alert_event": {
       "demo_run_id": "DNTU02_TOP8_RUN_2026_001",
-      "timestamp": "2026-08-06T06:21:06.921Z",
-      "alert_id": "AlertEvent:SCN_WARNING_001_20260806_062106_921",
+      "timestamp": "2026-08-10T15:22:01.745Z",
+      "alert_id": "AlertEvent:SCN_WARNING_001_20260810_152201_745",
       "type": "AlertEvent",
       "scenario_id": "SCN_WARNING_001",
       "zone_id": "DNTU_ROOM_A101",
@@ -72,7 +72,7 @@
       "action_code": "CHECK_ROOM",
       "recommended_action": "Create warning AlertEvent and notify operator.",
       "ai_result_ref": {
-        "timestamp": "2026-08-06T06:21:06.921Z",
+        "timestamp": "2026-08-10T15:22:01.745Z",
         "features": {
           "temperature": 34.0,
           "humidity": 65.0,
@@ -107,7 +107,7 @@
   "critical_case_trace": {
     "processing_status": "SUCCESS",
     "ai_result": {
-      "timestamp": "2026-08-06T06:21:06.938Z",
+      "timestamp": "2026-08-10T15:22:01.768Z",
       "features": {
         "temperature": 45.0,
         "humidity": 15.0,
@@ -140,8 +140,8 @@
     },
     "alert_event": {
       "demo_run_id": "DNTU02_TOP8_RUN_2026_001",
-      "timestamp": "2026-08-06T06:21:06.938Z",
-      "alert_id": "AlertEvent:SCN_CRITICAL_001_20260806_062106_938",
+      "timestamp": "2026-08-10T15:22:01.768Z",
+      "alert_id": "AlertEvent:SCN_CRITICAL_001_20260810_152201_768",
       "type": "AlertEvent",
       "scenario_id": "SCN_CRITICAL_001",
       "zone_id": "DNTU_ROOM_A101",
@@ -155,7 +155,7 @@
       "action_code": "DISPATCH_CRUZR_GUIDANCE",
       "recommended_action": "Send Cruzr to response point and request operator acknowledgement. Safety-critical actuation should remain operator-approved or simulated.",
       "ai_result_ref": {
-        "timestamp": "2026-08-06T06:21:06.938Z",
+        "timestamp": "2026-08-10T15:22:01.768Z",
         "features": {
           "temperature": 45.0,
           "humidity": 15.0,

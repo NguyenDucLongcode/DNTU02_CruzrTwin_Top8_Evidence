@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import MiniThreeViewer from './MiniThreeViewer';
+import { Building, Flame, BarChart3, Thermometer, Wind, Activity, Bot, Plug, X } from 'lucide-react';
 
 const PANEL_WIDTH = 250;
 const PANEL_HEIGHT = 200;
@@ -43,7 +44,7 @@ function FloatingPanel({ title, titleRight, borderColor, headerBg, headerText, i
       {/* Invisible drag area (whole panel) + close button top-right */}
       <div className="absolute top-0 left-0 right-0 bottom-0 z-10 cursor-move" onMouseDown={onDragStart} />
       {onClose && (
-        <button onClick={onClose} className="absolute top-1.5 right-1.5 z-20 text-zinc-400 hover:text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full bg-black/60 hover:bg-red-600/90 transition-colors cursor-pointer leading-none">✕</button>
+        <button onClick={onClose} className="absolute top-1.5 right-1.5 z-20 text-zinc-400 hover:text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full bg-black/60 hover:bg-red-600/90 transition-colors cursor-pointer leading-none"><X className="w-3 h-3" /></button>
       )}
       {/* Content */}
       <div className="w-full h-full overflow-hidden rounded-xl pointer-events-none">
@@ -146,7 +147,7 @@ function EmergencyPopupContent({ roomInfo, sensorData, onClose }) {
       {/* ── Panel 1: Floor 3D (Góc Trên-Trái) ── */}
       {showFloor && (
         <FloatingPanel
-          title={`🏛 FLOOR ${floorIdx || 1} — 3D`}
+          title={<span className="flex items-center gap-1"><Building className="w-4 h-4" /> FLOOR {floorIdx || 1} — 3D</span>}
           borderColor="border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
           headerBg="bg-blue-950/50"
           headerText="text-blue-400"
@@ -162,7 +163,7 @@ function EmergencyPopupContent({ roomInfo, sensorData, onClose }) {
       {/* ── Panel 2: Room 3D (Góc Trên-Phải) ── */}
       {showRoom && (
         <FloatingPanel
-          title={`🔥 ROOM ${roomId}`}
+          title={<span className="flex items-center gap-1"><Flame className="w-4 h-4" /> ROOM {roomId}</span>}
           titleRight={deviceStatus}
           borderColor={borderCritical}
           headerBg={headerBgCritical}
@@ -179,7 +180,7 @@ function EmergencyPopupContent({ roomInfo, sensorData, onClose }) {
       {/* ── Panel 3: Sensor Telemetry (Góc Dưới-Trái — Chiều rộng 250px khớp góc trên) ── */}
       {showSensor && (
         <FloatingPanel
-          title="📊 SENSOR DATA"
+          title={<span className="flex items-center gap-1"><BarChart3 className="w-4 h-4" /> SENSOR DATA</span>}
           titleRight="LIVE"
           borderColor="border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
           headerBg="bg-emerald-950/40"
@@ -189,14 +190,14 @@ function EmergencyPopupContent({ roomInfo, sensorData, onClose }) {
         >
           <div className="p-2 space-y-1 text-[11px] h-full flex flex-col justify-between">
             {[
-              { icon: '🌡️', label: 'Nhiệt độ', value: `${temp.toFixed(1)} °C`, alert: temp >= 40, warn: temp >= 32 },
-              { icon: '💨', label: 'Khói', value: `${smoke.toFixed(1)} %`, alert: smoke >= 0.5 },
-              { icon: '🫁', label: 'CO₂', value: `${co2.toFixed(0)} ppm`, alert: co2 >= 1000, warn: co2 >= 631 },
-              { icon: '🤖', label: 'Robot', value: 'DISPATCHED', color: 'text-cyan-400' },
-              { icon: '🔌', label: 'Smart Plug', value: isCritical ? 'POWER OFF' : 'ON', color: isCritical ? 'text-red-400' : 'text-emerald-400' },
+              { icon: <Thermometer className="w-3 h-3" />, label: 'Nhiệt độ', value: `${temp.toFixed(1)} °C`, alert: temp >= 40, warn: temp >= 32 },
+              { icon: <Wind className="w-3 h-3" />, label: 'Khói', value: `${smoke.toFixed(1)} %`, alert: smoke >= 0.5 },
+              { icon: <Activity className="w-3 h-3" />, label: 'CO₂', value: `${co2.toFixed(0)} ppm`, alert: co2 >= 1000, warn: co2 >= 631 },
+              { icon: <Bot className="w-3 h-3" />, label: 'Robot', value: 'DISPATCHED', color: 'text-cyan-400' },
+              { icon: <Plug className="w-3 h-3" />, label: 'Smart Plug', value: isCritical ? 'POWER OFF' : 'ON', color: isCritical ? 'text-red-400' : 'text-emerald-400' },
             ].map((r, i) => (
               <div key={i} className="flex justify-between items-center bg-zinc-900/80 px-2 py-0.5 rounded border border-zinc-800/50 text-[10px]">
-                <span className="text-zinc-400">{r.icon} {r.label}</span>
+                <span className="text-zinc-400 flex items-center gap-1">{r.icon} {r.label}</span>
                 <span className={`font-bold ${r.color || (r.alert ? 'text-red-400 animate-pulse' : r.warn ? 'text-amber-400' : 'text-emerald-400')}`}>{r.value}</span>
               </div>
             ))}

@@ -53,9 +53,9 @@ BUTTON_SLOTS: Dict[str, Dict[str, Any]] = {
     },
     "btn_4": {
         "id": "btn_4",
-        "name": "Kịch Bản Warning",
-        "desc": "Kích hoạt cảnh báo mức độ Warning (Nhiệt độ/CO2)",
-        "scenario": "warning"
+        "name": "Dự phòng âm thanh",
+        "desc": "Phát file âm thanh dự phòng",
+        "script": "scripts/tools/run_voice_backup.py"
     },
     "btn_5": {
         "id": "btn_5",
@@ -107,6 +107,20 @@ BUTTON_SLOTS: Dict[str, Dict[str, Any]] = {
         "desc": "Kiểm tra trạng thái ping & kết nối tới Robot Cruzr",
         "scenario": "robot_retry"
     },
+    "btn_alarm": {
+        "id": "btn_alarm",
+        "name": "Bật Còi Báo Động (ON)",
+        "desc": "Kích hoạt còi Alarm",
+        "script": "scripts/tools/control_iot/control_audible_alarm_a101.py",
+        "args": ["on"]
+    },
+    "btn_alarm_off": {
+        "id": "btn_alarm_off",
+        "name": "Tắt Còi Báo Động (OFF)",
+        "desc": "Ngắt còi Alarm",
+        "script": "scripts/tools/control_iot/control_audible_alarm_a101.py",
+        "args": ["off"]
+    }
 }
 
 
@@ -169,10 +183,12 @@ def run_scenario_replay(scenario_type: str) -> dict:
 
         if scenario_type == "normal":
             try:
-                from src.fiware.webhook_receiver import restore_tuya_devices
-                threading.Thread(target=restore_tuya_devices, daemon=True).start()
-            except Exception:
-                pass
+                print("🔌 [RESTORE IOT] Đang bật lại toàn bộ điện ổ cắm Tuya...")
+                run_python_script_async("scripts/tools/control_iot/control_all_smart_plugs.py", ["on"])
+                print("🔕 [RESTORE IOT] Đang tắt toàn bộ còi báo động Alarm...")
+                run_python_script_async("scripts/tools/control_iot/control_audible_alarm_a101.py", ["off"])
+            except Exception as e:
+                print(f"Restore Tuya note: {e}")
 
         return {
             "success": True,
@@ -323,13 +339,10 @@ def reset_demo_action() -> dict:
 
         def _restore_bg():
             try:
-                from src.tuya import control_multiple_by_fiware_ids
-                all_plugs = ["smart_plug_a101", "smart_plug_a102", "smart_plug_a103", "smart_plug_a104", "smart_plug_a105", "smart_plug_a106"]
-                all_alarms = ["audible_alarm_a101"]
-                print(f"🔌 [RESET DEMO] Đang bật lại toàn bộ điện {len(all_plugs)} ổ cắm Tuya...")
-                control_multiple_by_fiware_ids(all_plugs, action="on", device_type="smart_plug", max_workers=len(all_plugs))
-                print(f"🔕 [RESET DEMO] Đang tắt toàn bộ {len(all_alarms)} còi báo động Alarm...")
-                control_multiple_by_fiware_ids(all_alarms, action="off", device_type="alarm", max_workers=len(all_alarms))
+                print("🔌 [RESET DEMO] Đang bật lại toàn bộ điện ổ cắm Tuya...")
+                run_python_script_async("scripts/tools/control_iot/control_all_smart_plugs.py", ["on"])
+                print("🔕 [RESET DEMO] Đang tắt toàn bộ còi báo động Alarm...")
+                run_python_script_async("scripts/tools/control_iot/control_audible_alarm_a101.py", ["off"])
             except Exception as err:
                 print(f"Reset Tuya note: {err}")
 
@@ -424,16 +437,19 @@ def execute_button_action(button_id: str, payload: Dict[str, Any] = None) -> Dic
             "message": msg
         }
 
-    # Slot 04: Kịch bản WARNING (Replay Warning - Nhiệt độ/CO2 tăng)
+    # Slot 04: Phát âm thanh dự phòng (từ file mp3 trong VoiceBackup)
     if button_id == "btn_4":
-        res = run_scenario_replay("warning")
-        msg = res.get("message", "Thực thi kịch bản Warning thành công!")
+        file_name = (payload or {}).get("action")
+        if not file_name or file_name == "normal":
+            file_name = "vi_speak_intro.mp3"
+        run_python_script_async("scripts/tools/run_voice_backup.py", [file_name])
+        msg = f"Đã kích hoạt phát voice dự phòng: {file_name}"
         log_execution_event(button_id, slot_info["name"], "SUCCESS 200 OK", msg)
         return {
             "success": True,
             "button_id": button_id,
             "name": slot_info["name"],
-            "desc": slot_info["desc"],
+            "desc": f"Đang phát: {file_name}",
             "message": msg
         }
 
@@ -535,6 +551,32 @@ def execute_button_action(button_id: str, payload: Dict[str, Any] = None) -> Dic
             "button_id": button_id,
             "name": slot_info.get("name", "Ngắt Điện Tuya Plugs"),
             "desc": slot_info.get("desc", "Tắt toàn bộ ổ cắm Tuya Smart Plugs"),
+            "message": msg
+        }
+
+    # Bật còi báo động (Alarm ON)
+    if button_id == "btn_alarm":
+        run_python_script_async("scripts/tools/control_iot/control_audible_alarm_a101.py", ["on"])
+        msg = "🚨 Đã kích hoạt script bật còi báo động (py scripts/tools/control_iot/control_audible_alarm_a101.py on)!"
+        log_execution_event(button_id, slot_info.get("name", "Bật Còi Báo Động"), "SUCCESS 200 OK", msg)
+        return {
+            "success": True,
+            "button_id": button_id,
+            "name": slot_info.get("name", "Bật Còi Báo Động"),
+            "desc": slot_info.get("desc", "Kích hoạt còi Alarm"),
+            "message": msg
+        }
+
+    # Tắt còi báo động (Alarm OFF)
+    if button_id == "btn_alarm_off":
+        run_python_script_async("scripts/tools/control_iot/control_audible_alarm_a101.py", ["off"])
+        msg = "🔇 Đã kích hoạt script tắt còi báo động (py scripts/tools/control_iot/control_audible_alarm_a101.py off)!"
+        log_execution_event(button_id, slot_info.get("name", "Tắt Còi Báo Động"), "SUCCESS 200 OK", msg)
+        return {
+            "success": True,
+            "button_id": button_id,
+            "name": slot_info.get("name", "Tắt Còi Báo Động"),
+            "desc": slot_info.get("desc", "Ngắt còi Alarm"),
             "message": msg
         }
 

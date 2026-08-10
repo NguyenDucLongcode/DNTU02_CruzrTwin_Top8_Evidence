@@ -494,22 +494,14 @@ def run_scenario():
     # Hàm hỗ trợ bật lại điện Smart Plug và tắt Còi báo động khi về Normal / Reset
     def restore_tuya_devices():
         try:
-            from src.tuya import control_multiple_by_fiware_ids
-            all_plugs = [
-                "smart_plug_a101",
-                "smart_plug_a102",
-                "smart_plug_a103",
-                "smart_plug_a104",
-                "smart_plug_a105",
-                "smart_plug_a106",
-            ]
-            all_alarms = [
-                "audible_alarm_a101"
-            ]
-            print(f"🔌 [RESTORE IOT] Đang cấp điện lại cho toàn bộ {len(all_plugs)} ổ cắm Smart Plug...")
-            control_multiple_by_fiware_ids(all_plugs, action="on", device_type="smart_plug", max_workers=len(all_plugs))
-            print(f"🔕 [RESTORE IOT] Đang tắt toàn bộ {len(all_alarms)} còi báo động Alarm...")
-            control_multiple_by_fiware_ids(all_alarms, action="off", device_type="alarm", max_workers=len(all_alarms))
+            import subprocess
+            py_cmd = sys.executable
+            
+            print("🔌 [RESTORE IOT] Đang cấp điện lại cho toàn bộ ổ cắm Smart Plug...")
+            subprocess.Popen([py_cmd, "scripts/tools/control_iot/control_all_smart_plugs.py", "on"], cwd=ROOT_DIR)
+            
+            print("🔕 [RESTORE IOT] Đang tắt toàn bộ còi báo động Alarm...")
+            subprocess.Popen([py_cmd, "scripts/tools/control_iot/control_audible_alarm_a101.py", "off"], cwd=ROOT_DIR)
         except Exception as err:
             print(f"Restore Tuya devices note: {err}")
 

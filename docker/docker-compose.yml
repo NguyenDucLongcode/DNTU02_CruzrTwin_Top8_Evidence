@@ -63,31 +63,31 @@ services:
     networks:
       - fiware-net
 
-  device-simulator:
-    image: fiware/device-simulator:latest
-    container_name: device-simulator
-    restart: "no"
-    depends_on:
-      - mosquitto
-      - iot-agent
-      - orion
-    volumes:
-      - ./simulator/config:/app/config
-    working_dir: /app
-    environment:
-      - MQTT_HOST=mosquitto
-      - MQTT_PORT=1883
-      - ORION_HOST=orion
-      - ORION_PORT=1026
-    command: >
-      sh -c "mkdir -p /app/config &&
-             while [ ! -f /app/config/simulation.json ]; do
-               echo 'Waiting for config file...';
-               sleep 2;
-             done &&
-             /opt/fiware-device-simulator/bin/fiwareDeviceSimulatorCLI -c /app/config/simulation.json"
-    networks:
-      - fiware-net
+  # device-simulator:
+  #   image: fiware/device-simulator:latest
+  #   container_name: device-simulator
+  #   restart: "no"
+  #   depends_on:
+  #     - mosquitto
+  #     - iot-agent
+  #     - orion
+  #   volumes:
+  #     - ./simulator/config:/app/config
+  #   working_dir: /app
+  #   environment:
+  #     - MQTT_HOST=mosquitto
+  #     - MQTT_PORT=1883
+  #     - ORION_HOST=orion
+  #     - ORION_PORT=1026
+  #   command: >
+  #     sh -c "mkdir -p /app/config &&
+  #            while [ ! -f /app/config/simulation.json ]; do
+  #              echo 'Waiting for config file...';
+  #              sleep 2;
+  #            done &&
+  #            /opt/fiware-device-simulator/bin/fiwareDeviceSimulatorCLI -c /app/config/simulation.json"
+  #   networks:
+  #     - fiware-net
 
   tuya-bridge:
     build: ./tuya-bridge
@@ -125,20 +125,6 @@ services:
       - ORION_ENABLED=true
       - ORION_URL=http://orion:1026
       - LOG_DIR=/app/logs
-    networks:
-      - fiware-net
-
-  frontend:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
-    image: dntu02/cruzrtwin-frontend
-    container_name: frontend
-    restart: unless-stopped
-    ports:
-      - "80:80"
-    depends_on:
-      - backend
     networks:
       - fiware-net
 

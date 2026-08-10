@@ -30,7 +30,7 @@ function startWebhookPlugin() {
 
             console.log(`[Vite Webhook Launcher] Opening new CMD Terminal for: "${pythonCmd}" "${pyScript}"`)
 
-            const launchCmd = `start "CruzrTwin Webhook Receiver" cmd.exe /k ""${pythonCmd}" "${pyScript}""`
+            const launchCmd = `start "CruzrTwin Webhook Receiver" cmd.exe /c ""${pythonCmd}" "${pyScript}""`
             const child = spawn(launchCmd, [], {
               cwd: rootDir,
               detached: true,

@@ -85,11 +85,11 @@ def speak_outro(language: str = "en", emotion: str = "emotion://va/techface_happ
         client.move(turningAngle=-81.5, turningSpeed=45)
         time.sleep(3.7)
         client.move(distance=1.1, speed=0.5)
-        time.sleep(4.4)
+        time.sleep(2.6)
         client.move(turningAngle=81.5, turningSpeed=45)
         time.sleep(3.7)
         client.move(distance=2.2, speed=0.45)
-        time.sleep(5)
+        time.sleep(4.7)
 
         # Danh sách các động tác cử chỉ tay chào kết thúc Outro
         closing_actions = [

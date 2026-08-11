@@ -197,15 +197,16 @@ def main(alert_event: dict) -> dict:
             RobotClient.speak_and_wait(vi_messageAlarm, language="vi")
 
             # Bật còi báo động Alarm đã được tách sang nút điều khiển độc lập trên giao diện (btn_11A)
-            if alarms:
-                control_multiple_by_fiware_ids(
-                fiware_ids=alarms,
+            print(f"🚨 [CRITICAL IOT] Robot đã nói xong câu bật còi -> Đang kích hoạt chuông còi báo động Alarm ({len(all_alarms)} thiết bị)...")
+            control_multiple_by_fiware_ids(
+                fiware_ids=all_alarms,
                 action="on",
                 device_type="alarm",
-                alarm_type=10,
-                duration=60,
-                max_workers=len(alarms)
+                alarm_type=8,
+                duration=20,
+                max_workers=len(all_alarms)
             )
+
 
             RobotClient.move(turningAngle=-161,turningSpeed=80)
 

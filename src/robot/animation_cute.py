@@ -102,13 +102,13 @@ def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happ
 
 
 def main():
-    # parser = argparse.ArgumentParser(description="Script giới thiệu Robot CruzrTwin ASEAN kèm tay di chuyển liên tục")
-    # parser.add_argument(
-    #     "--lang",
-    #     choices=["en", "vi", "both"],
-    #     default="en",
-    #     help="Ngôn ngữ phát thoại: en (Tiếng Anh), vi (Tiếng Việt), both (Cả hai). Mặc định: en"
-    # )
+    parser = argparse.ArgumentParser(description="Script giới thiệu Robot CruzrTwin ASEAN kèm tay di chuyển liên tục")
+    parser.add_argument(
+        "--lang",
+        choices=["en", "vi", "both"],
+        default="en",
+        help="Ngôn ngữ phát thoại: en (Tiếng Anh), vi (Tiếng Việt), both (Cả hai). Mặc định: en"
+    )
     parser.add_argument(
         "--emotion",
         default="emotion://va/face_amazing",

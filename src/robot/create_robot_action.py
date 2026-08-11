@@ -197,6 +197,15 @@ def main(alert_event: dict) -> dict:
             RobotClient.speak_and_wait(vi_messageAlarm, language="vi")
 
             # Bật còi báo động Alarm đã được tách sang nút điều khiển độc lập trên giao diện (btn_11A)
+            if alarms:
+                control_multiple_by_fiware_ids(
+                fiware_ids=alarms,
+                action="on",
+                device_type="alarm",
+                alarm_type=10,
+                duration=60,
+                max_workers=len(alarms)
+            )
 
             RobotClient.move(turningAngle=-161,turningSpeed=80)
 
@@ -209,16 +218,7 @@ def main(alert_event: dict) -> dict:
             RobotClient.move(distance=1.5, speed=0.75)
             time.sleep(6)
 
-            RobotClient.move(turningAngle=-81.5,turningSpeed=60)
-            # time.sleep(13)
-
-            # RobotClient.move(turningAngle=81.5,turningSpeed=60)
-            # time.sleep(7)
-
-            # RobotClient.move(distance=0.5,speed=0.4)
-            # time.sleep(7)
-
-            # RobotClient.move(turningAngle=-86.3,turningSpeed=45)
+            RobotClient.move(turningAngle=-81.5,turningSpeed=45)
 
 
         except Exception as err:

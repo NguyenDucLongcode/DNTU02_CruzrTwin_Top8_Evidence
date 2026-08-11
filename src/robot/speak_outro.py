@@ -82,11 +82,11 @@ def speak_outro(language: str = "en", emotion: str = "emotion://va/techface_happ
         time.sleep(1.5)
 
         # Di chuyển theo hành trình Outro
-        client.move(turningAngle=-81.5, turningSpeed=60)
+        client.move(turningAngle=-81.5, turningSpeed=45)
         time.sleep(3.7)
         client.move(distance=1.1, speed=0.5)
         time.sleep(4.4)
-        client.move(turningAngle=81.5, turningSpeed=60)
+        client.move(turningAngle=81.5, turningSpeed=45)
         time.sleep(3.7)
         client.move(distance=2.2, speed=0.45)
         time.sleep(5)

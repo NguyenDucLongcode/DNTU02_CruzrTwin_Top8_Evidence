@@ -708,7 +708,7 @@ export default function NavigateBack() {
           }
 
           return (
-            <div key={btn.id} className="relative h-full">
+            <div key={btn.id} className={`relative h-full ${openDropdown === btn.id ? 'z-[9999]' : 'z-10'}`}>
               <button
                 onClick={() => {
                   if (btn.id === 'btn_4') {

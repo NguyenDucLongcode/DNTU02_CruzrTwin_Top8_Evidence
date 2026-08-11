@@ -39,7 +39,7 @@ def speak_outro(language: str = "en", emotion: str = "emotion://va/techface_happ
         time.sleep(4.7)
 
         # 2. Phát duy nhất câu slogan Outro
-        # client.speak(text=OUTRO_TEXT_EN, language="en")
+        client.speak(text=OUTRO_TEXT_EN, language="en")
 
         print("\n✅ Đã hoàn thành phát thoại Outro: CruzrTwin ASEAN — closing the last meter of smart-city response.")
         return True

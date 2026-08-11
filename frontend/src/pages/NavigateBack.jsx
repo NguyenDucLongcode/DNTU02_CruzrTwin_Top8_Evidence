@@ -63,6 +63,9 @@ export default function NavigateBack() {
 
   // Keyboard navigation for slide control
   useEffect(() => {
+    // Đổi tên Tab để Python Server nhận diện đúng đâu là Dashboard, đâu là Control Panel
+    document.title = "Control Panel - CruzrTwin";
+
     const handleKeyDown = (e) => {
       const channel = new BroadcastChannel('cruzrtwin_sync');
       if (e.key === 'ArrowRight' || e.key === ' ') {
@@ -145,7 +148,7 @@ export default function NavigateBack() {
         button_id: 'sys_restart',
         slot: 'SYS',
         name: 'Restart Webhook Server',
-        message: '🔄 Đã TẮT và CHẠY LẠI py src/fiware/webhook_receiver.py thành công! (Ctrl+C rồi py...)',
+        message: 'Đã TẮT và CHẠY LẠI py src/fiware/webhook_receiver.py thành công! (Ctrl+C rồi py...)',
         success: true,
         latencyMs: 0,
         time: new Date().toLocaleTimeString()
@@ -243,7 +246,7 @@ export default function NavigateBack() {
   };
 
   return (
-    <div className="w-screen min-h-dvh overflow-hidden bg-surface text-white font-mono flex flex-col justify-between p-6 lg:p-8 select-none relative">
+    <div className="w-screen min-h-dvh bg-surface text-white font-mono flex flex-col justify-between p-6 lg:p-8 select-none relative">
       {/* Background glow effects — single accent color for consistency */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl pointer-events-none" />
@@ -259,9 +262,7 @@ export default function NavigateBack() {
           <div className="flex items-center bg-gray-cool-800 border border-gray-cool-600 rounded-xl overflow-hidden mr-2 shadow-control-strong">
             <button
               onClick={() => {
-                const ch = new BroadcastChannel('cruzrtwin_sync');
-                ch.postMessage({ type: 'SWITCH_VIEW', view: 'dashboard' });
-                ch.close();
+                fetch('http://localhost:5005/slide/dashboard').catch(console.error);
               }}
               className="px-3 py-1.5 text-xs font-bold bg-gray-cool-800 text-cyan-400 border-r border-gray-cool-700 transition-elegant focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-[0.97]"
               title="Quay về màn hình Dashboard"
@@ -270,9 +271,7 @@ export default function NavigateBack() {
             </button>
             <button
               onClick={() => {
-                const ch = new BroadcastChannel('cruzrtwin_sync');
-                ch.postMessage({ type: 'SWITCH_VIEW', view: 'slide' });
-                ch.close();
+                fetch('http://localhost:5005/slide/start').catch(console.error);
               }}
               className="px-3 py-1.5 text-xs font-bold bg-gray-cool-800 text-amber-400 border-r border-gray-cool-700 transition-elegant focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-[0.97]"
               title="Mở màn hình Slide (giữ nguyên trang hiện tại)"
@@ -281,9 +280,7 @@ export default function NavigateBack() {
             </button>
             <button
               onClick={() => {
-                const ch = new BroadcastChannel('cruzrtwin_sync');
-                ch.postMessage({ type: 'SLIDE_PREV' });
-                ch.close();
+                fetch('http://localhost:5005/slide/prev').catch(console.error);
               }}
               className="px-2.5 py-1.5 text-xs font-bold bg-gray-cool-800 text-amber-500/70 border-r border-gray-cool-700 transition-elegant focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-[0.97]"
               title="Lùi lại 1 Slide (Prev)"
@@ -292,9 +289,7 @@ export default function NavigateBack() {
             </button>
             <button
               onClick={() => {
-                const ch = new BroadcastChannel('cruzrtwin_sync');
-                ch.postMessage({ type: 'SLIDE_NEXT' });
-                ch.close();
+                fetch('http://localhost:5005/slide/next').catch(console.error);
               }}
               className="px-2.5 py-1.5 text-xs font-bold bg-gray-cool-800 text-amber-500/70 transition-elegant focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-[0.97]"
               title="Tiến tới 1 Slide (Next)"

@@ -165,22 +165,12 @@ export default function Dashboard() {
   const [e2eMeasuredLatency, setE2eMeasuredLatency] = useState(null);
   const [emergencyPopup, setEmergencyPopup] = useState(null);
   const [controllerState, setControllerState] = useState({ ai_detection_focus: false });
-  const [showSlideView, setShowSlideView] = useState(false);
-
-  // Lắng nghe lệnh đồng bộ màn hình (Slide / Dashboard) từ trang NavigateBack
-  useEffect(() => {
-    const channel = new BroadcastChannel('cruzrtwin_sync');
-    channel.onmessage = (event) => {
-      if (event.data?.type === 'SWITCH_VIEW') {
-        if (event.data.view === 'slide') setShowSlideView(true);
-        else if (event.data.view === 'dashboard') setShowSlideView(false);
-      }
-    };
-    return () => channel.close();
-  }, []);
 
   // Poll Controller State từ Remote Controller (/api/script/state) định kỳ 1s
   useEffect(() => {
+    // Đảm bảo tên Tab chính xác để Python script có thể chộp được
+    document.title = "DNTU02 CruzrTwin — Digital Twin Fire Safety Monitoring";
+
     const pollControllerState = async () => {
       try {
         const res = await fetch('/api/script/state');
@@ -583,11 +573,6 @@ export default function Dashboard() {
 
   return (
     <div className="w-full h-full flex flex-col md:flex-row overflow-hidden bg-black">
-      {/* HTML SLIDE OVERLAY (luôn render nhưng ẩn/hiện bằng CSS để không bị reset slide) */}
-      <iframe
-        src="/presentation/index.html"
-        className={`absolute top-0 left-0 w-full h-full z-[9999] border-none bg-black ${showSlideView ? 'visible pointer-events-auto' : 'invisible pointer-events-none'}`}
-      />
       <main className="flex-1 relative h-full flex flex-col min-w-0">
         <div className="flex-1 relative w-full overflow-hidden">
           <ThreeScene

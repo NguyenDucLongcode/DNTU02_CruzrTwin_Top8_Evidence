@@ -21,42 +21,25 @@ if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
 
 # Đoạn xin phép bắt đầu (Greeting / Start Text)
 START_TEXT_EN = (
-    "Ladies and Gentlemen, dear judges and all the audience."
-    "The DNTU CruzTwin team would like to begin our presentation now."
-)
-
-# Đoạn văn bản giới thiệu bằng Tiếng Anh (English Intro Text)
-INTRO_TEXT_EN = (
-    "In many ASEAN public buildings, digital systems can detect danger—"
-    "but they cannot reach the people who need help. "
+    "Ladies and Gentlemen, dear judges and all the audience. The DNTU CruzTwin team would like to begin our presentation now. In many ASEAN public buildings, digital systems can detect danger but they cannot reach the people who need help."
 )
 
 
 def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happy"):
     client = CruzrRobotClient()
-    connected = client.connect(timeout=1.0)
-    if not connected:
-        print("❌ Không thể kết nối tới Robot. Vui lòng kiểm tra địa chỉ IP và mạng!")
-        print("💡 Text giới thiệu sẽ được in ra màn hình dưới dạng Demo:")
-        print(f"\n[EN]: {START_TEXT_EN} {INTRO_TEXT_EN}")
-        return False
+
 
     try:
         # START ACTIONS--------------------
-
+        client.play_emotion("emotion://va/face_default")
         client.move(distance=1.46, speed=0.45)
         time.sleep(3)
         client.play_action("action://ubtrobot/goodbye")
-        client.move(turningAngle=-86.3, turningSpeed=45)
-        time.sleep(3)
-        client.play_emotion("emotion://va/face_love")
-        client.move(distance=0.5, speed=0.45)
+        client.move_and_wait(turningAngle=-86.3, turningSpeed=45)
+        client.play_emotion("emotion://va/face_happy")
+        client.move_and_wait(distance=0.5, speed=0.45)
 
-        if language in ["en", "both"]:
-
-            client.speak(text=START_TEXT_EN, language="en")
-            time.sleep(11.5)
-            client.speak(text=INTRO_TEXT_EN, language="en")
+        client.speak(text=START_TEXT_EN, language="en")
 
         print("\n✅ Đã hoàn thành bài giới thiệu CruzrTwin ASEAN với tay di chuyển liên tục suốt bài nói!")
         return True

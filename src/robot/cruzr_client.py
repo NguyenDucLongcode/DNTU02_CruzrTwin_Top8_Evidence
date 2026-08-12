@@ -228,6 +228,97 @@ class CruzrRobotClient:
         options = json.dumps({"movingSpeed": speed, "movingDistance": distance, "movingAngle":movingAngle,"turningSpeed": turningSpeed,"turningAngle":turningAngle})
         return self.send_command("key_move_input", options)
 
+    def move_and_wait(self, distance=0, movingAngle=0, turningSpeed=0, turningAngle=0,
+                      speed=0, fallback_timeout: float = None) -> Dict:
+        """
+        Di chuyển robot và CHỜ robot hoàn thành.
+        Kết hợp: chờ response 'completed' từ robot + ước lượng thời gian dựa trên thông số di chuyển.
+        Dùng thay cho move() + time.sleep() cố định.
+        """
+        if GLOBAL_MOVEMENT_STOPPED:
+            print("🛑 [MOVEMENT STOPPED] Bánh xe đã dừng theo lệnh Nút 8 (Vẫn giữ âm thanh, thoại & IoT).")
+            return {"success": True, "message": "Movement stopped by user"}
+
+        if not self._connected:
+            if not self.connect():
+                return {"success": False, "message": "Not connected"}
+
+        options = json.dumps({"movingSpeed": speed, "movingDistance": distance, "movingAngle": movingAngle, "turningSpeed": turningSpeed, "turningAngle": turningAngle})
+
+        # Ước lượng thời gian dựa trên thông số di chuyển
+        estimated = self._estimate_move_duration(
+            distance, movingAngle, turningSpeed, turningAngle, speed
+        )
+        wait_time = max(estimated, fallback_timeout) if fallback_timeout is not None else estimated
+
+        print(f"   ⏳ [MOVE] Chờ robot di chuyển hoàn tất ({wait_time:.1f}s, ước lượng={estimated:.1f}s)...")
+
+        with self._command_lock:
+            flushed = 0
+            while not self._response_queue.empty():
+                try:
+                    self._response_queue.get_nowait()
+                    flushed += 1
+                except queue.Empty:
+                    break
+            if flushed:
+                print(f"   🦹 [QUEUE] Flush {flushed} stale response(s) trước 'move_and_wait'")
+
+            try:
+                self._ws.send(json.dumps({"command": "key_move_input", "options": options}))
+            except Exception as e:
+                print(f"   ❌ [MOVE] Gửi lệnh bị lỗi: {e}")
+                return {"success": False, "message": str(e)}
+
+        start_time = time.monotonic()
+        result = {"success": True, "message": "Movement dispatched"}
+
+        # Chờ và kiểm tra response từ robot
+        # Robot gửi ACK (success: true), có thể gửi cả 'completed' status
+        deadline = start_time + wait_time
+        while time.monotonic() < deadline:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            try:
+                resp = self._response_queue.get(timeout=min(remaining, 0.5))
+                resp_status = resp.get("status", "")
+                if resp_status == "completed":
+                    elapsed = wait_time - remaining
+                    print(f"   ✅ [MOVE] Robot di chuyển xong! (sau {elapsed:.1f}s)")
+                    time.sleep(0.3)
+                    return resp
+                if not resp.get("success", True):
+                    result = resp
+            except queue.Empty:
+                continue
+
+        elapsed = time.monotonic() - start_time
+        print(f"   ⏱️ [MOVE] Đã chờ hết {wait_time:.1f}s (đã trôi qua {elapsed:.1f}s)")
+        time.sleep(0.2)
+        return result
+
+    @staticmethod
+    def _estimate_move_duration(distance=0, movingAngle=0, turningSpeed=0,
+                                turningAngle=0, speed=0) -> float:
+        """
+        Ước lượng thời gian robot di chuyển dựa trên các thông số.
+        - Di chuyển tuyến tính: distance / speed (nếu speed > 0, distance > 0)
+        - Quay robot: turningAngle / turningSpeed (nếu turningSpeed > 0, turningAngle > 0)
+        - Cộng startup + buffer
+        """
+        duration = 1.0  # startup cho robot xử lý lệnh
+
+        # Di chuyển tuyến tính
+        if speed and speed > 0 and distance and distance > 0:
+            duration += distance / speed
+
+        # Quay robot (turningAngle có thể âm)
+        if turningSpeed and turningSpeed > 0 and abs(turningAngle) > 0:
+            duration += abs(turningAngle) / turningSpeed
+
+        return max(1.0, round(duration, 1))
+
     def move_forward(self, speed: float = 0.5 ) -> Dict:
         return self.move("move_forward", speed)
 
@@ -322,13 +413,13 @@ class CruzrRobotClient:
     def _estimate_speak_duration(text: str, language: str = "vi") -> float:
         """
         Ước lượng thời gian robot nói dựa trên độ dài text.
-        - Tiếng Việt: ~0.55 giây/từ
-        - Tiếng Anh: ~0.45 giây/từ
+        - Tiếng Việt: ~1 giây/từ
+        - Tiếng Anh: ~1 giây/từ
         - Cộng thêm startup TTS + ngắt nghỉ dấu câu
         """
         import re
         word_count = len(text.split())
-        sec_per_word = 0.55 if language.lower() == "vi" else 0.45
+        sec_per_word = 1 if language.lower() == "vi" else 1
         startup = 1.5  # Thời gian khởi động engine TTS
         estimated = (word_count * sec_per_word) + startup
         punct_count = len(re.findall(r'[.,!?;:\-()]', text))

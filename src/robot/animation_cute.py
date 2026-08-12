@@ -20,14 +20,8 @@ if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
         pass
 
 
-def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happy"):
+def play_animations(language: str = "en", emotion: str = "emotion://va/techface_happy"):
     client = CruzrRobotClient()
-    connected = client.connect(timeout=1.0)
-    if not connected:
-        print("❌ Không thể kết nối tới Robot. Vui lòng kiểm tra địa chỉ IP và mạng!")
-        print("💡 Text giới thiệu sẽ được in ra màn hình dưới dạng Demo:")
-        print(f"\n[EN]: {START_TEXT_EN} {INTRO_TEXT_EN}")
-        return False
 
     try:
         if language in ["en", "both"]:
@@ -35,21 +29,17 @@ def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happ
             # Mở biểu cảm thẹn thùng & động tác dễ thương
             print("🎭 Đang mở biểu cảm: emotion://va/face_love")
             client.play_emotion("emotion://va/face_love")
-            time.sleep(2)
+            time.sleep(0.1)
             print("👋 Robot thực hiện cử chỉ: action://ubtech/cute")
             client.play_action("action://ubtrobot/cute")
-            time.sleep(23)
+            time.sleep(14)
+            client.play_emotion("emotion://va/face_default")
 
-
-        client.move(turningAngle=-176.3, turningSpeed=45)
-        time.sleep(3.7)
-        client.move(distance=0.5, speed=0.45)
-        time.sleep(4.3)
-        client.move(turningAngle=86.3, turningSpeed=45)
-        time.sleep(3.5)
-        client.move(distance=0.4, speed=0.45)
-        time.sleep(4)
-        client.move(turningAngle=-86.3, turningSpeed=45)
+            client.move_and_wait(turningAngle=-176.3, turningSpeed=45)
+            client.move_and_wait(distance=0.5, speed=0.45)
+            client.move_and_wait(turningAngle=86.3, turningSpeed=45)
+            client.move_and_wait(distance=0.4, speed=0.45)
+            client.move_and_wait(turningAngle=-86.3, turningSpeed=45)
 
 
         print("\n✅ Đã hoàn thành bài giới thiệu CruzrTwin ASEAN với tay di chuyển liên tục suốt bài nói!")
@@ -79,7 +69,7 @@ def main():
     )
     args = parser.parse_args()
 
-    speak_intro(language=args.lang, emotion=args.emotion)
+    play_animations(language=args.lang, emotion=args.emotion)
 
 
 if __name__ == "__main__":

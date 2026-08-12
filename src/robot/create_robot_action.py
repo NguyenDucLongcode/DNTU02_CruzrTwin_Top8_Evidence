@@ -65,14 +65,8 @@ def main(alert_event: dict) -> dict:
 
     room_name = zone_id.split("_")[-1]
     # messageCitical = alert_event.get("message", "")
-    messageCitical = (
-        f"Critical indoor-environment anomaly detected in "
-        f"Room {room_name}. Please follow me guidance and move calmly to the safe waiting area. "
-    )
-    vi_messageCitical = (
-        f"Đã phát hiện sự cố bất thường nghiêm trọng trong môi trường trong nhà tại "
-        f"Phòng {room_name}. Vui lòng làm theo hướng dẫn của tôi và di chuyển bình tĩnh đến khu vực chờ an toàn. "
-    )
+    messageCitical = f"Critical indoor-environment anomaly detected in Room {room_name}. Please follow me guidance and move calmly to the safe waiting area. "
+    vi_messageCitical = f"Đã phát hiện sự cố bất thường nghiêm trọng trong môi trường trong nhà tại Phòng {room_name}. Vui lòng làm theo hướng dẫn của tôi và di chuyển bình tĩnh đến khu vực chờ an toàn. "
 
     # message tắt smart plug và bật alarm
     messageSmartPlug = "I will turn off all electrical devices."
@@ -148,33 +142,25 @@ def main(alert_event: dict) -> dict:
     # ============================================
     # THỰC THI THOẠI ROBOT KẾT HỢP IOT KHUYẾN NGHỊ
     # ============================================
-    isConnected = RobotClient.connect(timeout=1.0)
     if isConnected:
         try:
-
-            RobotClient.set_volume(90)
-
             print("🎭 Robot mở biểu cảm khẩn cấp...")
-            # RobotClient.play_emotion("emotion://va/techface_upset")
+            RobotClient.play_emotion("emotion://va/techface_upset")
 
             # Robot di chuyển tiến về phía trước 5 giây
-            print("🚗 Robot di chuyển tiến về phía trước (5s)...")
-            RobotClient.move(distance=1.8, speed=0.7)
-            time.sleep(4.5)
-            RobotClient.move(turningAngle=81.5,turningSpeed=60)
-            time.sleep(1.5)
+            
+            RobotClient.move_and_wait(distance=1.8, speed=0.7)
+            RobotClient.move_and_wait(turningAngle=81.5,turningSpeed=60)
 
             # 1. Phát thông báo sơ tán khẩn cấp (Tiếng Anh trước, Tiếng Việt sau)
             print(f"📢 Robot phát thoại tiếng Anh (EN): \"{messageCitical}\"")
             RobotClient.speak_and_wait(messageCitical, language="en")
 
             print(f"📢 Robot phát thoại tiếng Việt (VI): \"{vi_messageCitical}\"")
-            RobotClient.play_action("action://ubtech/wave")
             RobotClient.speak_and_wait(vi_messageCitical, language="vi")
 
             # 2. Robot thông báo ngắt điện (Tiếng Anh trước, Tiếng Việt sau) -> NGẮT ĐIỆN IOT
             print(f"📢 Robot thông báo ngắt điện (EN): \"{messageSmartPlug}\"")
-            RobotClient.play_action("action://ubtech/explain")
             RobotClient.speak_and_wait(messageSmartPlug, language="en")
 
             print(f"📢 Robot thông báo ngắt điện (VI): \"{vi_messageSmartPlug}\"")
@@ -190,7 +176,6 @@ def main(alert_event: dict) -> dict:
 
             # 3. Robot thông báo bật còi báo động (Tiếng Anh trước, Tiếng Việt sau) -> BẬT CÒI ALARM
             print(f"📢 Robot thông báo bật còi (EN): \"{messageAlarm}\"")
-            RobotClient.play_action("action://ubtech/presentation")
             RobotClient.speak_and_wait(messageAlarm, language="en")
 
             print(f"📢 Robot thông báo bật còi (VI): \"{vi_messageAlarm}\"")
@@ -207,8 +192,7 @@ def main(alert_event: dict) -> dict:
                 max_workers=len(all_alarms)
             )
 
-
-            RobotClient.move(turningAngle=-161,turningSpeed=80)
+            RobotClient.move_and_wait(turningAngle=-161,turningSpeed=80)
 
             print(f"📢 Robot thông báo di chuyển ra khỏi khu vực nguy hiểm (EN): \"{messageMoveOut}\"")
             RobotClient.speak_and_wait(messageMoveOut, language="en")
@@ -216,10 +200,8 @@ def main(alert_event: dict) -> dict:
             print(f"📢 Robot thông báo di chuyển ra khỏi khu vực nguy hiểm (VI): \"{vi_messageMoveOut}\"")
             RobotClient.speak_and_wait(vi_messageMoveOut, language="vi")
 
-            RobotClient.move(distance=1.5, speed=0.75)
-            time.sleep(6)
-
-            RobotClient.move(turningAngle=-81.5,turningSpeed=45)
+            RobotClient.move_and_wait(distance=1.5, speed=0.75)
+            RobotClient.move_and_wait(turningAngle=-81.5,turningSpeed=45)
 
 
         except Exception as err:

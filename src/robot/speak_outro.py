@@ -20,26 +20,23 @@ if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
 
 
 # Đoạn văn bản Outro chuẩn (Tập trung 1 câu duy nhất theo yêu cầu)
-OUTRO_TEXT_EN = "CruzrTwin ASEAN — closing the last meter of smart-city response."
+OUTRO_TEXT_EN = "CruzTwin ASEAN — closing the last meter of smart-city response."
 
 def speak_outro(language: str = "en", emotion: str = "emotion://va/techface_happy"):
 
     client = CruzrRobotClient()
-    connected = client.connect(timeout=1.0)
 
     try:
         # Di chuyển theo hành trình Outro
-        client.move(turningAngle=-81.5, turningSpeed=45)
-        time.sleep(2.8)
-        client.move(distance=1.1, speed=0.5)
-        time.sleep(2.6)
-        client.move(turningAngle=81.5, turningSpeed=45)
-        time.sleep(2.8)
-        client.move(distance=2.3, speed=0.45)
-        time.sleep(4.7)
+        client.move_and_wait(turningAngle=-81.5, turningSpeed=45)
+        client.move_and_wait(distance=1.1, speed=0.5)
+        client.move_and_wait(turningAngle=81.5, turningSpeed=45)
+        client.move_and_wait(distance=2.3, speed=0.55)
 
-        # 2. Phát duy nhất câu slogan Outro
-        client.speak(text=OUTRO_TEXT_EN, language="en")
+        client.speak_and_wait(OUTRO_TEXT_EN, language="en")
+        time.sleep(3.7)
+        client.play_action("action://ubtrobot/goodbye")
+
 
         print("\n✅ Đã hoàn thành phát thoại Outro: CruzrTwin ASEAN — closing the last meter of smart-city response.")
         return True

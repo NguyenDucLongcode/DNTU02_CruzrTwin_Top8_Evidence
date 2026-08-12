@@ -13,7 +13,7 @@ app = Flask(__name__)
 CORS(app)  # Cho phép gọi chéo từ giao diện React (CORS)
 
 # ĐƯỜNG DẪN TỚI FILE PPT CỦA BẠN (Sửa dòng này thành đường dẫn thật của bạn, nhớ giữ chữ r ở trước)
-PPT_FILE_PATH = r"C:\Users\Ngoc Tan\Downloads\DNTU02_CruzrTwin_Top8_Evidence\mừng quá đỡ đâu chân rồi.pptx"
+PPT_FILE_PATH = r"C:\Users\Ngoc Tan\Downloads\DNTU02_CruzrTwin_Top8_Evidence\PPT_final.pptx"
 
 def get_ppt_app():
     """Lấy kết nối tới phần mềm PowerPoint đang mở"""
@@ -36,7 +36,7 @@ def bring_ppt_to_front(ppt=None):
         def enum_windows(hwnd, lParam):
             class_name = win32gui.GetClassName(hwnd)
             title = win32gui.GetWindowText(hwnd)
-            
+
             if win32gui.IsWindowVisible(hwnd):
                 # Class 'screenClass' là cửa sổ Fullscreen của Slide Show
                 # Class 'PPTFrameClass' là cửa sổ Editor

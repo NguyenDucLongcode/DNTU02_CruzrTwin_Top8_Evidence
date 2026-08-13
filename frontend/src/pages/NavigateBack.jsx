@@ -245,6 +245,72 @@ export default function NavigateBack() {
     executeRunScriptApi(btn, 'normal');
   };
 
+  const handleOperatorAck = async (btn) => {
+    try {
+      setLoadingBtn(btn.id + '_ack');
+      setActiveBtn(btn.id + '_ack');
+
+      const t0 = performance.now();
+      const payload = {
+        decision: 'ACK',
+        alert_id: 'AlertEvent:SCN_CRITICAL_001',
+        robot_action_id: 'RobotAction:SCN_CRITICAL_001',
+        operator_id: 'demo_operator',
+        demo_run_id: 'DNTU02_TOP8_RUN_2026_001',
+        scenario_id: 'SCN_CRITICAL_001',
+        zone_id: 'DNTU_ROOM_A101',
+        note: 'Operator decision: ACK'
+      };
+
+      const res = await fetch('/api/operator/ack', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const t1 = performance.now();
+      const latency = Math.round(t1 - t0);
+
+      const data = await res.json();
+      const isOk = res.ok;
+
+      const respObj = {
+        button_id: btn.id + '_ack',
+        slot: '2F',
+        name: 'Operator ACK',
+        message: data.status || 'OK',
+        success: isOk,
+        latencyMs: latency,
+        time: new Date().toLocaleTimeString()
+      };
+
+      setLastResponse(respObj);
+
+      if (isOk) {
+        setSuccessBtns(prev => ({ ...prev, [btn.id + '_ack']: true }));
+        setTimeout(() => {
+          setSuccessBtns(prev => ({ ...prev, [btn.id + '_ack']: false }));
+        }, 1000);
+
+        setCommandHistory(prev => [
+          { timestamp: respObj.time, button_id: 'ack', name: respObj.name, status: 'SUCCESS 200 OK', details: respObj.message },
+          ...prev.slice(0, 20)
+        ]);
+      }
+    } catch (err) {
+      setLastResponse({
+        button_id: btn.id + '_ack',
+        slot: '2F',
+        name: 'Operator ACK',
+        message: `Lỗi kết nối: ${err.message}`,
+        success: false,
+        latencyMs: 0,
+        time: new Date().toLocaleTimeString()
+      });
+    } finally {
+      setLoadingBtn(null);
+    }
+  };
+
   return (
     <div className="w-screen min-h-dvh bg-surface text-white font-mono flex flex-col justify-between p-6 lg:p-8 select-none relative">
       {/* Background glow effects — single accent color for consistency */}
@@ -503,7 +569,7 @@ export default function NavigateBack() {
           if (btn.id === 'btn_2') {
             return (
               <div key={btn.id} className="relative h-full grid grid-rows-2 gap-1.5 p-1 bg-surface panel-alternative border border-gray-cool-800/50 rounded-2xl shadow-[0_0_15px_rgba(6,182,212,0.10)]">
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-3 gap-1.5">
                   <button
                     onClick={() => executeRunScriptApi(btn, 'sensor')}
                     disabled={isLoading}
@@ -520,14 +586,22 @@ export default function NavigateBack() {
                     <span className="px-1.5 py-0.5 text-[8px] font-bold rounded border bg-gray-cool-900/60 border-gray-cool-700/50 w-fit">2B. ORION</span>
                     <span className="text-[10px] md:text-[11px] font-bold leading-tight group-hover:text-cyan-100 mt-1">Zoom Orion</span>
                   </button>
+                  <button
+                    onClick={() => executeRunScriptApi(btn, 'ack')}
+                    disabled={isLoading}
+                    className={`w-full relative group rounded-xl p-2 border bg-gradient-to-br transition-elegant cursor-pointer flex flex-col justify-between shadow-control from-cyan-600/20 to-cyan-900/40 border-cyan-500/50 hover:border-cyan-400 text-cyan-300 hover:scale-[1.02]`}
+                  >
+                    <span className="px-1.5 py-0.5 text-[8px] font-bold rounded border bg-gray-cool-900/60 border-gray-cool-700/50 w-fit">2C. ZOOM ACK</span>
+                    <span className="text-[10px] md:text-[11px] font-bold leading-tight group-hover:text-cyan-100 mt-1">Zoom Ack Log</span>
+                  </button>
                 </div>
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-3 gap-1.5">
                   <button
                     onClick={() => executeRunScriptApi(btn, 'ai_detection')}
                     disabled={isLoading}
                     className={`w-full relative group rounded-xl p-2 border bg-gradient-to-br transition-elegant cursor-pointer flex flex-col justify-between shadow-control from-cyan-600/20 to-cyan-900/40 border-cyan-500/50 hover:border-cyan-400 text-cyan-300 hover:scale-[1.02]`}
                   >
-                    <span className="px-1.5 py-0.5 text-[8px] font-bold rounded border bg-gray-cool-900/60 border-gray-cool-700/50 w-fit">2C. AI DETECT</span>
+                    <span className="px-1.5 py-0.5 text-[8px] font-bold rounded border bg-gray-cool-900/60 border-gray-cool-700/50 w-fit">2D. AI DETECT</span>
                     <span className="text-[10px] md:text-[11px] font-bold leading-tight group-hover:text-cyan-100 mt-1">Zoom AI</span>
                   </button>
                   <button
@@ -535,8 +609,16 @@ export default function NavigateBack() {
                     disabled={isLoading}
                     className={`w-full relative group rounded-xl p-2 border bg-gradient-to-br transition-elegant cursor-pointer flex flex-col justify-between shadow-control from-cyan-600/20 to-cyan-900/40 border-cyan-500/50 hover:border-cyan-400 text-cyan-300 hover:scale-[1.02]`}
                   >
-                    <span className="px-1.5 py-0.5 text-[8px] font-bold rounded border bg-gray-cool-900/60 border-gray-cool-700/50 w-fit">2D. ROBOT</span>
+                    <span className="px-1.5 py-0.5 text-[8px] font-bold rounded border bg-gray-cool-900/60 border-gray-cool-700/50 w-fit">2E. ROBOT</span>
                     <span className="text-[10px] md:text-[11px] font-bold leading-tight group-hover:text-cyan-100 mt-1">Zoom Robot</span>
+                  </button>
+                  <button
+                    onClick={() => handleOperatorAck(btn)}
+                    disabled={loadingBtn === btn.id + '_ack'}
+                    className={`w-full relative group rounded-xl p-2 border bg-gradient-to-br transition-elegant cursor-pointer flex flex-col justify-between shadow-control from-emerald-600/20 to-emerald-900/40 border-emerald-500/50 hover:border-emerald-400 text-emerald-300 hover:scale-[1.02] ${successBtns[btn.id + '_ack'] ? 'ring-2 ring-emerald-400 animate-pulse' : ''}`}
+                  >
+                    <span className="px-1.5 py-0.5 text-[8px] font-bold rounded border bg-emerald-900/60 border-emerald-700/50 w-fit text-emerald-300">2F. SEND ACK</span>
+                    <span className="text-[10px] md:text-[11px] font-bold leading-tight group-hover:text-emerald-100 mt-1">Send Operator Ack</span>
                   </button>
                 </div>
               </div>

@@ -31,7 +31,8 @@ GLOBAL_CONTROLLER_STATE = {
     "ai_detection_focus": False,
     "sensor_focus": False,
     "orion_focus": False,
-    "robot_focus": False
+    "robot_focus": False,
+    "ack_focus": False
 }
 
 # Registry chứa cấu hình 12 nút bấm (Sẵn sàng cập nhật tính năng từng nút khi User mô tả)
@@ -400,6 +401,7 @@ def execute_button_action(button_id: str, payload: Dict[str, Any] = None) -> Dic
         GLOBAL_CONTROLLER_STATE["sensor_focus"] = False
         GLOBAL_CONTROLLER_STATE["orion_focus"] = False
         GLOBAL_CONTROLLER_STATE["robot_focus"] = False
+        GLOBAL_CONTROLLER_STATE["ack_focus"] = False
 
     # Slot 01: Kích hoạt thoại giới thiệu hoặc Cử chỉ đáng yêu
     if button_id == "btn_1":
@@ -425,7 +427,7 @@ def execute_button_action(button_id: str, payload: Dict[str, Any] = None) -> Dic
         action = (payload or {}).get("action", "ai_detection")
         
         # Turn off all other focus states
-        for key in ["ai_detection_focus", "sensor_focus", "orion_focus", "robot_focus"]:
+        for key in ["ai_detection_focus", "sensor_focus", "orion_focus", "robot_focus", "ack_focus"]:
             if key != f"{action}_focus":
                 GLOBAL_CONTROLLER_STATE[key] = False
                 

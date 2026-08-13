@@ -196,6 +196,7 @@ export default function Dashboard() {
     else if (controllerState.orion_focus) activePanel = 'orion';
     else if (controllerState.ai_detection_focus) activePanel = 'ai_detection';
     else if (controllerState.robot_focus) activePanel = 'robot';
+    else if (controllerState.ack_focus) activePanel = 'ack';
 
     if (activePanel) {
       setFocusPanel(activePanel);
@@ -793,6 +794,9 @@ export default function Dashboard() {
             )}
             {focusPanel === 'robot' && (
               <LogPanel title="ROBOT_ACTION" data={roomLogs.robot} height="100%" showNormal={showNormalLogs} emptyMessage="Chưa có dữ liệu Robot Action..." />
+            )}
+            {focusPanel === 'ack' && (
+              <LogPanel title="OPERATOR_ACK" data={roomLogs.ack} height="100%" showNormal={showNormalLogs} emptyMessage="Chưa có dữ liệu Operator Ack..." />
             )}
           </div>
         </div>

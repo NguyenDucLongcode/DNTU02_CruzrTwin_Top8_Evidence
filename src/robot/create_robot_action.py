@@ -138,7 +138,7 @@ def main(alert_event: dict) -> dict:
     all_alarms = [
         "audible_alarm_a101"
     ]
-
+    isConnected = RobotClient.connect(timeout=2.0)
     # ============================================
     # THỰC THI THOẠI ROBOT KẾT HỢP IOT KHUYẾN NGHỊ
     # ============================================
@@ -148,9 +148,9 @@ def main(alert_event: dict) -> dict:
             RobotClient.play_emotion("emotion://va/techface_upset")
 
             # Robot di chuyển tiến về phía trước 5 giây
-            
-            RobotClient.move_and_wait(distance=1.8, speed=0.7)
-            RobotClient.move_and_wait(turningAngle=81.5,turningSpeed=60)
+
+            RobotClient.move_and_wait(distance=1.5, speed=0.45)
+            RobotClient.move_and_wait(turningAngle=86.3,turningSpeed=45)
 
             # 1. Phát thông báo sơ tán khẩn cấp (Tiếng Anh trước, Tiếng Việt sau)
             print(f"📢 Robot phát thoại tiếng Anh (EN): \"{messageCitical}\"")
@@ -192,7 +192,7 @@ def main(alert_event: dict) -> dict:
                 max_workers=len(all_alarms)
             )
 
-            RobotClient.move_and_wait(turningAngle=-161,turningSpeed=80)
+            RobotClient.move_and_wait(turningAngle=-176.3,turningSpeed=45)
 
             print(f"📢 Robot thông báo di chuyển ra khỏi khu vực nguy hiểm (EN): \"{messageMoveOut}\"")
             RobotClient.speak_and_wait(messageMoveOut, language="en")
@@ -200,8 +200,8 @@ def main(alert_event: dict) -> dict:
             print(f"📢 Robot thông báo di chuyển ra khỏi khu vực nguy hiểm (VI): \"{vi_messageMoveOut}\"")
             RobotClient.speak_and_wait(vi_messageMoveOut, language="vi")
 
-            RobotClient.move_and_wait(distance=1.5, speed=0.75)
-            RobotClient.move_and_wait(turningAngle=-81.5,turningSpeed=45)
+            RobotClient.move_and_wait(distance=1.5, speed=0.45)
+            RobotClient.move_and_wait(turningAngle=-86.3,turningSpeed=45)
 
 
         except Exception as err:

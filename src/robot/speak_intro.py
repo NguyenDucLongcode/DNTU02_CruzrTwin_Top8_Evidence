@@ -33,7 +33,7 @@ def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happ
         # START ACTIONS--------------------
         client.play_emotion("emotion://va/face_default")
         client.move(distance=1.46, speed=0.45)
-        time.sleep(3)
+        time.sleep(1)
         client.play_action("action://ubtrobot/goodbye")
         client.move_and_wait(turningAngle=-86.3, turningSpeed=45)
         client.play_emotion("emotion://va/face_happy")

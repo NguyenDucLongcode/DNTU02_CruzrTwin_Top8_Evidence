@@ -150,7 +150,7 @@ def main(alert_event: dict) -> dict:
             # Robot di chuyển tiến về phía trước 5 giây
 
             RobotClient.move_and_wait(distance=1.5, speed=0.45)
-            RobotClient.move_and_wait(turningAngle=86.3,turningSpeed=45)
+            RobotClient.move_and_wait(turningAngle=84,turningSpeed=45)
 
             # 1. Phát thông báo sơ tán khẩn cấp (Tiếng Anh trước, Tiếng Việt sau)
             print(f"📢 Robot phát thoại tiếng Anh (EN): \"{messageCitical}\"")
@@ -201,7 +201,7 @@ def main(alert_event: dict) -> dict:
             RobotClient.speak_and_wait(vi_messageMoveOut, language="vi")
 
             RobotClient.move_and_wait(distance=1.5, speed=0.45)
-            RobotClient.move_and_wait(turningAngle=-86.3,turningSpeed=45)
+            RobotClient.move_and_wait(turningAngle=-84,turningSpeed=45)
 
 
         except Exception as err:

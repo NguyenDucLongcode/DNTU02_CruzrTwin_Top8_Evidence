@@ -27,18 +27,16 @@ def play_animations(language: str = "en", emotion: str = "emotion://va/techface_
         if language in ["en", "both"]:
 
             # Mở biểu cảm thẹn thùng & động tác dễ thương
-            print("🎭 Đang mở biểu cảm: emotion://va/face_love")
             client.play_emotion("emotion://va/face_happy")
             time.sleep(0.1)
-            print("👋 Robot thực hiện cử chỉ: action://ubtech/cute")
             client.play_action("action://ubtrobot/cute")
             time.sleep(14)
             client.play_emotion("emotion://va/face_default")
 
-            # client.move_and_wait(turningAngle=-175, turningSpeed=45)
-            # client.move_and_wait(distance=0.5, speed=0.45)
+            client.move_and_wait(turningAngle=-175, turningSpeed=45)
+            client.move_and_wait(distance=0.5, speed=0.45)
             client.move_and_wait(turningAngle=-84.6, turningSpeed=45)
-            client.move_and_wait(distance=2.62, speed=0.45)
+            client.move_and_wait(distance=1.72, speed=0.45)
             client.move_and_wait(turningAngle=-82.3, turningSpeed=45)
 
 

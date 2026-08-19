@@ -144,7 +144,7 @@ def main(alert_event: dict) -> dict:
     # ============================================
     if isConnected:
         try:
-            print("🎭 Robot mở biểu cảm khẩn cấp...")
+            # print("🎭 Robot mở biểu cảm khẩn cấp...")
             RobotClient.play_emotion("emotion://va/techface_upset")
 
             # Robot di chuyển tiến về phía trước 5 giây
@@ -192,8 +192,7 @@ def main(alert_event: dict) -> dict:
                 max_workers=len(all_alarms)
             )
 
-            RobotClient.move_and_wait(turningAngle=175,turningSpeed=45)
-            # RobotClient.move_and_wait(turningAngle=177,turningSpeed=45)
+            RobotClient.move_and_wait(turningAngle=176,turningSpeed=45)
 
             print(f"📢 Robot thông báo di chuyển ra khỏi khu vực nguy hiểm (EN): \"{messageMoveOut}\"")
             RobotClient.speak_and_wait(messageMoveOut, language="en")
@@ -202,7 +201,7 @@ def main(alert_event: dict) -> dict:
             RobotClient.speak_and_wait(vi_messageMoveOut, language="vi")
 
             RobotClient.move_and_wait(distance=5.3, speed=0.45)
-            RobotClient.move_and_wait(turningAngle=-84.6, turningSpeed=45)
+            RobotClient.move_and_wait(turningAngle=-84, turningSpeed=45)
 
 
         except Exception as err:

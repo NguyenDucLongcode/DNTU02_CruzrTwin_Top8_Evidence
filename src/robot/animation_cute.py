@@ -39,7 +39,7 @@ def play_animations(language: str = "en", emotion: str = "emotion://va/techface_
             # client.move_and_wait(distance=0.5, speed=0.45)
             client.move_and_wait(turningAngle=-84.6, turningSpeed=45)
             client.move_and_wait(distance=2.62, speed=0.45)
-            client.move_and_wait(turningAngle=-84.6, turningSpeed=45)
+            client.move_and_wait(turningAngle=-82.3, turningSpeed=45)
 
 
         print("\n✅ Đã hoàn thành bài giới thiệu CruzrTwin ASEAN với tay di chuyển liên tục suốt bài nói!")

@@ -30,7 +30,7 @@ def speak_outro(language: str = "en", emotion: str = "emotion://va/techface_happ
         # Di chuyển theo hành trình Outro
         client.move_and_wait(turningAngle=-84.6, turningSpeed=45)
         client.move_and_wait(distance=2.6, speed=0.45)
-        client.move_and_wait(turningAngle=84.6, turningSpeed=45)
+        client.move_and_wait(turningAngle=82.3, turningSpeed=45)
         client.move_and_wait(distance=1.4, speed=0.45)
 
         client.speak_and_wait(OUTRO_TEXT_EN, language="en")

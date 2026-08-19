@@ -188,7 +188,7 @@ def main(alert_event: dict) -> dict:
                 action="on",
                 device_type="alarm",
                 alarm_type=8,
-                duration=50,
+                duration=30,
                 max_workers=len(all_alarms)
             )
 

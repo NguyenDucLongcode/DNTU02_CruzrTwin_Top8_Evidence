@@ -192,7 +192,8 @@ def main(alert_event: dict) -> dict:
                 max_workers=len(all_alarms)
             )
 
-            RobotClient.move_and_wait(turningAngle=175,turningSpeed=45)
+            # RobotClient.move_and_wait(turningAngle=175,turningSpeed=45)
+            RobotClient.move_and_wait(turningAngle=255,turningSpeed=45)
 
             print(f"📢 Robot thông báo di chuyển ra khỏi khu vực nguy hiểm (EN): \"{messageMoveOut}\"")
             RobotClient.speak_and_wait(messageMoveOut, language="en")

@@ -22,18 +22,18 @@ if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
 # Đoạn văn bản Outro chuẩn (Tập trung 1 câu duy nhất theo yêu cầu)
 OUTRO_TEXT_EN = "CruzTwin ASEAN — closing the last meter of smart-city response."
 
-def speak_outro(language: str = "en", emotion: str = "emotion://va/techface_happy"):
+# def speak_outro(language: str = "en", emotion: str = "emotion://va/techface_happy"):
 
     client = CruzrRobotClient()
 
     try:
         # Di chuyển theo hành trình Outro
-        client.move_and_wait(turningAngle=-84.6, turningSpeed=45)
-        client.move_and_wait(distance=3.10, speed=0.45)
-        client.move_and_wait(turningAngle=86.3, turningSpeed=45)
-        client.move_and_wait(distance=1.50, speed=0.45)
+        client.move_and_wait(turningAngle=84.6, turningSpeed=45)
+        client.move_and_wait(distance=0.7, speed=0.45)
+        client.move_and_wait(turningAngle=-86.3, turningSpeed=45)
+        client.move_and_wait(distance=1.25, speed=0.45)
 
-        client.speak_and_wait(OUTRO_TEXT_EN, language="en")
+        # client.speak_and_wait(OUTRO_TEXT_EN, language="en")
         time.sleep(3)
         client.play_action("action://ubtrobot/goodbye")
 

@@ -25,7 +25,7 @@ START_TEXT_EN = (
 )
 
 
-def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happy"):
+# def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happy"):
     client = CruzrRobotClient()
 
 
@@ -33,14 +33,15 @@ def speak_intro(language: str = "en", emotion: str = "emotion://va/techface_happ
         # START ACTIONS--------------------
         client.play_emotion("emotion://va/face_default")
         #4.55m
-        client.move(distance=4.45, speed=0.45)
-        time.sleep(9)
+        client.move(distance=2.1, speed=0.45)
+        time.sleep(3)
         client.play_action("action://ubtrobot/goodbye")
-        client.move_and_wait(turningAngle=-84.6, turningSpeed=45)
         client.play_emotion("emotion://va/face_happy")
+        client.move_and_wait(turningAngle=-84.6, turningSpeed=45)
+
         # client.move_and_wait(distance=0.5, speed=0.45)
 
-        client.speak(text=START_TEXT_EN, language="en")
+        # client.speak(text=START_TEXT_EN, language="en")
 
         print("\n✅ Đã hoàn thành bài giới thiệu CruzrTwin ASEAN với tay di chuyển liên tục suốt bài nói!")
         return True

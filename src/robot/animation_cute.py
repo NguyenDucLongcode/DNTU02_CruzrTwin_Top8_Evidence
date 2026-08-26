@@ -20,7 +20,7 @@ if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
         pass
 
 
-def play_animations(language: str = "en", emotion: str = "emotion://va/techface_happy"):
+# def play_animations(language: str = "en", emotion: str = "emotion://va/techface_happy"):
     client = CruzrRobotClient()
 
     try:
@@ -33,8 +33,8 @@ def play_animations(language: str = "en", emotion: str = "emotion://va/techface_
             time.sleep(14)
             client.play_emotion("emotion://va/face_default")
 
-            client.move_and_wait(turningAngle=-175, turningSpeed=45)
-            client.move_and_wait(distance=0.5, speed=0.45)
+            # client.move_and_wait(turningAngle=-175, turningSpeed=45)
+            # client.move_and_wait(distance=0.5, speed=0.45)
             client.move_and_wait(turningAngle=-84.6, turningSpeed=45)
             client.move_and_wait(distance=1.72, speed=0.45)
             client.move_and_wait(turningAngle=-82.3, turningSpeed=45)
